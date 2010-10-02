@@ -382,7 +382,7 @@ public class Podcast implements Serializable {
             fileStream = new FileInputStream(FavoriteDB);
         } catch (Exception e) {
             Log.getInstance().write(Log.LOGLEVEL_ERROR, "readFavoritePodcasts: Error opening FileInputStream.");
-            Log.getInstance().printStackTrace();
+            e.printStackTrace();
             return null;
         }
 
@@ -413,16 +413,17 @@ public class Podcast implements Serializable {
             Log.getInstance().write(Log.LOGLEVEL_ALL, "readFavoritePodcasts complete.");
         } catch (InvalidClassException ic) {
             Log.getInstance().write(Log.LOGLEVEL_WARN, "readFavoritePodcasts: Objects in DB are invalid.");
-            Log.getInstance().printStackTrace();
+            ic.printStackTrace();
         } catch (Exception e) {
             Log.getInstance().write(Log.LOGLEVEL_ERROR, "readFavoritePodcasts exception " + e.getMessage());
+            e.printStackTrace();
         }
 
         try {
             objectStream.close();
             fileStream.close();
         } catch (Exception e) {
-            Log.getInstance().write(Log.LOGLEVEL_ERROR, "readFavoritePodcasts. Exception closing.");
+            Log.getInstance().write(Log.LOGLEVEL_ERROR, "readFavoritePodcasts. Exception closing. " + e.getMessage());
         }
 
         Log.getInstance().write(Log.LOGLEVEL_ALL, "readFavoritePodcasts: found " + favoritePodcasts.size());
@@ -448,9 +449,9 @@ public class Podcast implements Serializable {
         return null;
     }
 
-    public synchronized static List<Podcast> readFavoritePodcasts(boolean fromCache) {
-        return readFavoritePodcasts(fromCache);
-    }
+    //public synchronized static List<Podcast> readFavoritePodcasts(boolean fromCache) {
+       // return readFavoritePodcasts(fromCache);
+    //}
 
 
     /**

@@ -34,6 +34,18 @@ public class RSSHelper {
         return RSSString.replaceAll("[^A-Za-z0-9_-]", "_");
     }
 
+    public static RSSItem makeDummyRSSItem() {
+        RSSItem Item = new RSSItem();
+        Item.setTitle("Dummy Title");
+        Item.setDate("Dummy Date");
+        Item.setDescription("Dummy Description");
+        Item.setComments("Dummy Comments");
+        Item.setLink("Dummy Link");
+        Item.setAuthor("Dummy Author");
+        Item.setDuration(0);
+        return Item;
+    }
+
 
     /**
     * Returns a MediaFile object corresponding to a Podcast ID.
@@ -249,7 +261,7 @@ public class RSSHelper {
         }
 
         if (SearchURLlc.startsWith("external")) {
-            Log.getInstance().write(Log.LOGLEVEL_ERROR, "getRSSItems found external feed " + SearchURL);
+            Log.getInstance().write(Log.LOGLEVEL_TRACE, "getRSSItems found external feed " + SearchURL);
 
             String FeedParts[] = SearchURL.split(",",3);
             String FeedEXE = null;
@@ -272,7 +284,49 @@ public class RSSHelper {
 
                     if (FeedParam.length() > 0) {
                         FeedParamList = FeedParam.split("\\|\\|");
-                        Log.getInstance().write(Log.LOGLEVEL_TRACE, "getRSSItems: Found parameters.");
+                        Log.getInstance().write(Log.LOGLEVEL_TRACE, "getRSSItems: Found parameters " + FeedParamList.length);
+
+                        // "REM Walk through parameter list to check for any special cases."
+                        for (int i=0; i<FeedParamList.length; i++) {
+                            String Param = FeedParamList[i];
+                            Log.getInstance().write(Log.LOGLEVEL_TRACE, "getRSSItems: Parameters " + Param);
+
+                            if (Param!=null && Param.startsWith("%%") && Param.endsWith("%%")) {
+                                // ThisParam = Substring(ThisParam, 2, Size(ThisParam) - 2)
+                                String ThisParam = Param.substring(2, Param.length()-2);
+                                Log.getInstance().write(Log.LOGLEVEL_TRACE, "getRSSItems: Found special parameter " + ThisParam);
+
+                                String ThisParamLC = ThisParam.toLowerCase();
+
+                                if (ThisParamLC.startsWith("property=")) {
+
+                                    // ThisParam = Substring(ThisParam, Size("property="), -1)
+                                    String S = "property=";
+                                    ThisParam = ThisParam.substring(S.length());
+                                    Log.getInstance().write(Log.LOGLEVEL_TRACE, "getRSSItems: Property " + ThisParam);
+
+                                    String NewVal = Configuration.GetProperty(ThisParam, null);
+                                    Log.getInstance().write(Log.LOGLEVEL_TRACE, "getRSSItems: Value " + NewVal);
+
+                                    FeedParamList[i] = NewVal;
+
+                                } else if (ThisParamLC.startsWith("serverproperty=")) {
+
+                                    // ThisParam = Substring(ThisParam, Size("serverproperty="), -1)
+                                    String S = "serverproperty=";
+                                    ThisParam = ThisParam.substring(S.length());
+                                    Log.getInstance().write(Log.LOGLEVEL_TRACE, "getRSSItems: ServerProperty " + ThisParam);
+
+                                    String NewVal = Configuration.GetServerProperty(ThisParam, null);
+                                    Log.getInstance().write(Log.LOGLEVEL_TRACE, "getRSSItems: Value " + NewVal);
+
+                                    FeedParamList[i] = NewVal;
+
+                                } else if (ThisParamLC.startsWith("getuserinput=")) {
+                                    Log.getInstance().write(Log.LOGLEVEL_ERROR, "getRSSItems: Parameter requires user input.");
+                                }
+                            }
+                        }
                     }
                     break;
                 default:
@@ -281,9 +335,18 @@ public class RSSHelper {
 
             }
 
-            // Execute the command.
-            Log.getInstance().write(Log.LOGLEVEL_TRACE, "getRSSItems: Execute " + FeedEXE + " " + FeedParamList);
-            String feedText = Utility.ExecuteProcessReturnOutput(FeedEXE, FeedParamList, null, true, false);
+            // Execute the command.  If we are not running on Windows we need to execute the command remotely.
+
+            String feedText = null;
+
+            if (Global.IsWindowsOS()) {
+                Log.getInstance().write(Log.LOGLEVEL_TRACE, "getRSSItems: Execute " + FeedEXE + " " + FeedParamList);
+                feedText = Utility.ExecuteProcessReturnOutput(FeedEXE, FeedParamList, null, true, false);
+            } else {
+                Log.getInstance().write(Log.LOGLEVEL_TRACE, "getRSSItems: RemoteExecute " + FeedEXE + " " + FeedParamList);
+                //feedText = SageUtil.ExecuteUPnPBrowser(FeedEXE, FeedParamList);
+                feedText = Utility.ExecuteProcessReturnOutput("/opt/sagetv/server/SageOnlineServicesEXEs/UPnPBrowser.out", FeedParamList, null, true, false);
+            }
 
             if (feedText==null || feedText.isEmpty() || feedText.length() == 0) {
                 Log.getInstance().write(Log.LOGLEVEL_ERROR, "getRSSItems: No results from ExecuteProcess.");

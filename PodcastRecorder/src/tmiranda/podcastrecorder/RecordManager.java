@@ -176,7 +176,7 @@ public class RecordManager extends TimerTask {
                                 if (RecordedEpisodes.get(0).delete()) {
                                     RecordedEpisodes.remove(0);
                                 } else {
-                                    Log.getInstance().write(Log.LOGLEVEL_ERROR, "SRM: Failed to delete Episode.");
+                                    Log.getInstance().write(Log.LOGLEVEL_ERROR, "SRM: Failed to get Episode.");
                                 }
                             }
                         } else {

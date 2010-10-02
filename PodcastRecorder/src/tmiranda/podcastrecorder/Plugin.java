@@ -68,7 +68,7 @@ import ortus.mq.EventListener;
  */
 public class Plugin implements sage.SageTVPlugin, SageTVEventListener {
 
-    private final String VERSION = "0.20";
+    private final String VERSION = "0.22";
 
     private TimerTask RecordManager;
     private Timer RecordManagerTimer;
@@ -303,7 +303,12 @@ public class Plugin implements sage.SageTVPlugin, SageTVEventListener {
             if (files.length > 0)
                 DefaultPath = files[0].toString();
             else
-                DefaultPath = "MaloreOnlineVideo";
+                files = Configuration.GetVideoDirectories();
+                if (files.length > 0)
+                    DefaultPath = files[0].toString();
+                else
+                    DefaultPath = "maloreOnlineBrowser";
+            
             return DefaultPath;
     }
 
@@ -435,12 +440,18 @@ public class Plugin implements sage.SageTVPlugin, SageTVEventListener {
         Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "getConfigOptions received from Plugin Manager. Setting = " + setting);
         if (setting.startsWith(SETTING_RECDIR)) {
 
-            File[] files = Configuration.GetVideoLibraryImportPaths();
+            File[] importPaths = Configuration.GetVideoLibraryImportPaths();
+            File[] recordPaths = Configuration.GetVideoDirectories();
 
-            String[] values = new String[files.length];
+            String[] values = new String[importPaths.length + recordPaths.length];
 
-            for (int i=0; i<files.length; i++) {
-                values[i] = files[i].toString();
+            int i = 0;
+            for (i=0; i<importPaths.length; i++) {
+                values[i] = importPaths[i].toString();
+            }
+
+            for (int j=0; j<recordPaths.length; j++) {
+                values[i+j] = recordPaths[j].toString();
             }
 
             return values;

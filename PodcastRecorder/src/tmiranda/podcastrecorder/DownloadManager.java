@@ -140,7 +140,7 @@ public class DownloadManager {
 
         for (String RequestID : RequestIDs) {
             RecordingEpisode episode = Recordings.get(RequestID);
-            RSSItem ChanItem = episode.getChanItem();
+            RSSItem ChanItem = episode.getOrigChanItem();
             if (ID.equalsIgnoreCase(RSSHelper.makeID(ChanItem))) {
                 DT.removeItem(episode);                 // Remove from DownloadThread queue
                 if (!ActiveDownloads.remove(RequestID))

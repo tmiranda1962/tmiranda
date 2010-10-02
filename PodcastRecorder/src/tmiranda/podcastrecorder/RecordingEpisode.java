@@ -41,7 +41,7 @@ public class RecordingEpisode {
     private String EpisodeTitle;
     private String RequestID;
     private long BlocksRecorded;
-    private String Separator;
+    //private String Separator;
     private boolean Abort;
 
     /**
@@ -71,6 +71,7 @@ public class RecordingEpisode {
         VideoURLs = DefURLs;
         Abort = false;
         OrigChanItem = xOrigChanItem;
+        ChanItem = xOrigChanItem;
     }
 
     /*
@@ -113,6 +114,10 @@ public class RecordingEpisode {
     }
 
     public RSSItem getChanItem() {
+        if (ChanItem == null) {
+            Log.getInstance().write(Log.LOGLEVEL_ERROR, "REEP: Attempt to access null ChanItem");
+            return RSSHelper.makeDummyRSSItem();
+        }
         return ChanItem;
     }
 
@@ -538,7 +543,7 @@ public class RecordingEpisode {
         if ((this.FeedContext == null) ? (other.FeedContext != null) : !this.FeedContext.equals(other.FeedContext)) {
             return false;
         }
-        if (this.ChanItem != other.ChanItem && (this.ChanItem == null || !this.ChanItem.equals(other.ChanItem))) {
+        if (this.OrigChanItem != other.OrigChanItem && (this.OrigChanItem == null || !this.OrigChanItem.equals(other.OrigChanItem))) {
             return false;
         }
         return true;
@@ -551,6 +556,5 @@ public class RecordingEpisode {
         hash = 37 * hash + (this.ChanItem != null ? this.ChanItem.hashCode() : 0);
         return hash;
     }
-
 
 }

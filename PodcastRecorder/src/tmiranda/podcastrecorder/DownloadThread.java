@@ -96,8 +96,9 @@ public class DownloadThread extends Thread {
     }
 
     public void removeItem(RecordingEpisode episode) {
-        if (!RecordingMaps.remove(episode))
-            Log.getInstance().printStackTrace();
+        if (!RecordingMaps.remove(episode)) {
+            Log.getInstance().write(Log.LOGLEVEL_ERROR, "DT: Failed to remove episode from RecordingMaps.");
+        }
     }
 
     public void setAbortCurrent(boolean state) {

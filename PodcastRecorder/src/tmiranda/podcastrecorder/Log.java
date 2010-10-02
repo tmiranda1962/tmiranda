@@ -83,9 +83,11 @@ public class Log {
     public static void Write(int level, String s) {
         if (level >= CurrentLogLevel)
             System.out.println("PR STV: " + s);
+        if (level == Log.LOGLEVEL_ERROR)
+            printStackTrace();
     }
 
-    public void printStackTrace() {
+    public static void printStackTrace() {
         Exception e = new Exception();
         e.printStackTrace();
     }

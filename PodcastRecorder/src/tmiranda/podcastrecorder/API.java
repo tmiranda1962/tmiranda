@@ -87,7 +87,7 @@ public class API {
         switch (FeedParts.length) {
             case 2:
                 // FeedEXE = FeedParts[1];
-                Log.Write(Log.LOGLEVEL_ERROR, "MakeHuluOVI: Only two FeedParts.");
+                Log.getInstance().write(Log.LOGLEVEL_ERROR, "MakeHuluOVI: Only two FeedParts.");
                 break;
             case 3:
                 FeedEXE = FeedParts[1];
@@ -128,7 +128,7 @@ public class API {
 
     public static void ShowRSSItem(RSSItem Item) {
         if (Item == null) {
-            System.out.println("PR: Showing RSSItem null Item.");
+            Log.Write(Log.LOGLEVEL_ERROR, "ShowRSSItem null Item.");
             return;
         }
         System.out.println("PR: Showing RSSItem " + Item.getTitle() + ":" + Item.getCleanDescription() + ":" + Item.getLink());
@@ -136,7 +136,7 @@ public class API {
 
     public static void ShowRSSItems(List<RSSItem> Items) {
         if (Items == null) {
-            System.out.println("PR: Showing RSSItems null Items.");
+            Log.Write(Log.LOGLEVEL_ERROR, "ShowRSSItems null Items.");
             return;
         }
 
@@ -186,6 +186,11 @@ public class API {
     }
     
     public static String GetFeedName(RSSItem ChanItem) {
+        if (ChanItem == null) {
+            Log.Write(Log.LOGLEVEL_ERROR, "GetFeedName null Item.");
+            return null;
+        }
+
         String name = ChanItem.getTitle();
         name.replaceAll(" ", "_");
         name.replaceAll("[^A-Za-z0-9_-]", "");
@@ -208,7 +213,7 @@ public class API {
      */
     public static Object GetMediaFileForRSSItem(RSSItem Item) {
         if (Item==null) {
-            Log.getInstance().write(Log.LOGLEVEL_ERROR, "Null RSSItem passed to GetMediaFileForRSSItem");
+            Log.Write(Log.LOGLEVEL_ERROR, "Null RSSItem passed to GetMediaFileForRSSItem");
             return false;
         }
 
@@ -221,7 +226,7 @@ public class API {
     
     public static boolean DeleteMediaFileForRSSItem(RSSItem Item) {
         if (Item==null) {
-            Log.getInstance().write(Log.LOGLEVEL_ERROR, "Null RSSItem passed to DeleteMediaFileForRSSItem");
+            Log.Write(Log.LOGLEVEL_ERROR, "Null RSSItem passed to DeleteMediaFileForRSSItem");
             return false;
         }
 
@@ -231,7 +236,6 @@ public class API {
             Object MediaFile = RSSHelper.getMediaFileForRSSItem(Item);
             if (MediaFile==null) {
                 Log.getInstance().write(Log.LOGLEVEL_ERROR, "Null MediaFile for RSSItem.");
-                Log.getInstance().printStackTrace();
                 return false;           
             } else {
                 return MediaFileAPI.DeleteFile(MediaFile);
@@ -241,7 +245,7 @@ public class API {
 
     public static boolean IsRSSItemOnDisk(RSSItem Item) {
         if (Item==null) {
-            Log.getInstance().write(Log.LOGLEVEL_ERROR, "Null RSSItem passed to IsRSSItemOnDisk");
+            Log.Write(Log.LOGLEVEL_ERROR, "Null RSSItem passed to IsRSSItemOnDisk");
             return false;
         }
 
@@ -302,13 +306,13 @@ public class API {
 
     public static boolean IsRecordingNow(RSSItem RSSItem) {
         if (RSSItem==null) {
-            Log.getInstance().write(Log.LOGLEVEL_ERROR, "Null RSSItem passed to IsRecordingNow");
+            Log.Write(Log.LOGLEVEL_ERROR, "Null RSSItem passed to IsRecordingNow");
             return false;
         }
 
         if (Global.IsClient()) {
             Boolean RC = (Boolean)GetMQDataGetter().getDataFromServer(THIS_CLASS, "IsRecordingNow", new Object[] {RSSItem}, DEFAULT_TIMEOUT);
-            Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "IsRecordingNow returning " + RC);
+            Log.Write(Log.LOGLEVEL_VERBOSE, "IsRecordingNow returning " + RC);
             return (RC==null ? false : RC);
         } else {
             List<RSSItem> Items = DownloadManager.getInstance().getRSSItemsForCurrent();
@@ -347,9 +351,14 @@ public class API {
     }
 
     public static boolean IsInQueue(RSSItem RSSItem) {
+        if (RSSItem == null) {
+            Log.Write(Log.LOGLEVEL_ERROR, "IsInQueue null Item.");
+            return false;
+        }
+
         if (Global.IsClient()) {
             Boolean RC = (Boolean)GetMQDataGetter().getDataFromServer(THIS_CLASS, "IsInQueue", new Object[] {RSSItem}, DEFAULT_TIMEOUT);
-            Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "IsInQueue returning " + RC);
+            Log.Write(Log.LOGLEVEL_VERBOSE, "IsInQueue returning " + RC);
             return (RC==null ? false : RC);
         } else {
             List<RSSItem>Items = DownloadManager.getInstance().getRSSItemsForActive();
@@ -359,6 +368,11 @@ public class API {
     }
 
     public static void RemoveFromQueue(RSSItem RSSItem) {
+        if (RSSItem == null) {
+            Log.Write(Log.LOGLEVEL_ERROR, "RemoveFromQueue null Item.");
+            return;
+        }
+
         if (Global.IsClient()) {
             GetMQDataGetter().invokeMethodOnServer(THIS_CLASS, "RemoveFromQueue", new Object[] {RSSItem});
         } else {
@@ -484,7 +498,7 @@ public class API {
         for (Podcast p : favoritePodcasts) {
             if (p.isIsFavorite())
                 if (!names.add(p.getOnlineVideoItem()))
-                    Log.getInstance().printStackTrace();
+                    Log.getInstance().write(Log.LOGLEVEL_ERROR, "GetAllFavoritePodcasts failed to add.");
         }
         return names;
     }
@@ -556,7 +570,7 @@ public class API {
         // Handle special case of only having 1 Favorite.
         if (favoritePodcasts.size()==1) {
             if (!OVIs.add(OVI))
-                Log.getInstance().printStackTrace();
+                Log.getInstance().write(Log.LOGLEVEL_ERROR, "IncreasePodcastPriority failed to add.");
             return OVIs;
         }
 
@@ -578,7 +592,7 @@ public class API {
 
                 // Add it to the new List.
                 if (!newPodcastList.add(p))
-                    Log.getInstance().printStackTrace();
+                    Log.getInstance().write(Log.LOGLEVEL_ERROR, "IncreasePodcastPriority failed to add.");
 
                 // If it's already first there is nothing to do.
                 if (i!=0) {
@@ -588,14 +602,14 @@ public class API {
                 }
             } else {
                 if (!newPodcastList.add(p))
-                    Log.getInstance().printStackTrace();
+                    Log.getInstance().write(Log.LOGLEVEL_ERROR, "IncreasePodcastPriority failed to add.");
             }
         }
 
         // Add any remaining.
         for (; i<favoritePodcasts.size(); i++) {
             if (!newPodcastList.add(favoritePodcasts.get(i)))
-                Log.getInstance().printStackTrace();
+                Log.getInstance().write(Log.LOGLEVEL_ERROR, "IncreasePodcastPriority failed to add.");
         }
 
         // Write the new List out to disk.
@@ -606,7 +620,7 @@ public class API {
         // Create the List of OVIs.
         for (Podcast p : newPodcastList) {
             if (!OVIs.add(p.getOnlineVideoItem()))
-                Log.getInstance().printStackTrace();
+                Log.getInstance().write(Log.LOGLEVEL_ERROR, "IncreasePodcastPriority failed to add.");
         }
 
         return OVIs;
@@ -633,7 +647,7 @@ public class API {
         // Handle special case of only having 1 Favorite.
         if (favoritePodcasts.size()==1) {
             if (!OVIs.add(OVI))
-                Log.getInstance().printStackTrace();
+                Log.getInstance().write(Log.LOGLEVEL_ERROR, "DecreasePodcastPriority failed to add.");
             return OVIs;
         }
 
@@ -655,14 +669,14 @@ public class API {
 
                 // Add it to the new List.
                 if (!newPodcastList.add(p))
-                    Log.getInstance().printStackTrace();
+                    Log.getInstance().write(Log.LOGLEVEL_ERROR, "DecreasePodcastPriority failed to add.");;
 
                 // If it's already last there is nothing to do.
                 if (i!=favoritePodcasts.size()-1) {
 
                     // Get the next one.
                     if (!newPodcastList.add(favoritePodcasts.get(i+1)))
-                        Log.getInstance().printStackTrace();
+                        Log.getInstance().write(Log.LOGLEVEL_ERROR, "DecreasePodcastPriority failed to add.");
 
                     // Swap them.
                     newPodcastList = swapListElements(newPodcastList, i, i+1);
@@ -672,14 +686,14 @@ public class API {
                 }
             } else {
                 if (!newPodcastList.add(p))
-                    Log.getInstance().printStackTrace();
+                    Log.getInstance().write(Log.LOGLEVEL_ERROR, "DecreasePodcastPriority failed to add.");
             }
         }
 
         // Add any remaining.
         for (; i<favoritePodcasts.size(); i++) {
             if (!newPodcastList.add(favoritePodcasts.get(i)))
-                Log.getInstance().printStackTrace();
+                Log.getInstance().write(Log.LOGLEVEL_ERROR, "DecreasePodcastPriority failed to add.");
         }
 
         // Write the new List out to disk.
@@ -705,16 +719,16 @@ public class API {
         // Copy from 0 to the first item.
         for (int i=0; i<first; i++) {
             if (!newList.add(oldList.get(i)))
-                Log.getInstance().printStackTrace();
+                Log.getInstance().write(Log.LOGLEVEL_ERROR, "swapListElements failed to add.");
         }
 
-        if (!newList.add(oldList.get(second))) Log.getInstance().printStackTrace();
-        if (!newList.add(oldList.get(first))) Log.getInstance().printStackTrace();
+        if (!newList.add(oldList.get(second))) Log.getInstance().write(Log.LOGLEVEL_ERROR, "swapListElements failed to add.");
+        if (!newList.add(oldList.get(first))) Log.getInstance().write(Log.LOGLEVEL_ERROR, "swapListElements failed to add.");
 
         // Now copy the rest.
         for (int i=second+1; i<oldList.size(); i++) {
             if (!newList.add(oldList.get(i)))
-                Log.getInstance().printStackTrace();
+                Log.getInstance().write(Log.LOGLEVEL_ERROR, "swapListElements failed to add.");
         }
 
         return newList;
@@ -869,7 +883,7 @@ public class API {
         }
     }
 
-    public synchronized static boolean SetIsFavorite(String OVT, String OVI, boolean Favorite) {
+    public synchronized static boolean _SetIsFavorite(String OVT, String OVI, Boolean Favorite) {
 
         Log.Write(Log.LOGLEVEL_VERBOSE, "SetIsFavorite.");
 
@@ -911,21 +925,13 @@ public class API {
         return Podcast.writeFavoritePodcasts(favoritePodcasts);
     }
 
-    public static boolean SetIsFavorite(String OVT, String OVI, Boolean F) {
-        return SetIsFavorite(OVT, OVI, F.booleanValue());
-    }
-
     public static boolean SetIsFavorite(String OVT, String OVI, Object F) {
-        return SetIsFavorite(OVT, OVI, (Boolean)F);
-    }
-
-    public static boolean SetIsFavorite(String OVT, String OVI, String F) {
-        return SetIsFavorite(OVT, OVI, SageUtil.StringToBool(F));
+        return _SetIsFavorite(OVT, OVI, ObjToBool(F));
     }
 
     private static boolean setIsFavoriteOnServer(String OVT, String OVI, Boolean Favorite) {
         Log.Write(Log.LOGLEVEL_VERBOSE, "Setting Isfavorite on server.");
-        GetMQDataGetter().invokeMethodOnServer(THIS_CLASS, "SetIsFavorite", new Object[] {OVT, OVI, Favorite});
+        GetMQDataGetter().invokeMethodOnServer(THIS_CLASS, "_SetIsFavorite", new Object[] {OVT, OVI, Favorite});
         return true;
     }
 
@@ -981,7 +987,8 @@ public class API {
 
         // Remove the podcast.
         if (!favoritePodcasts.remove(podcast))
-            Log.getInstance().printStackTrace();
+            Log.getInstance().write(Log.LOGLEVEL_ERROR, "RemoveFavorite failed to add.");
+
         Log.Write(Log.LOGLEVEL_TRACE, "RemoveFavorite: Removed.");
 
         // Save to disk.
@@ -1008,7 +1015,7 @@ public class API {
 
         List<Podcast> favoritePodcasts = Podcast.readFavoritePodcasts();
 
-        if (favoritePodcasts == null) {
+        if (favoritePodcasts == null || favoritePodcasts.isEmpty()) {
             Log.Write(Log.LOGLEVEL_TRACE, "No podcasts.");
             return false;
         }
@@ -1021,15 +1028,14 @@ public class API {
         }
 
         if (!favoritePodcasts.remove(podcast)) {
-            Log.Write(Log.LOGLEVEL_TRACE, "Failed to remove podcast.");
-            Log.getInstance().printStackTrace();
+            Log.Write(Log.LOGLEVEL_ERROR, "Failed to remove podcast.");
             return false;
         }
 
         podcast.setIsFavorite(false);
 
         if (!favoritePodcasts.add(podcast)) {
-            Log.Write(Log.LOGLEVEL_TRACE, "Failed to add podcast.");
+            Log.Write(Log.LOGLEVEL_ERROR, "Failed to add podcast.");
             return false;
         }
 
@@ -1069,11 +1075,11 @@ public class API {
             return podcast.isRecordNew();
     }
 
-    public static boolean SetRecordNew(String OVT, String OVI, Boolean RN) {
-        return SetRecordNew(OVT, OVI, RN.booleanValue());
+    public static boolean SetRecordNew(String OVT, String OVI, Object RN) {
+        return _SetRecordNew(OVT, OVI, ObjToBool(RN));
     }
 
-    public synchronized static boolean SetRecordNew(String OVT, String OVI, boolean RecordNew) {
+    public synchronized static boolean _SetRecordNew(String OVT, String OVI, Boolean RecordNew) {
 
         Log.Write(Log.LOGLEVEL_VERBOSE, "SetRecordNew.");
 
@@ -1101,32 +1107,23 @@ public class API {
         }
 
         if (!favoritePodcasts.remove(podcast)) {
-            Log.Write(Log.LOGLEVEL_TRACE, "Failed to remove podcast.");
-            Log.getInstance().printStackTrace();
+            Log.Write(Log.LOGLEVEL_ERROR, "Failed to remove podcast.");
             return false;
         }
 
         podcast.setRecordNew(RecordNew);
 
         if (!favoritePodcasts.add(podcast)) {
-            Log.Write(Log.LOGLEVEL_TRACE, "Failed to add podcast.");
+            Log.Write(Log.LOGLEVEL_ERROR, "Failed to add podcast.");
             return false;
         }
 
         return Podcast.writeFavoritePodcasts(favoritePodcasts);
     }
 
-    public static boolean SetRecordNew(String OVT, String OVI, String RN) {
-        return SetRecordNew(OVT, OVI, SageUtil.StringToBool(RN));
-    }
-
-    public static boolean SetRecordNew(String OVT, String OVI, Object RN) {
-        return SetRecordNew(OVT, OVI, (Boolean)RN);
-    }
-
     private static boolean setRecordNewOnServer(String OVT, String OVI, Boolean RecordNew) {
         Log.Write(Log.LOGLEVEL_VERBOSE, "Setting record new on server.");
-        GetMQDataGetter().invokeMethodOnServer(THIS_CLASS, "SetRecordNew", new Object[] {OVT, OVI, RecordNew});
+        GetMQDataGetter().invokeMethodOnServer(THIS_CLASS, "_SetRecordNew", new Object[] {OVT, OVI, RecordNew});
         return true;
     }
 
@@ -1145,7 +1142,7 @@ public class API {
             return podcast.isReRecordDeleted();
     }
 
-    public synchronized static boolean SetReRecord(String OVT, String OVI, boolean ReRecord) {
+    public synchronized static boolean _SetReRecord(String OVT, String OVI, Boolean ReRecord) {
 
         Log.Write(Log.LOGLEVEL_VERBOSE, "SetReRecord.");
 
@@ -1173,36 +1170,27 @@ public class API {
         }
 
         if (!favoritePodcasts.remove(podcast)) {
-            Log.Write(Log.LOGLEVEL_TRACE, "Failed to remove podcast.");
-            Log.getInstance().printStackTrace();
+            Log.Write(Log.LOGLEVEL_ERROR, "Failed to remove podcast.");
             return false;
         }
 
         podcast.setReRecordDeleted(ReRecord);
 
         if (!favoritePodcasts.add(podcast)) {
-            Log.Write(Log.LOGLEVEL_TRACE, "Failed to add podcast.");
+            Log.Write(Log.LOGLEVEL_ERROR, "Failed to add podcast.");
             return false;
         }
 
         return Podcast.writeFavoritePodcasts(favoritePodcasts);
     }
 
-    public static boolean SetReRecord(String OVT, String OVI, String RR) {
-        return SetReRecord(OVT, OVI, SageUtil.StringToBool(RR));
-    }
-
-    public static boolean SetReRecord(String OVT, String OVI, Boolean RR) {
-        return SetReRecord(OVT, OVI, RR.booleanValue());
-    }
-
     public static boolean SetReRecord(String OVT, String OVI, Object RR) {
-        return SetReRecord(OVT, OVI, (Boolean)RR);
+        return _SetReRecord(OVT, OVI, ObjToBool(RR));
     }
 
     private static boolean setReRecordOnServer(String OVT, String OVI, Boolean ReRecord) {
         Log.Write(Log.LOGLEVEL_VERBOSE, "Setting ReRecord on server.");
-        GetMQDataGetter().invokeMethodOnServer(THIS_CLASS, "SetReRecord", new Object[] {OVT, OVI, ReRecord});
+        GetMQDataGetter().invokeMethodOnServer(THIS_CLASS, "_SetReRecord", new Object[] {OVT, OVI, ReRecord});
         return true;
     }
 
@@ -1221,7 +1209,7 @@ public class API {
             return podcast.isAutoDelete();
     }
 
-    public synchronized static boolean SetAutoDelete(String OVT, String OVI, boolean AutoDelete) {
+    public synchronized static boolean _SetAutoDelete(String OVT, String OVI, Boolean AutoDelete) {
 
         Log.Write(Log.LOGLEVEL_VERBOSE, "SetAutoDelete.");
 
@@ -1249,36 +1237,27 @@ public class API {
         }
 
         if (!favoritePodcasts.remove(podcast)) {
-            Log.Write(Log.LOGLEVEL_TRACE, "Failed to remove podcast.");
-            Log.getInstance().printStackTrace();
+            Log.Write(Log.LOGLEVEL_ERROR, "Failed to remove podcast.");
             return false;
         }
 
         podcast.setAutoDelete(AutoDelete);
 
         if (!favoritePodcasts.add(podcast)) {
-            Log.Write(Log.LOGLEVEL_TRACE, "Failed to add podcast.");
+            Log.Write(Log.LOGLEVEL_ERROR, "Failed to add podcast.");
             return false;
         }
 
         return Podcast.writeFavoritePodcasts(favoritePodcasts);
     }
 
-    public static boolean SetAutoDelete(String OVT, String OVI, String AD) {
-        return SetAutoDelete(OVT, OVI, SageUtil.StringToBool(AD));
-    }
-
-    public static boolean SetAutoDelete(String OVT, String OVI, Boolean AD) {
-        return SetAutoDelete(OVT, OVI, AD.booleanValue());
-    }
-
     public static boolean SetAutoDelete(String OVT, String OVI, Object AD) {
-        return SetAutoDelete(OVT, OVI, (Boolean)AD);
+        return _SetAutoDelete(OVT, OVI, ObjToBool(AD));
     }
 
     private static boolean setAutoDeleteOnServer(String OVT, String OVI, Boolean AutoDelete) {
         Log.Write(Log.LOGLEVEL_VERBOSE, "Setting AutoDelete on server.");
-        GetMQDataGetter().invokeMethodOnServer(THIS_CLASS, "SetAutoDelete", new Object[] {OVT, OVI, AutoDelete});
+        GetMQDataGetter().invokeMethodOnServer(THIS_CLASS, "_SetAutoDelete", new Object[] {OVT, OVI, AutoDelete});
         return true;
     }
 
@@ -1297,7 +1276,7 @@ public class API {
             return podcast.isKeepNewest();
     }
 
-    public synchronized static boolean SetKeepNewest(String OVT, String OVI, boolean Keep) {
+    public synchronized static boolean _SetKeepNewest(String OVT, String OVI, Boolean Keep) {
 
         Log.Write(Log.LOGLEVEL_VERBOSE, "SetKeepNewest.");
 
@@ -1326,35 +1305,26 @@ public class API {
 
         if (!favoritePodcasts.remove(podcast)) {
             Log.Write(Log.LOGLEVEL_ERROR, "Failed to remove podcast.");
-            Log.getInstance().printStackTrace();
             return false;
         }
 
         podcast.setKeepNewest(Keep);
 
         if (!favoritePodcasts.add(podcast)) {
-            Log.Write(Log.LOGLEVEL_TRACE, "Failed to add podcast.");
+            Log.Write(Log.LOGLEVEL_ERROR, "Failed to add podcast.");
             return false;
         }
 
         return Podcast.writeFavoritePodcasts(favoritePodcasts);
     }
 
-    public static boolean SetKeepNewest(String OVT, String OVI, String K) {
-        return SetKeepNewest(OVT, OVI, SageUtil.StringToBool(K));
-    }
-
-    public static boolean SetKeepNewest(String OVT, String OVI, Boolean K) {
-        return SetKeepNewest(OVT, OVI, K.booleanValue());
-    }
-
     public static boolean SetKeepNewest(String OVT, String OVI, Object K) {
-        return SetKeepNewest(OVT, OVI, (Boolean)K);
+        return _SetKeepNewest(OVT, OVI, ObjToBool(K));
     }
 
     private static boolean setKeepNewestOnServer(String OVT, String OVI, Boolean Keep) {
         Log.Write(Log.LOGLEVEL_VERBOSE, "Setting KeepNewest on server.");
-        GetMQDataGetter().invokeMethodOnServer(THIS_CLASS, "SetKeepNewest", new Object[] {OVT, OVI, Keep});
+        GetMQDataGetter().invokeMethodOnServer(THIS_CLASS, "_SetKeepNewest", new Object[] {OVT, OVI, Keep});
         return true;
     }
 
@@ -1373,7 +1343,7 @@ public class API {
             return podcast.isDeleteDuplicates();
     }
 
-    public synchronized static boolean SetRemoveDuplicates(String OVT, String OVI, boolean Remove) {
+    public synchronized static boolean _SetRemoveDuplicates(String OVT, String OVI, Boolean Remove) {
 
         Log.Write(Log.LOGLEVEL_VERBOSE, "SetRemoveDuplicates.");
 
@@ -1401,36 +1371,27 @@ public class API {
         }
 
         if (!favoritePodcasts.remove(podcast)) {
-            Log.Write(Log.LOGLEVEL_TRACE, "Failed to remove podcast.");
-            Log.getInstance().printStackTrace();
+            Log.Write(Log.LOGLEVEL_ERROR, "Failed to remove podcast.");
             return false;
         }
 
         podcast.setDeleteDuplicates(Remove);
 
         if (!favoritePodcasts.add(podcast)) {
-            Log.Write(Log.LOGLEVEL_TRACE, "Failed to add podcast.");
+            Log.Write(Log.LOGLEVEL_ERROR, "Failed to add podcast.");
             return false;
         }
 
         return Podcast.writeFavoritePodcasts(favoritePodcasts);
     }
 
-    public static boolean SetRemoveDuplicates(String OVT, String OVI, String R) {
-        return SetRemoveDuplicates(OVT, OVI, SageUtil.StringToBool(R));
-    }
-
-    public static boolean SetRemoveDuplicates(String OVT, String OVI, Boolean R) {
-        return SetRemoveDuplicates(OVT, OVI, R.booleanValue());
-    }
-
     public static boolean SetRemoveDuplicates(String OVT, String OVI, Object R) {
-        return SetRemoveDuplicates(OVT, OVI, (Boolean)R);
+        return _SetRemoveDuplicates(OVT, OVI, ObjToBool(R));
     }
 
     private static boolean setRemoveDuplicatesOnServer(String OVT, String OVI, Boolean Remove) {
         Log.Write(Log.LOGLEVEL_VERBOSE, "Setting RemoveDuplicates on server.");
-        GetMQDataGetter().invokeMethodOnServer(THIS_CLASS, "SetRemoveDuplicates", new Object[] {OVT, OVI, Remove});
+        GetMQDataGetter().invokeMethodOnServer(THIS_CLASS, "_SetRemoveDuplicates", new Object[] {OVT, OVI, Remove});
         return true;
     }
 
@@ -1449,7 +1410,7 @@ public class API {
             return podcast.isUseShowTitleAsSubdir();
     }
 
-    public synchronized static boolean SetUseTitleAsSubdir(String OVT, String OVI, boolean Use) {
+    public synchronized static boolean _SetUseTitleAsSubdir(String OVT, String OVI, Boolean Use) {
 
         Log.Write(Log.LOGLEVEL_VERBOSE, "SetUseTitleAsSubdir.");
 
@@ -1477,43 +1438,34 @@ public class API {
         }
 
         if (!favoritePodcasts.remove(podcast)) {
-            Log.Write(Log.LOGLEVEL_TRACE, "Failed to remove podcast.");
-            Log.getInstance().printStackTrace();
+            Log.Write(Log.LOGLEVEL_ERROR, "Failed to remove podcast.");
             return false;
         }
 
         podcast.setUseShowTitleAsSubdir(Use);
 
         if (!favoritePodcasts.add(podcast)) {
-            Log.Write(Log.LOGLEVEL_TRACE, "Failed to add podcast.");
+            Log.Write(Log.LOGLEVEL_ERROR, "Failed to add podcast.");
             return false;
         }
 
         return Podcast.writeFavoritePodcasts(favoritePodcasts);
     }
 
-    public static boolean SetUseTitleAsSubdir(String OVT, String OVI, String U) {
-        return SetUseTitleAsSubdir(OVT, OVI, SageUtil.StringToBool(U));
-    }
-
-    public static boolean SetUseTitleAsSubdir(String OVT, String OVI, Boolean U) {
-        return SetUseTitleAsSubdir(OVT, OVI, U.booleanValue());
-    }
-
     public static boolean SetUseTitleAsSubdir(String OVT, String OVI, Object U) {
-        return SetUseTitleAsSubdir(OVT, OVI, (Boolean)U);
+        return _SetUseTitleAsSubdir(OVT, OVI, ObjToBool(U));
     }
 
     private static boolean setUseTitleAsSubdirOnServer(String OVT, String OVI, Boolean Use) {
         Log.Write(Log.LOGLEVEL_VERBOSE, "Setting UseTitleAsSubdir on server.");
-        GetMQDataGetter().invokeMethodOnServer(THIS_CLASS, "SetUseTitleAsSubdir", new Object[] {OVT, OVI, Use});
+        GetMQDataGetter().invokeMethodOnServer(THIS_CLASS, "_SetUseTitleAsSubdir", new Object[] {OVT, OVI, Use});
         return true;
     }
 
     /*
      * UseShowTitleInFileName
      */
-    public synchronized static boolean SetUseTitleInFileName(String OVT, String OVI, boolean Use) {
+    public synchronized static boolean _SetUseTitleInFileName(String OVT, String OVI, Boolean Use) {
 
         Log.Write(Log.LOGLEVEL_VERBOSE, "SetUseTitleInFileName.");
 
@@ -1541,31 +1493,22 @@ public class API {
         }
 
         if (!favoritePodcasts.remove(podcast)) {
-            Log.Write(Log.LOGLEVEL_TRACE, "Failed to remove podcast.");
-            Log.getInstance().printStackTrace();
+            Log.Write(Log.LOGLEVEL_ERROR, "Failed to remove podcast.");
             return false;
         }
 
         podcast.setUseShowTitleInFileName(Use);
 
         if (!favoritePodcasts.add(podcast)) {
-            Log.Write(Log.LOGLEVEL_TRACE, "Failed to add podcast.");
+            Log.Write(Log.LOGLEVEL_ERROR, "Failed to add podcast.");
             return false;
         }
 
         return Podcast.writeFavoritePodcasts(favoritePodcasts);
     }
 
-    public static boolean SetUseTitleInFileName(String OVT, String OVI, String U) {
-        return SetUseTitleInFileName(OVT, OVI, SageUtil.StringToBool(U));
-    }
-
-    public static boolean SetUseTitleInFileName(String OVT, String OVI, Boolean U) {
-        return SetUseTitleInFileName(OVT, OVI, U.booleanValue());
-    }
-
     public static boolean SetUseTitleInFileName(String OVT, String OVI, Object U) {
-        return SetUseTitleInFileName(OVT, OVI, (Boolean)U);
+        return _SetUseTitleInFileName(OVT, OVI, ObjToBool(U));
     }
 
     public static boolean GetUseTitleInFileName(String OVT, String OVI) {
@@ -1582,7 +1525,7 @@ public class API {
 
     private static boolean setUseTitleInFileNameOnServer(String OVT, String OVI, Boolean Use) {
         Log.Write(Log.LOGLEVEL_VERBOSE, "Setting UseTitleInFileName on server.");
-        GetMQDataGetter().invokeMethodOnServer(THIS_CLASS, "SetUseTitleInFileName", new Object[] {OVT, OVI, Use});
+        GetMQDataGetter().invokeMethodOnServer(THIS_CLASS, "_SetUseTitleInFileName", new Object[] {OVT, OVI, Use});
         return true;
     }
 
@@ -1629,15 +1572,14 @@ public class API {
         }
 
         if (!favoritePodcasts.remove(podcast)) {
-            Log.Write(Log.LOGLEVEL_TRACE, "Failed to remove podcast.");
-            Log.getInstance().printStackTrace();
+            Log.Write(Log.LOGLEVEL_ERROR, "Failed to remove podcast.");
             return false;
         }
 
         podcast.setShowTitle(API.StripShowTitle(Title));
 
         if (!favoritePodcasts.add(podcast)) {
-            Log.Write(Log.LOGLEVEL_TRACE, "Failed to add podcast.");
+            Log.Write(Log.LOGLEVEL_ERROR, "Failed to add podcast.");
             return false;
         }
 
@@ -1670,14 +1612,14 @@ public class API {
     }
 
     public static boolean SetKeepAtMost(String OVT, String OVI, Integer Keep) {
-        return SetKeepAtMost(OVT, OVI, Keep.intValue());
+        return _SetKeepAtMost(OVT, OVI, Keep.intValue());
     }
 
     public static boolean SetKeepAtMost(String OVT, String OVI, Object Keep) {
-        return SetKeepAtMost(OVT, OVI, ((Integer)Keep).intValue());
+        return _SetKeepAtMost(OVT, OVI, ObjToInteger(Keep));
     }
 
-    public synchronized static boolean SetKeepAtMost(String OVT, String OVI, int Keep) {
+    public synchronized static boolean _SetKeepAtMost(String OVT, String OVI, Integer Keep) {
 
         Log.Write(Log.LOGLEVEL_VERBOSE, "SetKeepAtMost.");
 
@@ -1705,15 +1647,14 @@ public class API {
         }
 
         if (!favoritePodcasts.remove(podcast)) {
-            Log.Write(Log.LOGLEVEL_TRACE, "Failed to remove podcast.");
-            Log.getInstance().printStackTrace();
+            Log.Write(Log.LOGLEVEL_ERROR, "Failed to remove podcast.");
             return false;
         }
 
         podcast.setMaxToRecord(Keep);
 
         if (!favoritePodcasts.add(podcast)) {
-            Log.Write(Log.LOGLEVEL_TRACE, "Failed to add podcast.");
+            Log.Write(Log.LOGLEVEL_ERROR, "Failed to add podcast.");
             return false;
         }
 
@@ -1722,7 +1663,7 @@ public class API {
 
     private static boolean setKeepAtMostOnServer(String OVT, String OVI, Integer Keep) {
         Log.Write(Log.LOGLEVEL_VERBOSE, "Setting KeepAtMost on server.");
-        GetMQDataGetter().invokeMethodOnServer(THIS_CLASS, "SetKeepAtMost", new Object[] {OVT, OVI, Keep});
+        GetMQDataGetter().invokeMethodOnServer(THIS_CLASS, "_SetKeepAtMost", new Object[] {OVT, OVI, Keep});
         return true;
     }
 
@@ -1769,15 +1710,14 @@ public class API {
         }
 
         if (!favoritePodcasts.remove(podcast)) {
-            Log.Write(Log.LOGLEVEL_TRACE, "Failed to remove podcast.");
-            Log.getInstance().printStackTrace();
+            Log.Write(Log.LOGLEVEL_ERROR, "Failed to remove podcast.");
             return false;
         }
 
         podcast.setRecDir(Dir);
 
         if (!favoritePodcasts.add(podcast)) {
-            Log.Write(Log.LOGLEVEL_TRACE, "Failed to add podcast.");
+            Log.Write(Log.LOGLEVEL_ERROR, "Failed to add podcast.");
             return false;
         }
 
@@ -1837,16 +1777,14 @@ public class API {
         }
 
         if (!favoritePodcasts.remove(podcast)) {
-            Log.Write(Log.LOGLEVEL_TRACE, "Failed to remove podcast.");
-            Log.getInstance().printStackTrace();
+            Log.Write(Log.LOGLEVEL_ERROR, "Failed to remove podcast.");
             return false;
         }
 
         podcast.setRecSubdir(Subdir);
 
         if (!favoritePodcasts.add(podcast)) {
-            Log.Write(Log.LOGLEVEL_TRACE, "Failed to add podcast.");
-            Log.getInstance().printStackTrace();
+            Log.Write(Log.LOGLEVEL_ERROR, "Failed to add podcast.");
             return false;
         }
 
@@ -1933,12 +1871,12 @@ public class API {
                                 bUseShowTitleInFileName);
         } else {
             if (!favoritePodcasts.remove(podcast))
-                Log.getInstance().printStackTrace();
+                Log.getInstance().write(Log.LOGLEVEL_ERROR, "Createpodcast failed to remove.");
         }
 
         // Add the new or updated podcast;
         if (!favoritePodcasts.add(podcast))
-            Log.getInstance().printStackTrace();
+            Log.getInstance().write(Log.LOGLEVEL_ERROR, "Createpodcast failed to add.");
 
         // Save to disk.
         return Podcast.writeFavoritePodcasts(favoritePodcasts);
@@ -2092,7 +2030,7 @@ public class API {
         List<UnrecordedEpisode> UnrecordedEpisodes = podcast.getEpisodesOnWebServer();
 
         if (UnrecordedEpisodes == null) {
-            Log.getInstance().write(Log.LOGLEVEL_TRACE, "RecordAllEpisodes: Failed to getEpisodesOnWebServer.");
+            Log.getInstance().write(Log.LOGLEVEL_ERROR, "RecordAllEpisodes: Failed to getEpisodesOnWebServer.");
             return false;
         }
 
@@ -2100,7 +2038,7 @@ public class API {
 
         for(UnrecordedEpisode episode : UnrecordedEpisodes) {
             if (!episode.startRecord().startsWith("REQ")) {
-                Log.getInstance().write(Log.LOGLEVEL_TRACE, "RecordAllEpisodes: Failed to startRecord.");
+                Log.getInstance().write(Log.LOGLEVEL_ERROR, "RecordAllEpisodes: Failed to startRecord.");
                 failed = true;
             }
         }

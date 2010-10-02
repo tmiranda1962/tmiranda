@@ -172,4 +172,8 @@ public class SageUtil {
         }
         return null;
     }
+
+    public static String ExecuteUPnPBrowser(String Executable, String[] parameters) {
+        return null;
+    }
 }
