@@ -346,7 +346,7 @@ public class RecordingEpisode {
         NewFile = this.getUniqueFile();
 
         if (NewFile==null) {
-            Log.getInstance().write(Log.LOGLEVEL_ERROR, "REEP importAsMediaFile: Could not create unique file.");
+            Log.getInstance().write(Log.LOGLEVEL_ERROR, "REEP moveToFinalLocation: Could not create unique file.");
 
             if (!tempFile.delete()) {
                 Log.getInstance().write(Log.LOGLEVEL_WARN, "REEP moveToFinalLocation: Failed to delete tempFile.");
