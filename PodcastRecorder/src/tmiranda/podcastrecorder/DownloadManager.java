@@ -24,6 +24,8 @@ public class DownloadManager {
     
     private static DownloadThread DT;
 
+    private static boolean recMgrRunning = false;
+
     private static List<String> ActiveDownloads = new ArrayList<String>();      // Queued to DownloadThread
     private static List<String> FailedDownloads = new ArrayList<String>();      // Tried and failed.
     private static List<String> CompletedDownloads = new ArrayList<String>();   // Tried and completed.
@@ -71,11 +73,25 @@ public class DownloadManager {
         return instance;
     }
 
+    public Object Clone() throws CloneNotSupportedException {
+        throw new CloneNotSupportedException();
+    }
+
+    public boolean getRecMgrStatus() {
+        return recMgrRunning;
+    }
+
+    public void setRecMgrStatus(boolean status) {
+        recMgrRunning = status;
+    }
 
     public void destroy() {
-        DT.abortCurrentDownload();
-        DT.setStop(true);
-        DT = null;
+        if (DT!=null) {
+            DT.abortCurrentDownload();
+            DT.setStop(true);
+            DT = null;
+        }
+
     }
 
     /*
@@ -237,7 +253,7 @@ public class DownloadManager {
             } else {
                 Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "Adding Item.");
                 if (!ItemList.add(episode.getChanItem()))
-                    Log.getInstance().printStackTrace();
+                    Log.getInstance().write(Log.LOGLEVEL_TRACE, "Element already in set.");
             }
 
         }
@@ -282,7 +298,7 @@ public class DownloadManager {
         } else {
             Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "Adding Item.");
             if (!ItemList.add(episode.getChanItem()))
-                Log.getInstance().printStackTrace();
+                Log.getInstance().write(Log.LOGLEVEL_TRACE, "Element already in set.");
         }
 
         Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "Found items = " + ItemList.size());
@@ -391,6 +407,76 @@ public class DownloadManager {
         } else {
             return DT.removeAllItems();
         }
+    }
+
+    public boolean updateDatabase() {
+
+        List<Podcast> Podcasts = Podcast.readFavoritePodcasts();
+        if (Podcasts==null || Podcasts.isEmpty()) {
+            Log.getInstance().write(Log.LOGLEVEL_WARN, "updateDatabase: No favorite podcasts.");
+            return true;
+        }
+
+        Log.getInstance().write(Log.LOGLEVEL_TRACE, "updateDatabase: Scanning.");
+
+        List<Podcast> newPodcasts = new ArrayList<Podcast>();
+
+        for (Podcast podcast : Podcasts) {
+            newPodcasts.add(updatePodcast(podcast));
+        }
+
+        if (!Podcast.writeFavoritePodcasts(newPodcasts)) {
+            Log.getInstance().write(Log.LOGLEVEL_ERROR, "updateDatabase: Error writing favorite podcasts.");
+            return false;
+        }
+
+        Log.getInstance().write(Log.LOGLEVEL_TRACE, "updateDatabase: Done.");
+        return true;
+    }
+    
+    private Podcast updatePodcast(Podcast podcast) {
+
+        // Clone the current Podcast.
+        Podcast newPodcast = new Podcast(podcast);
+
+        Set<UnrecordedEpisode> EpisodesOnWebServer = newPodcast.getEpisodesOnWebServer();
+
+        if (EpisodesOnWebServer==null || EpisodesOnWebServer.isEmpty()) {
+            Log.getInstance().write(Log.LOGLEVEL_TRACE, "updatePodcast: No Episodes on Web.");
+            return newPodcast;
+        }
+
+        Log.getInstance().write(Log.LOGLEVEL_TRACE, "updatePodcast: Found Episodes on Web " + EpisodesOnWebServer.size());
+
+        // Scan all MediaFiles to see if any match.
+        for (UnrecordedEpisode episode : EpisodesOnWebServer) {
+
+            // Make sure this UnrecordedEpisode is remembered.
+            newPodcast.addEpisodesOnServer(episode);
+
+            RSSItem ChanItem = episode.getChanItem();
+
+            // Try to find a matching MediaFile
+            Object MediaFile = RSSHelper.getMediaFileForRSSItem(ChanItem);
+
+            // If we found one, see if it's already in the database.
+            if (MediaFile != null) {
+
+                Log.getInstance().write(Log.LOGLEVEL_TRACE, "updatePodcast: Found recorded episode " + episode.getEpisodeTitle());
+                
+                Episode newEpisode = new Episode(newPodcast, RSSHelper.makeID(ChanItem));
+                
+                // If it's not already in the database, add it.
+                if (!newPodcast.hasEpisodeEverBeenRecorded(newEpisode)) {
+                    Log.getInstance().write(Log.LOGLEVEL_TRACE, "updatePodcast: Adding recorded episode to database.");
+                    newPodcast.addEpisodesEverRecorded(newEpisode);
+                }
+
+            }
+        }
+
+        Log.getInstance().write(Log.LOGLEVEL_TRACE, "updatePodcast: Done.");
+        return newPodcast;
     }
 
 }

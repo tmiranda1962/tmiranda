@@ -340,7 +340,7 @@ public class RSSHelper {
             String feedText = null;
 
             if (Global.IsWindowsOS()) {
-                Log.getInstance().write(Log.LOGLEVEL_TRACE, "getRSSItems: Execute " + FeedEXE + " " + FeedParamList);
+                Log.getInstance().write(Log.LOGLEVEL_TRACE, "getRSSItems: Execute " + FeedEXE + " " + StringArrayToString(FeedParamList));
                 feedText = Utility.ExecuteProcessReturnOutput(FeedEXE, FeedParamList, null, true, false);
             } else {
                 Log.getInstance().write(Log.LOGLEVEL_TRACE, "getRSSItems: RemoteExecute " + FeedEXE + " " + FeedParamList);
@@ -353,6 +353,8 @@ public class RSSHelper {
                 return RSSItems;
             }
 
+           Log.getInstance().write(Log.LOGLEVEL_ALL, "getRSSItems: feedtext " + feedText);
+
             String RSSWriteFilePath = GetWriteFilePath();
 
             if (RSSWriteFilePath==null) {
@@ -360,7 +362,7 @@ public class RSSHelper {
                 return RSSItems;
             }
 
-            String RSSReadFilePath = "file:///" + RSSWriteFilePath;
+            String RSSReadFilePath = "file:" + RSSWriteFilePath;
             Log.getInstance().write(Log.LOGLEVEL_TRACE, "getRSSItems: RSSReadFilePath = " + RSSReadFilePath);
 
             // Write the text to a file.
@@ -414,8 +416,8 @@ public class RSSHelper {
         }
 
         // Get the RSSItems in a LinkedList.
-        LinkedList<RSSItem> ChanItems = new LinkedList<RSSItem>();
-        ChanItems = rsschan.getItems();
+        @SuppressWarnings("unchecked")
+        LinkedList<RSSItem> ChanItems = rsschan.getItems();
 
         // Loop through all the ChanItems and convert to a List.
         for (RSSItem item : ChanItems) {
@@ -427,28 +429,46 @@ public class RSSHelper {
         return RSSItems;
     }
 
-    private static String GetWriteFilePath() {
-            String STVFileString = WidgetAPI.GetCurrentSTVFile();
-            if (STVFileString==null || STVFileString.isEmpty()) {
-                Log.getInstance().write(Log.LOGLEVEL_ERROR, "getRSSItems: Null STVFileString.");
-                return null;
-            }
 
-            File STVFile = new File(STVFileString);
+    private static String StringArrayToString(String[] StringArray) {
+        if (StringArray==null || StringArray.length==0) {
+            return null;
+        }
+
+        String BigString = "[";
+
+        for (String S : StringArray) {
+            BigString = BigString + S + ":";
+        }
+
+        BigString = BigString + "]";
+
+        return BigString;
+    }
+
+    private static String GetWriteFilePath() {
+            //String STVFileString = WidgetAPI.GetDefaultSTVFile();
+            File STVFile = WidgetAPI.GetDefaultSTVFile();
+            //if (STVFileString==null || STVFileString.isEmpty()) {
+                //Log.getInstance().write(Log.LOGLEVEL_ERROR, "getRSSItems: Null STVFileString.");
+                //return null;
+            //}
+
+            //File STVFile = new File(STVFileString);
             File PathParent = Utility.GetPathParentDirectory(STVFile);
 
             // Don't use getAbsolutePath() because it will return Windows formatted string if executed on
             // a client even if Sage server is Linux.
             File OnlineVideoBasePath = Utility.CreateFilePath(PathParent.toString(), "OnlineVideos" );
 
-            String FeedBaseFilename = "TempFeed";
+            String FeedBaseFilename = "TempFeed_PodcastRecorder";
 
-            if (Global.IsRemoteUI()) {
-                FeedBaseFilename = FeedBaseFilename + "_" + Global.GetUIContextName();
-            } else {
-                String p = Configuration.GetProperty("client","");
-                FeedBaseFilename = FeedBaseFilename + (p!=null && p.equals("true") ? "_client" : "");
-            }
+            //if (Global.IsRemoteUI()) {
+                //FeedBaseFilename = FeedBaseFilename + "_" + Global.GetUIContextName();
+            //} else {
+                //String p = Configuration.GetProperty("client","");
+                //FeedBaseFilename = FeedBaseFilename + (p!=null && p.equals("true") ? "_client" : "");
+            //}
 
             File RSSWriteFilePath = Utility.CreateFilePath(OnlineVideoBasePath.getAbsolutePath(), FeedBaseFilename + ".xml" );
             Log.getInstance().write(Log.LOGLEVEL_TRACE, "getRSSItems: RSSWriteFilePath = " + RSSWriteFilePath.toString());

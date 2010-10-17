@@ -17,7 +17,7 @@ public class RecordManager extends TimerTask {
     private static boolean isRunning = false;
 
     public RecordManager() {
-        isRunning = false;
+        //isRunning = false;
     }
 
     /**
@@ -31,9 +31,13 @@ public class RecordManager extends TimerTask {
         if (isRunning) {
             Log.getInstance().write(Log.LOGLEVEL_WARN, "SRM: Terminating because RecordManager is already running.");
             return;
-        } else {
-            isRunning = true;
         }
+
+        isRunning = true;
+        DownloadManager.getInstance().setRecMgrStatus(isRunning);
+
+        // Update the database with any manual recordings that were made.
+        DownloadManager.getInstance().updateDatabase();
 
         // Get the favorite Podcasts from the database.
         List<Podcast> FavoritePodcasts = Podcast.readFavoritePodcasts();
@@ -42,6 +46,7 @@ public class RecordManager extends TimerTask {
         if (FavoritePodcasts == null || FavoritePodcasts.isEmpty()) {
             Log.getInstance().write(Log.LOGLEVEL_TRACE, "SRM: No Favorite podcasts defined.");
             isRunning = false;
+            DownloadManager.getInstance().setRecMgrStatus(isRunning);
             return;
         }
 
@@ -73,11 +78,11 @@ public class RecordManager extends TimerTask {
                 }
 
                 // Get the Episodes for this podcast that are on the web server.
-                List<UnrecordedEpisode> EpisodesOnServer = podcast.getEpisodesOnWebServer();
+                Set<UnrecordedEpisode> EpisodesOnServer = podcast.getEpisodesOnWebServer();
 
                 if (EpisodesOnServer==null) {
                     Log.getInstance().write(Log.LOGLEVEL_ERROR, "SRM: getEpisodeOnServer failed.");
-                    EpisodesOnServer = new ArrayList<UnrecordedEpisode>();
+                    EpisodesOnServer = new HashSet<UnrecordedEpisode>();
                 }
 
                 Log.getInstance().write(Log.LOGLEVEL_TRACE, "SRM: Found Episodes on web server = " + EpisodesOnServer.size());
@@ -113,7 +118,7 @@ public class RecordManager extends TimerTask {
                     List<Episode> UnwatchedEpisodes = Episode.filterByWatchedCompletely(RecordedEpisodes, false);
 
                     RecordedEpisodes = WatchedEpisodes;
-                    if (!RecordedEpisodes.addAll(UnwatchedEpisodes))
+                    if (!UnwatchedEpisodes.isEmpty() && !RecordedEpisodes.addAll(UnwatchedEpisodes))
                         Log.getInstance().printStackTrace();
 
                     Log.getInstance().write(Log.LOGLEVEL_TRACE, "SRM: Currently recorded after sort and filter = " + RecordedEpisodes.size());
@@ -125,7 +130,7 @@ public class RecordManager extends TimerTask {
                     UnwatchedEpisodes = null;
 
                     // Filter the episodes by unrecorded.
-                    List<UnrecordedEpisode> UnrecordedEpisodes = UnrecordedEpisode.filterByOnDisk(EpisodesOnServer, false);
+                    Set<UnrecordedEpisode> UnrecordedEpisodes = UnrecordedEpisode.filterByOnDisk(EpisodesOnServer, false);
 
                     Log.getInstance().write(Log.LOGLEVEL_TRACE, "SRM: Found UnrecordedEpisodes = " + UnrecordedEpisodes.size());
 
@@ -152,7 +157,10 @@ public class RecordManager extends TimerTask {
                         Log.getInstance().write(Log.LOGLEVEL_TRACE, "SRM: Getting Episode from list.");
 
                         // Get the first one in the unrecorded list.
-                        UnrecordedEpisode EpisodeToRecord = UnrecordedEpisodes.get(0);
+                        Iterator<UnrecordedEpisode> i = UnrecordedEpisodes.iterator();
+
+                        UnrecordedEpisode EpisodeToRecord = i.next();
+
                         if (!UnrecordedEpisodes.remove(EpisodeToRecord)) Log.getInstance().printStackTrace();
 
                         Log.getInstance().write(Log.LOGLEVEL_WARN,"SRM: Record Episode " + EpisodeToRecord.getEpisodeTitle());
@@ -199,6 +207,7 @@ public class RecordManager extends TimerTask {
         }
 
         isRunning = false;
+        DownloadManager.getInstance().setRecMgrStatus(isRunning);
         return;
     }
 }

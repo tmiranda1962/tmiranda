@@ -435,10 +435,10 @@ import sagex.api.*;
      * return the UnrecordedEpisodes that are not on the filesystem.
      * @return A List of UnrecordedEpisodes that meets the criteria.
      */
-    public static List<UnrecordedEpisode> filterByOnDisk(List<UnrecordedEpisode> episodes, boolean onDisk) {
+    public static Set<UnrecordedEpisode> filterByOnDisk(Set<UnrecordedEpisode> episodes, boolean onDisk) {
 
         // Create the List.
-        List<UnrecordedEpisode> ReturnedEpisodes = new ArrayList<UnrecordedEpisode>();
+        Set<UnrecordedEpisode> ReturnedEpisodes = new HashSet<UnrecordedEpisode>();
 
         if (episodes==null || episodes.isEmpty()) {
             Log.getInstance().write(Log.LOGLEVEL_ALL, "filterByOnDisk: null or 0 size episodes.");
@@ -451,7 +451,7 @@ import sagex.api.*;
                 Log.getInstance().write(Log.LOGLEVEL_ERROR, "filterByOnDisk: null ID.");
             } else if (episode.isOnDisk() == onDisk) {
                 if (!ReturnedEpisodes.add(episode))
-                    Log.getInstance().printStackTrace();
+                    Log.getInstance().write(Log.LOGLEVEL_TRACE, "Element already in set.");
             }
         }
 
@@ -469,14 +469,14 @@ import sagex.api.*;
      * never recorded.
      * @return A List of filtered UnrecordedEpisodes.
      */
-    public static List<UnrecordedEpisode> filterByEverRecorded(List<UnrecordedEpisode> episodes, boolean everRecorded) {
+    public static Set<UnrecordedEpisode> filterByEverRecorded(Set<UnrecordedEpisode> episodes, boolean everRecorded) {
 
-        List<UnrecordedEpisode> FilteredEpisodes = new ArrayList<UnrecordedEpisode>();
+        Set<UnrecordedEpisode> FilteredEpisodes = new HashSet<UnrecordedEpisode>();
 
         for (UnrecordedEpisode episode : episodes) {
             if (episode.hasBeenRecorded() == everRecorded) {
                 if (!FilteredEpisodes.add(episode))
-                    Log.getInstance().printStackTrace();
+                    Log.getInstance().write(Log.LOGLEVEL_TRACE, "Element already in set.");
             }
         }
 
@@ -487,7 +487,7 @@ import sagex.api.*;
 
         Podcast podcast = getPodcast();
 
-        List<Episode> recorded = podcast.getEpisodesEverRecorded();
+        Set<Episode> recorded = podcast.getEpisodesEverRecorded();
 
         if (recorded==null) {
             return false;

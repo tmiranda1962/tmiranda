@@ -296,6 +296,7 @@ public class API {
      * <p>
      * @return A List containing the RSSItem for the currently recording episode.
      */
+    @SuppressWarnings("unchecked")
     public static List<RSSItem> GetRSSItemsForCurrent() {
         if (Global.IsClient()) {
             return (List<RSSItem>)GetMQDataGetter().getDataFromServer(THIS_CLASS, "GetRSSItemsForCurrent", DEFAULT_TIMEOUT);
@@ -342,6 +343,7 @@ public class API {
         }
     }
 
+    @SuppressWarnings("unchecked")
     public static List<RSSItem> GetRSSItemsForActive() {
         if (Global.IsClient()) {
             return (List<RSSItem>)GetMQDataGetter().getDataFromServer(THIS_CLASS, "GetRSSItemsForActive", DEFAULT_TIMEOUT);
@@ -383,6 +385,7 @@ public class API {
     /*
      * Completed = Succesfully downloaded.
      */
+    @SuppressWarnings("unchecked")
     public static List<RSSItem> GetRSSItemsForCompleted() {
         if (Global.IsClient()) {
             return (List<RSSItem>)GetMQDataGetter().getDataFromServer(THIS_CLASS, "GetRSSItemsForCompleted", DEFAULT_TIMEOUT);
@@ -404,6 +407,7 @@ public class API {
     /*
      * Failed = Attempt to download failed.
      */
+    @SuppressWarnings("unchecked")
     public static List<RSSItem> GetRSSItemsForFailed() {
         if (Global.IsClient()) {
             return (List<RSSItem>)GetMQDataGetter().getDataFromServer(THIS_CLASS, "GetRSSItemsForFailed", DEFAULT_TIMEOUT);
@@ -855,7 +859,7 @@ public class API {
         Log.Write(Log.LOGLEVEL_ALL, "IsPodcastFavorite2: Looking for " + OVT + ":" + OVI);
 
         if (SageUtil.isNull(OVT, OVI)) {
-            Log.Write(Log.LOGLEVEL_ERROR, "null parameter.");
+            Log.Write(Log.LOGLEVEL_WARN, "null parameter.");
             return false;
         }
 
@@ -935,6 +939,7 @@ public class API {
         return true;
     }
 
+    @SuppressWarnings("unchecked")
     public static List<Podcast> getFavoritePodcastsFromServer() {
         Log.Write(Log.LOGLEVEL_ALL, "Getting podcasts from server.");
 
@@ -2027,7 +2032,7 @@ public class API {
                                         SageUtil.StringToBool(bUseShowTitleAsSubdir.toString()),
                                         true);                  // Use ShowTitle in FileName
 
-        List<UnrecordedEpisode> UnrecordedEpisodes = podcast.getEpisodesOnWebServer();
+        Set<UnrecordedEpisode> UnrecordedEpisodes = podcast.getEpisodesOnWebServer();
 
         if (UnrecordedEpisodes == null) {
             Log.getInstance().write(Log.LOGLEVEL_ERROR, "RecordAllEpisodes: Failed to getEpisodesOnWebServer.");

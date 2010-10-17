@@ -27,7 +27,7 @@ public class MQDataPutter extends EventListener {
 
         Log.getInstance().write(Log.LOGLEVEL_ALL, "doDataPutterWithoutArgs invoked " + c + "." + m);
 
-        Class ec = null;
+        Class<?> ec = null;
 
         try {ec = Class.forName(c);}
         catch (Exception e) {
@@ -76,7 +76,7 @@ public class MQDataPutter extends EventListener {
 
         Log.getInstance().write(Log.LOGLEVEL_ALL, "doDataPutterWithArgs invoked " + c + "." + m + ":" + args.length);
 
-        Class ec = null;
+        Class<?> ec = null;
 
         try {ec = Class.forName(c);}
         catch (Exception e) {
@@ -131,7 +131,7 @@ public class MQDataPutter extends EventListener {
 
         Log.getInstance().write(Log.LOGLEVEL_ALL, "doInvokeMethodWithoutArgs " + c + "." + m);
 
-        Class ec = null;
+        Class<?> ec = null;
 
         try {ec = Class.forName(c);}
         catch (Exception e) {
@@ -169,7 +169,7 @@ public class MQDataPutter extends EventListener {
 
         Log.getInstance().write(Log.LOGLEVEL_ALL, "doInvokeMethodWithArgs " + c + "." + m + ":" + args.length);
 
-        Class ec = null;
+        Class<?> ec = null;
 
         try {ec = Class.forName(c);}
         catch (Exception e) {

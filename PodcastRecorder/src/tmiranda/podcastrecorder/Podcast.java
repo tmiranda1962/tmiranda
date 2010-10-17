@@ -7,7 +7,6 @@ package tmiranda.podcastrecorder;
 
 import java.io.*;
 import java.util.*;
-import java.net.*;
 import sage.media.rss.*;
 import sagex.api.*;
 
@@ -21,8 +20,8 @@ import sagex.api.*;
  */
 public class Podcast implements Serializable {
 
-    private List<UnrecordedEpisode> episodesOnServer = null;    // Episodes available on the web.
-    private List<Episode> episodesEverRecorded = null;          // Complete Episode recording history.
+    private Set<UnrecordedEpisode> episodesOnServer = null;    // Episodes available on the web.
+    private Set<Episode> episodesEverRecorded = null;          // Complete Episode recording history.
 
     private boolean recordNew = false;
     private boolean isFavorite = false;
@@ -43,14 +42,14 @@ public class Podcast implements Serializable {
     private int duplicatesDeleted = 0;
 
     // This is the name of the file that will store the serialized Podcast objects that are Favorites.
-    private final static String FavoriteDB          = "PodcastRecorderFavoritePodcasts.DB";
-    private final static String FavoriteDBBackup    = "PodcastRecorderFavoritePodcasts.bak";
+    private final static transient String FavoriteDB          = "PodcastRecorderFavoritePodcasts.DB";
+    private final static transient String FavoriteDBBackup    = "PodcastRecorderFavoritePodcasts.bak";
 
     // Cache the Podcasts in memory for faster access. Date is the last time the cache was updated. It is used
     // to determine if the cache (in class API) on SageClients needs to be updated.
-    private static boolean cacheIsDirty = true;
-    private static List<Podcast> PodcastCache = new ArrayList<Podcast>();
-    private static Date cacheDate = new Date();
+    private static transient boolean cacheIsDirty = true;
+    private static transient List<Podcast> PodcastCache = new ArrayList<Podcast>();
+    private static transient Date cacheDate = new Date();
 
     /**
      * Creates a new Podcast object.
@@ -70,8 +69,8 @@ public class Podcast implements Serializable {
                     String Title,
                     boolean TitleAsSubdir,
                     boolean TitleInName) {
-        episodesOnServer = new ArrayList<UnrecordedEpisode>();
-        episodesEverRecorded = new ArrayList<Episode>();
+        episodesOnServer = new HashSet<UnrecordedEpisode>();
+        episodesEverRecorded = new HashSet<Episode>();
         recordNew = RecNew;
         isFavorite = Favorite;
         deleteDuplicates = DeleteDupes;
@@ -92,12 +91,59 @@ public class Podcast implements Serializable {
 
     public Podcast() {}
 
+    // Clone the provided Podcast.
+    public Podcast(Podcast p) {
+
+        recordNew               = p.recordNew;
+        isFavorite              = p.isFavorite;
+        deleteDuplicates        = p.deleteDuplicates;
+        keepNewest              = p.keepNewest;
+        reRecordDeleted         = p.reRecordDeleted;
+        maxToRecord             = p.maxToRecord;
+        autoDelete              = p.autoDelete;
+        lastChecked             = p.lastChecked;
+        recDir                  = p.recDir;
+        recSubdir               = p.recSubdir;
+        showTitle               = p.showTitle;
+        onlineVideoType         = p.onlineVideoType;
+        onlineVideoItem         = p.onlineVideoItem;
+        feedContext             = p.feedContext;
+        useShowTitleAsSubdir    = p.useShowTitleAsSubdir;
+        useShowTitleInFileName  = p.useShowTitleInFileName;
+        duplicatesDeleted       = p.duplicatesDeleted;
+
+        episodesOnServer        = new HashSet<UnrecordedEpisode>();
+        episodesEverRecorded    = new HashSet<Episode>();
+
+        episodesOnServer.addAll(p.episodesOnServer);
+        episodesEverRecorded.addAll(p.episodesEverRecorded);
+    }
+
     public int getEpisodesOnServerSize() {
         return episodesOnServer.size();
     }
 
     public int getEpisodesEverRecordedSize() {
         return episodesEverRecorded.size();
+    }
+
+    public void addEpisodesEverRecorded(Episode episode) {
+        episodesEverRecorded.add(episode);
+    }
+
+    public boolean hasEpisodeEverBeenRecorded(Episode episode) {
+
+        if (episodesEverRecorded==null || episodesEverRecorded.isEmpty()) {
+            return false;
+        }
+
+        for (Episode e : episodesEverRecorded) {
+            if (episode.getID().equals(e.getID())) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     @Override
@@ -149,8 +195,8 @@ public class Podcast implements Serializable {
      * <p>
      * @return A List of all the episodes ever recorded.
      */
-    public List<Episode> getEpisodesEverRecorded() {
-        return this.episodesEverRecorded;
+    public Set<Episode> getEpisodesEverRecorded() {
+        return episodesEverRecorded;
     }
 
     private synchronized boolean setEpisodeRecordedInDatabase(Episode episode) {
@@ -164,7 +210,8 @@ public class Podcast implements Serializable {
 
         for (Podcast p : Favorites) {
             if (p.equals(this)) {
-                if (!p.episodesEverRecorded.add(episode)) Log.getInstance().printStackTrace();
+                if (!p.episodesEverRecorded.add(episode)) 
+                    Log.getInstance().write(Log.LOGLEVEL_TRACE, "Element already in set.");
                 return writeFavoritePodcasts(Favorites);
             }
         }
@@ -296,41 +343,58 @@ public class Podcast implements Serializable {
             return;
         }
 
-        Log.getInstance().write(Log.LOGLEVEL_TRACE, "SRM DumpFavorites:");
+        File file = new File(FavoriteDB);
+        if (file==null || !file.exists()) {
+            Log.getInstance().write(Log.LOGLEVEL_ERROR, "dumpFavorites: Fatal error, no FavoriteDB");
+            return;
+        }
+
+        Log.getInstance().write(Log.LOGLEVEL_TRACE, " FavoriteDB size " + file.length());
+
+        dumpList(favoritePodcasts);
+    }
+
+    public void dumpList(List<Podcast> favoritePodcasts) {
+        if (favoritePodcasts == null) {
+            Log.getInstance().write(Log.LOGLEVEL_TRACE, "SRM dumpList: No Favorites defined.");
+            return;
+        }
+
+        Log.getInstance().write(Log.LOGLEVEL_TRACE, "SRM dumpList: " + favoritePodcasts.size());
 
         for (Podcast podcast : favoritePodcasts) {
-            Log.getInstance().write(Log.LOGLEVEL_TRACE, " Podcast \n" +
-                "OVT="+podcast.onlineVideoType + ":" +
-                "OVI="+podcast.onlineVideoItem + ":" +
-                "FeedContext="+podcast.feedContext + ":" +
-                "RecordNew="+podcast.recordNew + ":" +
-                "DeleteDupes="+podcast.deleteDuplicates + ":" +
-                "KeepNewest="+podcast.keepNewest + ":" +
-                "ReRecDeleted="+podcast.reRecordDeleted + ":" +
-                "Max="+podcast.maxToRecord + ":" +
-                "AutoDelete="+podcast.autoDelete + ":" +
-                "RecDir="+podcast.recDir + ":" +
-                "recSubdir="+podcast.recSubdir + ":" +
-                "ShowTitle="+podcast.showTitle + ":" +
-                "ShowTitleAsSubdir="+podcast.useShowTitleAsSubdir + ":" +
-                "ShowTitleInFileName="+podcast.useShowTitleInFileName);
+            Log.getInstance().write(Log.LOGLEVEL_TRACE, " Podcast " +
+                                                "OVT="+podcast.onlineVideoType + ":" +
+                                                "OVI="+podcast.onlineVideoItem + ":" +
+                                                "FeedContext="+podcast.feedContext + ":" +
+                                                "RecordNew="+podcast.recordNew + ":" +
+                                                "DeleteDupes="+podcast.deleteDuplicates + ":" +
+                                                "KeepNewest="+podcast.keepNewest + ":" +
+                                                "ReRecDeleted="+podcast.reRecordDeleted + ":" +
+                                                "Max="+podcast.maxToRecord + ":" +
+                                                "AutoDelete="+podcast.autoDelete + ":" +
+                                                "RecDir="+podcast.recDir + ":" +
+                                                "recSubdir="+podcast.recSubdir + ":" +
+                                                "ShowTitle="+podcast.showTitle + ":" +
+                                                "ShowTitleAsSubdir="+podcast.useShowTitleAsSubdir + ":" +
+                                                "ShowTitleInFileName="+podcast.useShowTitleInFileName);
 
-            if (episodesOnServer == null || episodesOnServer.isEmpty()) {
+            if (podcast.episodesOnServer == null || podcast.episodesOnServer.isEmpty()) {
                 Log.getInstance().write(Log.LOGLEVEL_TRACE, "  No episodesOnServer.");
             } else {
-                Log.getInstance().write(Log.LOGLEVEL_TRACE, "  episodesOnServer:");
+                Log.getInstance().write(Log.LOGLEVEL_TRACE, "  episodesOnServer: " + podcast.episodesOnServer.size());
 
-                for (UnrecordedEpisode e : episodesOnServer) {
+                for (UnrecordedEpisode e : podcast.episodesOnServer) {
                     Log.getInstance().write(Log.LOGLEVEL_TRACE, "    Title = " + e.getEpisodeTitle());
                 }
             }
 
-             if (episodesEverRecorded == null || episodesEverRecorded.isEmpty()) {
+             if (podcast.episodesEverRecorded == null || podcast.episodesEverRecorded.isEmpty()) {
                 Log.getInstance().write(Log.LOGLEVEL_TRACE, "  No episodesEverRecorded.");
             } else {
-                Log.getInstance().write(Log.LOGLEVEL_TRACE, "  episodesEverRecorded:");
+                Log.getInstance().write(Log.LOGLEVEL_TRACE, "  episodesEverRecorded:" + podcast.episodesEverRecorded.size());
 
-                for (Episode e : episodesEverRecorded) {
+                for (Episode e : podcast.episodesEverRecorded) {
                     Log.getInstance().write(Log.LOGLEVEL_TRACE, "    Title = " + e.getShowEpisode());
                 }
             }
@@ -406,7 +470,7 @@ public class Podcast implements Serializable {
         try {
             while ((p=objectStream.readObject()) != null) {
                 if (!favoritePodcasts.add((Podcast)p))
-                    Log.getInstance().printStackTrace();
+                    Log.getInstance().write(Log.LOGLEVEL_TRACE, "Element already in set.");
         }
 
         } catch(EOFException eof) {
@@ -513,7 +577,7 @@ public class Podcast implements Serializable {
      * <p>
      * @return A List of the episodes that are available on the web.
      */
-    public List<UnrecordedEpisode> getEpisodesOnWebServer() {
+    public Set<UnrecordedEpisode> getEpisodesOnWebServer() {
 
         // Make sure in here we set the proper variables in the Episode object.
 
@@ -529,7 +593,7 @@ public class Podcast implements Serializable {
             return null;
         }
 
-        List<UnrecordedEpisode> unrecorded = new ArrayList<UnrecordedEpisode>();
+        Set<UnrecordedEpisode> unrecorded = new HashSet<UnrecordedEpisode>();
 
         // Loop through all of the RSSItems.
         for (RSSItem Item : RSSItems) {
@@ -539,7 +603,7 @@ public class Podcast implements Serializable {
 
             // Add it the the List.
             if (!unrecorded.add(episode))
-                Log.getInstance().printStackTrace();
+                Log.getInstance().write(Log.LOGLEVEL_TRACE, "Element already in set.");
         }
 
         setEpisodesOnWebServerInDatabase(unrecorded);
@@ -547,10 +611,10 @@ public class Podcast implements Serializable {
         return unrecorded;
     }
 
-    public synchronized boolean setEpisodesOnWebServerInDatabase(List<UnrecordedEpisode> unrecorded) {
+    public synchronized boolean setEpisodesOnWebServerInDatabase(Set<UnrecordedEpisode> unrecorded) {
 
         if (unrecorded==null) {
-            Log.getInstance().write(Log.LOGLEVEL_ERROR, "Podcast: null parameter.");
+            Log.getInstance().write(Log.LOGLEVEL_ERROR, "Podcast: null parameter for setEpisodesOnWebServerInDatabase.");
             Log.getInstance().printStackTrace();
             return false;
         }
@@ -587,7 +651,7 @@ public class Podcast implements Serializable {
         for (Episode e : episodesEverRecorded) {
             if (e.isOnDisk()) {
                 if (!OnDisk.add(e))
-                    Log.getInstance().printStackTrace();
+                    Log.getInstance().write(Log.LOGLEVEL_TRACE, "Element already in set.");
             }
         }
 
@@ -748,6 +812,7 @@ public class Podcast implements Serializable {
         return RSSHelper.getRSSItems(feedContext);
     }
 
+    /****************************************************************
     private List<RSSItem> OLDgetRSSItems() {
 
         // Create the new RSSHandler and check for error.
@@ -862,6 +927,7 @@ public class Podcast implements Serializable {
         Log.getInstance().write(Log.LOGLEVEL_TRACE, "SRM getRSSItems: Returning ChanItems = " + ItemArray.size());
         return ItemArray;
     }
+     * **************************************************/
 
     public static String getFavoriteDB() {
         return FavoriteDB;
@@ -883,8 +949,12 @@ public class Podcast implements Serializable {
         return duplicatesDeleted;
     }
 
-    public List<UnrecordedEpisode> getEpisodesOnServer() {
+    public Set<UnrecordedEpisode> getEpisodesOnServer() {
         return episodesOnServer;
+    }
+
+    public void addEpisodesOnServer(UnrecordedEpisode episode) {
+        episodesOnServer.add(episode);
     }
 
     public String getFeedContext() {
@@ -958,7 +1028,7 @@ public class Podcast implements Serializable {
     public void addEpisodeEverRecorded(Episode episode) {
         if (!episodesEverRecorded.contains(episode)) {
             Log.getInstance().write(Log.LOGLEVEL_TRACE, "Adding episodeEverRecorded " + episode.getShowTitle());
-            if (!episodesEverRecorded.add(episode)) Log.getInstance().printStackTrace();
+            if (!episodesEverRecorded.add(episode)) Log.getInstance().write(Log.LOGLEVEL_TRACE, "Element already in set.");
             setEpisodeRecordedInDatabase(episode);
         } else {
             Log.getInstance().write(Log.LOGLEVEL_TRACE, "Episode has already been recorded " + episode.getShowTitle());

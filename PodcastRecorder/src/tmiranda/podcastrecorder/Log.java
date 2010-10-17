@@ -68,7 +68,9 @@ public class Log {
      */
     public void SetLogLevel(Integer NewLevel) {
         CurrentLogLevel = NewLevel;
-        Configuration.SetServerProperty(Plugin.SETTING_LOGLEVEL, NewLevel.toString());
+        Configuration.SetServerProperty(Plugin.PROPERTY_LOGLEVEL, NewLevel.toString());
+        Configuration.SaveProperties();
+        System.out.println("PR: Setting loglevel to " + NewLevel.toString());
     }
 
     /**

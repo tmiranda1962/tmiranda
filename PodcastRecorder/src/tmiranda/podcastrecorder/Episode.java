@@ -109,7 +109,7 @@ import sagex.api.*;
      */
     private boolean hasBeenRecorded() {
 
-        List<Episode> recorded = podcast.getEpisodesEverRecorded();
+        Set<Episode> recorded = podcast.getEpisodesEverRecorded();
 
         if (recorded==null) {
             return false;
@@ -205,7 +205,7 @@ import sagex.api.*;
         for (Episode episode : episodes) {
             if (episode.isWatchedCompletely() == watched) {
                 if (!FilteredEpisodes.add(episode))
-                    Log.getInstance().printStackTrace();
+                    Log.getInstance().write(Log.LOGLEVEL_TRACE, "Element already in set.");
             }
         }
 

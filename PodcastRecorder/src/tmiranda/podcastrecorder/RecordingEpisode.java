@@ -375,7 +375,6 @@ public class RecordingEpisode {
      */
     public boolean importAsMediaFile() {
 
-
         String MovedFileString = NewFile.getAbsolutePath();
 
         File MovedFile = new File(MovedFileString);
@@ -384,19 +383,22 @@ public class RecordingEpisode {
             Log.getInstance().write(Log.LOGLEVEL_ERROR, "REEP importAsMediaFile: Error. MovedFile does not exist.");
         }
 
+        // Add the MediaFile to the database.
         Object MF = MediaFileAPI.AddMediaFile(MovedFile, RecSubdir);
         if (MF == null) {
             Log.getInstance().write(Log.LOGLEVEL_ERROR, "REEP importAsMediaFile: AddMediaFile failed for " + MovedFile.getAbsolutePath());
+            return false;
         }
-
+            
+        Log.getInstance().write(Log.LOGLEVEL_TRACE, "REEP importAsMediaFile: Added MediaFile into subdir " + RecSubdir);
 
         String Title = ShowTitle;
         boolean IsFirstRun = true;
         String Episode = EpisodeTitle;
         String Description = ChanItem.getCleanDescription();
         long Duration = ChanItem.getDuration();
-        String Category = "Podcast";
-        String SubCategory = "MaloreOnlineBrowser";
+        String Category = "PodcastRecorder";
+        String SubCategory = ShowTitle;
         String Author = ChanItem.getAuthor();
         String PeopleList[] = {"Author"};
         String RolesList[] = {Author};
@@ -405,28 +407,31 @@ public class RecordingEpisode {
         String Year = Utility.DateFormat("yyyy", Utility.Time());
         String ParentalRating = null;
         String MiscList[] = {RSSHelper.makeID(ChanItem)};
-        String ExternalID = "ONL" + Utility.Time();
+        Long Now = Utility.Time();
+        String NowString = Now.toString();
+        String ExternalID = "ONL" + NowString;
+        String AiringExternalID = "EP" + NowString;
         String Language = "http";
         long OriginalAirDate = Utility.Time();
 
         Object Show = ShowAPI.AddShow(
-                Title,
-                IsFirstRun,
-                Episode,
-                Description,
-                Duration,
-                Category,
-                SubCategory,
-                PeopleList,
-                RolesList,
-                Rated,
-                ExpandedRatedList,
-                Year,
-                ParentalRating,
-                MiscList,
-                ExternalID,
-                Language,
-                OriginalAirDate);
+                                        Title,
+                                        IsFirstRun,
+                                        Episode,
+                                        Description,
+                                        Duration,
+                                        Category,
+                                        SubCategory,
+                                        PeopleList,
+                                        RolesList,
+                                        Rated,
+                                        ExpandedRatedList,
+                                        Year,
+                                        ParentalRating,
+                                        MiscList,
+                                        ExternalID,
+                                        Language,
+                                        OriginalAirDate);
 
         if (Show == null) {
             Log.getInstance().write(Log.LOGLEVEL_ERROR, "REEP importAsMediaFile: AddShow failed.");
@@ -439,6 +444,38 @@ public class RecordingEpisode {
         }
 
         Log.getInstance().write(Log.LOGLEVEL_TRACE, "REEP importAsMediaFile succeeded.");
+
+        // Change the ExternalID metadata to something that starts with "EP" to turn the Imported video
+        // file into an archived TV recording.
+        MediaFileAPI.SetMediaFileMetadata(MF, "ExternalID", AiringExternalID);
+
+        // Clear the Archived flag.
+        MediaFileAPI.MoveTVFileOutOfLibrary(MF);
+
+        /**************************************
+        Long Now = Utility.Time();
+        String NowString = Now.toString();
+
+        if (NowString.length()>8) {
+            NowString = NowString.substring(NowString.length()-8);
+        }
+
+        ExternalID = "EP" + Now.toString();
+        System.out.println("EXTERNALID = " + ExternalID);
+        Object Airing = AiringAPI.AddAiring(ExternalID, 0, OriginalAirDate, Duration);
+        if (Airing == null) {
+            Log.getInstance().write(Log.LOGLEVEL_ERROR, "REEP importAsMediaFile: AddAiring failed.");
+        } else {
+
+            // Connect the Airing to the MediaFile.
+            Log.getInstance().write(Log.LOGLEVEL_TRACE, "REEP importAsMediaFile: AddAiring succeeded.");
+            if (!MediaFileAPI.SetMediaFileAiring(MF, Airing)) {
+                Log.getInstance().write(Log.LOGLEVEL_ERROR, "REEP importAsMediaFile: SetMediaFileAiring failed.");
+                return false;
+            }
+        }
+         * ***********************************************************/
+
         return true;
     }
 
