@@ -27,6 +27,23 @@ public class MQDataPutter extends EventListener {
 
         Log.getInstance().write(Log.LOGLEVEL_ALL, "doDataPutterWithoutArgs invoked " + c + "." + m);
 
+        if (ClientID==null || InstanceID==null) {
+            Log.getInstance().write(Log.LOGLEVEL_ERROR, "doDataPutterWithoutArgs: null ClientID or InstanceID " + ClientID + ":" + InstanceID);
+            return;
+        }
+
+        if (c==null || c.isEmpty()) {
+            Log.getInstance().write(Log.LOGLEVEL_ERROR, "doDataPutterWithoutArgs: null Class.");
+            fireErrorCode(ClientID, InstanceID, "null Class.");
+            return;
+        }
+
+        if (m==null || m.isEmpty()) {
+            Log.getInstance().write(Log.LOGLEVEL_ERROR, "doDataPutterWithoutArgs: null Method.");
+            fireErrorCode(ClientID, InstanceID, "null Method.");
+            return;
+        }
+
         Class<?> ec = null;
 
         try {ec = Class.forName(c);}
@@ -48,7 +65,7 @@ public class MQDataPutter extends EventListener {
         }
 
         if (!Modifier.toString(method.getModifiers()).contains("static")) {
-            Log.getInstance().write(Log.LOGLEVEL_ERROR, "doDataGetter: Method is not static " + method.toString());
+            Log.getInstance().write(Log.LOGLEVEL_ERROR, "doDataPutterWithoutArgs: Method is not static " + method.toString());
             fireErrorCode(ClientID, InstanceID, "Method Not Static");
             return;
         }
@@ -57,7 +74,7 @@ public class MQDataPutter extends EventListener {
 
         try {returnedObject = method.invoke(null);}
         catch (Exception e) {
-            Log.getInstance().write(Log.LOGLEVEL_ERROR, "doDataGetter: Exception invoking method " + e.getMessage());
+            Log.getInstance().write(Log.LOGLEVEL_ERROR, "doDataPutterWithoutArgs: Exception invoking method " + e.getMessage());
             e.printStackTrace();
             fireErrorCode(ClientID, InstanceID, "Invoke Exception");
             return;
@@ -68,13 +85,30 @@ public class MQDataPutter extends EventListener {
                             "MQDataGetter",
                             new Object[] {ClientID, InstanceID, putterCheckForNull(returnedObject)});
 
-        Log.getInstance().write(Log.LOGLEVEL_ALL, "doDataPutter done.");
+        Log.getInstance().write(Log.LOGLEVEL_ALL, "doDataPutterWithoutArgs done.");
     }
 
     @OrtusEvent("MQDataPutterWithArgs")
     public void doDataPutterWithArgs(String ClientID, String InstanceID, String c, String m, Object[] args) {
 
         Log.getInstance().write(Log.LOGLEVEL_ALL, "doDataPutterWithArgs invoked " + c + "." + m + ":" + args.length);
+
+        if (ClientID==null || InstanceID==null) {
+            Log.getInstance().write(Log.LOGLEVEL_ERROR, "doDataPutterWithArgs: null ClientID or InstanceID " + ClientID + ":" + InstanceID);
+            return;
+        }
+
+        if (c==null || c.isEmpty()) {
+            Log.getInstance().write(Log.LOGLEVEL_ERROR, "doDataPutterWithArgs: null Class.");
+            fireErrorCode(ClientID, InstanceID, "null Class.");
+            return;
+        }
+
+        if (m==null || m.isEmpty()) {
+            Log.getInstance().write(Log.LOGLEVEL_ERROR, "doDataPutterWithArgs: null Method.");
+            fireErrorCode(ClientID, InstanceID, "null Method.");
+            return;
+        }
 
         Class<?> ec = null;
 
@@ -103,7 +137,7 @@ public class MQDataPutter extends EventListener {
         }
 
         if (!Modifier.toString(method.getModifiers()).contains("static")) {
-            Log.getInstance().write(Log.LOGLEVEL_ERROR, "doDataGetter: Method is not static " + method.toString());
+            Log.getInstance().write(Log.LOGLEVEL_ERROR, "doDataPutterWithArgs: Method is not static " + method.toString());
             fireErrorCode(ClientID, InstanceID, "Method Not Static");
             return;
         }
@@ -112,7 +146,7 @@ public class MQDataPutter extends EventListener {
 
         try {returnedObject = method.invoke(null, args);}
         catch (Exception e) {
-            Log.getInstance().write(Log.LOGLEVEL_ERROR, "doDataGetter: Exception invoking method " + e.getMessage());
+            Log.getInstance().write(Log.LOGLEVEL_ERROR, "doDataPutterWithArgs: Exception invoking method " + e.getMessage());
             e.printStackTrace();
             fireErrorCode(ClientID, InstanceID, "Invoke Exception");
             return;
@@ -123,13 +157,23 @@ public class MQDataPutter extends EventListener {
                             "MQDataGetter",
                             new Object[] {ClientID, InstanceID, putterCheckForNull(returnedObject)});
 
-        Log.getInstance().write(Log.LOGLEVEL_ALL, "doDataPutter done.");
+        Log.getInstance().write(Log.LOGLEVEL_ALL, "doDataPutterWithArgs done.");
     }
 
     @OrtusEvent("MQInvokeMethodWithoutArgs")
     public void doInvokeMethodWithoutArgs(String c, String m) {
 
         Log.getInstance().write(Log.LOGLEVEL_ALL, "doInvokeMethodWithoutArgs " + c + "." + m);
+
+        if (c==null || c.isEmpty()) {
+            Log.getInstance().write(Log.LOGLEVEL_ERROR, "doInvokeMethodWithoutArgs: null Class.");
+            return;
+        }
+
+        if (m==null || m.isEmpty()) {
+            Log.getInstance().write(Log.LOGLEVEL_ERROR, "doInvokeMethodWithoutArgs: null Method.");
+            return;
+        }
 
         Class<?> ec = null;
 
@@ -168,6 +212,16 @@ public class MQDataPutter extends EventListener {
     public void doInvokeMethodWithArgs(String c, String m, Object[] args) {
 
         Log.getInstance().write(Log.LOGLEVEL_ALL, "doInvokeMethodWithArgs " + c + "." + m + ":" + args.length);
+
+        if (c==null || c.isEmpty()) {
+            Log.getInstance().write(Log.LOGLEVEL_ERROR, "doInvokeMethodWithArgs: null Class.");
+            return;
+        }
+
+        if (m==null || m.isEmpty()) {
+            Log.getInstance().write(Log.LOGLEVEL_ERROR, "doInvokeMethosWithArgs: null Method.");
+            return;
+        }
 
         Class<?> ec = null;
 

@@ -6,15 +6,18 @@
 package tmiranda.podcastrecorder;
 
 import java.io.*;
-import java.util.*;
 import sage.media.rss.*;
-import sagex.api.*;
 
 /**
  *
  * @author Default
  */
 public class UnrecordedEpisodeData implements Serializable {
-    private RSSItem ChanItem;           // The RSSItem for this particular Episode.
-    private String SPRRequestID;        // A unique ID supplied by the SagePodcastRecorder.
+    RSSItem ChanItem;
+    String SPRRequestID;
+
+    public UnrecordedEpisodeData(UnrecordedEpisode e) {
+        ChanItem = e.ChanItem;
+        SPRRequestID = e.SPRRequestID;
+    }
 }

@@ -20,26 +20,26 @@ import sagex.api.*;
  */
 public class Podcast implements Serializable {
 
-    private Set<UnrecordedEpisode> episodesOnServer = null;    // Episodes available on the web.
-    private Set<Episode> episodesEverRecorded = null;          // Complete Episode recording history.
+    Set<UnrecordedEpisode>  episodesOnWebServer = null;     // Episodes available on the web.
+    Set<Episode>            episodesEverRecorded = null;    // Complete Episode recording history.
 
-    private boolean recordNew = false;
-    private boolean isFavorite = false;
-    private boolean deleteDuplicates = false;
-    private boolean keepNewest = true;
-    private boolean reRecordDeleted = false;
-    private int     maxToRecord = 0;
-    private boolean autoDelete = false;
-    private long    lastChecked = 0L;
-    private String  recDir = null;
-    private String  recSubdir = null;
-    private String  showTitle = null;
-    private String  onlineVideoType = null;
-    private String  onlineVideoItem = null;
-    private String  feedContext = null;
-    private boolean useShowTitleAsSubdir = false;
-    private boolean useShowTitleInFileName = false;
-    private int duplicatesDeleted = 0;
+    boolean recordNew = false;
+    boolean isFavorite = false;
+    boolean deleteDuplicates = false;
+    boolean keepNewest = true;
+    boolean reRecordDeleted = false;
+    int     maxToRecord = 0;
+    boolean autoDelete = false;
+    long    lastChecked = 0L;
+    String  recDir = null;
+    String  recSubdir = null;
+    String  showTitle = null;
+    String  onlineVideoType = null;
+    String  onlineVideoItem = null;
+    String  feedContext = null;
+    boolean useShowTitleAsSubdir = false;
+    boolean useShowTitleInFileName = false;
+    int     duplicatesDeleted = 0;
 
     // This is the name of the file that will store the serialized Podcast objects that are Favorites.
     private final static transient String FavoriteDB          = "PodcastRecorderFavoritePodcasts.DB";
@@ -69,7 +69,7 @@ public class Podcast implements Serializable {
                     String Title,
                     boolean TitleAsSubdir,
                     boolean TitleInName) {
-        episodesOnServer = new HashSet<UnrecordedEpisode>();
+        episodesOnWebServer = new HashSet<UnrecordedEpisode>();
         episodesEverRecorded = new HashSet<Episode>();
         recordNew = RecNew;
         isFavorite = Favorite;
@@ -112,15 +112,52 @@ public class Podcast implements Serializable {
         useShowTitleInFileName  = p.useShowTitleInFileName;
         duplicatesDeleted       = p.duplicatesDeleted;
 
-        episodesOnServer        = new HashSet<UnrecordedEpisode>();
+        episodesOnWebServer     = new HashSet<UnrecordedEpisode>();
         episodesEverRecorded    = new HashSet<Episode>();
 
-        episodesOnServer.addAll(p.episodesOnServer);
+        episodesOnWebServer.addAll(p.episodesOnWebServer);
         episodesEverRecorded.addAll(p.episodesEverRecorded);
     }
 
+    public Podcast(PodcastData p) {
+        recordNew               = p.recordNew;
+        isFavorite              = p.isFavorite;
+        deleteDuplicates        = p.deleteDuplicates;
+        keepNewest              = p.keepNewest;
+        reRecordDeleted         = p.reRecordDeleted;
+        maxToRecord             = p.maxToRecord;
+        autoDelete              = p.autoDelete;
+        lastChecked             = p.lastChecked;
+        recDir                  = p.recDir;
+        recSubdir               = p.recSubdir;
+        showTitle               = p.showTitle;
+        onlineVideoType         = p.onlineVideoType;
+        onlineVideoItem         = p.onlineVideoItem;
+        feedContext             = p.feedContext;
+        useShowTitleAsSubdir    = p.useShowTitleAsSubdir;
+        useShowTitleInFileName  = p.useShowTitleInFileName;
+        duplicatesDeleted       = p.duplicatesDeleted;
+
+        episodesOnWebServer     = new HashSet<UnrecordedEpisode>();
+        episodesEverRecorded    = new HashSet<Episode>();
+
+        if (p.episodesOnWebServer != null) {
+            for (UnrecordedEpisodeData eData : p.episodesOnWebServer) {
+                UnrecordedEpisode e = new UnrecordedEpisode(this, eData);
+                episodesOnWebServer.add(e);
+            }
+        }
+
+        if (p.episodesEverRecorded != null) {
+            for (EpisodeData eData : p.episodesEverRecorded) {
+                Episode e = new Episode(eData);
+                episodesEverRecorded.add(e);
+            }
+        }
+    }
+
     public int getEpisodesOnServerSize() {
-        return episodesOnServer.size();
+        return episodesOnWebServer.size();
     }
 
     public int getEpisodesEverRecordedSize() {
@@ -143,6 +180,45 @@ public class Podcast implements Serializable {
             }
         }
 
+        return false;
+    }
+
+    public boolean hasUnrecordedEpisodes() {
+        Set<UnrecordedEpisode> unrecordedEpisodes = getEpisodesOnWebServer();
+
+        // If there are no episodes on the web return false.
+        if (unrecordedEpisodes==null || unrecordedEpisodes.isEmpty()) {
+            return false;
+        }
+
+        Set<Episode> recordedEpisodes = getEpisodesEverRecorded();
+
+        // If there are episodes on the web, but none recorded, return true.
+        if (recordedEpisodes==null || recordedEpisodes.isEmpty()) {
+            return true;
+        }
+
+        // If any unrecorded episode is not recorded return true.
+        for (UnrecordedEpisode unrecorded : unrecordedEpisodes) {
+
+            boolean thisOneIsRecorded = false;
+            String unrecordedID = unrecorded.getID();
+
+            for (Episode recorded : recordedEpisodes) {
+
+                String recordedID = recorded.getID();
+
+                if (unrecordedID.compareTo(recordedID) == 0) {
+                    thisOneIsRecorded = true;
+                }
+            }
+
+            if (!thisOneIsRecorded) {
+                return true;
+            }
+        }
+
+        // All episodes on the web have been recorded.
         return false;
     }
 
@@ -217,6 +293,7 @@ public class Podcast implements Serializable {
         }
 
         Log.getInstance().write(Log.LOGLEVEL_TRACE, "SRM setEpisodeRecorded: Did not find Podcast.");
+        Favorites = null;
         return false;
     }
 
@@ -241,12 +318,13 @@ public class Podcast implements Serializable {
         }
 
         Log.getInstance().write(Log.LOGLEVEL_TRACE, "SRM setLastCheckedInDatbase: Did not find Podcast.");
+        Favorites = null;
         return false;
     }
 
 
     /*
-     * Gets the text name associated with a Podcast. Will never return null;
+     * Gets the text name associated with a Podcast. Will never return null.
      */
     private String getText(Properties properties) {
 
@@ -307,6 +385,7 @@ public class Podcast implements Serializable {
         }
 
         Podcast podcast = findPodcast(favoritePodcasts, OVT, OVI);
+        favoritePodcasts = null;
 
         return (podcast==null ? null : podcast);
     }
@@ -346,12 +425,14 @@ public class Podcast implements Serializable {
         File file = new File(FavoriteDB);
         if (file==null || !file.exists()) {
             Log.getInstance().write(Log.LOGLEVEL_ERROR, "dumpFavorites: Fatal error, no FavoriteDB");
+            favoritePodcasts = null;
             return;
         }
 
         Log.getInstance().write(Log.LOGLEVEL_TRACE, " FavoriteDB size " + file.length());
 
         dumpList(favoritePodcasts);
+        favoritePodcasts = null;
     }
 
     public void dumpList(List<Podcast> favoritePodcasts) {
@@ -379,12 +460,12 @@ public class Podcast implements Serializable {
                                                 "ShowTitleAsSubdir="+podcast.useShowTitleAsSubdir + ":" +
                                                 "ShowTitleInFileName="+podcast.useShowTitleInFileName);
 
-            if (podcast.episodesOnServer == null || podcast.episodesOnServer.isEmpty()) {
-                Log.getInstance().write(Log.LOGLEVEL_TRACE, "  No episodesOnServer.");
+            if (podcast.episodesOnWebServer == null || podcast.episodesOnWebServer.isEmpty()) {
+                Log.getInstance().write(Log.LOGLEVEL_TRACE, "  No episodesOnWebServer.");
             } else {
-                Log.getInstance().write(Log.LOGLEVEL_TRACE, "  episodesOnServer: " + podcast.episodesOnServer.size());
+                Log.getInstance().write(Log.LOGLEVEL_TRACE, "  episodesOnWebServer: " + podcast.episodesOnWebServer.size());
 
-                for (UnrecordedEpisode e : podcast.episodesOnServer) {
+                for (UnrecordedEpisode e : podcast.episodesOnWebServer) {
                     Log.getInstance().write(Log.LOGLEVEL_TRACE, "    Title = " + e.getEpisodeTitle());
                 }
             }
@@ -436,6 +517,10 @@ public class Podcast implements Serializable {
             }
         }
 
+        // Clear the cache to reclaim the memory.
+        PodcastCache.clear();
+        PodcastCache = null;
+        cacheIsDirty = true;
 
         // Create the List to hold the elements.
         List<Podcast> favoritePodcasts = new ArrayList<Podcast>();
@@ -447,6 +532,7 @@ public class Podcast implements Serializable {
         } catch (Exception e) {
             Log.getInstance().write(Log.LOGLEVEL_ERROR, "readFavoritePodcasts: Error opening FileInputStream.");
             e.printStackTrace();
+            PodcastCache = favoritePodcasts;
             return null;
         }
 
@@ -457,19 +543,23 @@ public class Podcast implements Serializable {
         } catch (EOFException eof) {
             Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "readFavoritePodcasts: No Podcasts to read.");
             try {fileStream.close();} catch (Exception ex) {}
+            PodcastCache = favoritePodcasts;
             return favoritePodcasts;
         } catch (Exception e) {
             Log.getInstance().write(Log.LOGLEVEL_ERROR, "readFavoritePodcasts: Exception " + e.getMessage());
             e.printStackTrace();
             try {fileStream.close();} catch (Exception ex) {}
+            PodcastCache = favoritePodcasts;
             return favoritePodcasts;
         }
 
         Object p = null;
+        Podcast podcast = null;
 
         try {
             while ((p=objectStream.readObject()) != null) {
-                if (!favoritePodcasts.add((Podcast)p))
+                podcast = new Podcast((PodcastData)p);
+                if (!favoritePodcasts.add(podcast))
                     Log.getInstance().write(Log.LOGLEVEL_TRACE, "Element already in set.");
         }
 
@@ -501,6 +591,158 @@ public class Podcast implements Serializable {
         return favoritePodcasts;
     }
 
+    public synchronized static List<PodcastKey> getAllPodcastKeys() {
+
+        Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "getAllFavoritePodcastKeys: Looking.");
+
+        // Create the database file if it does not exist.
+        File file = new File(FavoriteDB);
+        if (!file.exists()) {
+            try {
+                file.createNewFile();
+            } catch (Exception e) {
+                Log.getInstance().write(Log.LOGLEVEL_ERROR, "getAllFavoritePodcastKeys: Error creating new FavoriteDB file.");
+                return null;
+            }
+        }
+
+        // Create the List to hold the elements.
+        List<PodcastKey> keyList = new ArrayList<PodcastKey>();
+
+        FileInputStream fileStream = null;
+
+        try {
+            fileStream = new FileInputStream(FavoriteDB);
+        } catch (Exception e) {
+            Log.getInstance().write(Log.LOGLEVEL_ERROR, "getAllFavoritePodcastKeys: Error opening FileInputStream.");
+            e.printStackTrace();
+            return null;
+        }
+
+        ObjectInputStream objectStream;
+
+        try {
+            objectStream = new ObjectInputStream(fileStream);
+        } catch (EOFException eof) {
+            Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "getAllFavoritePodcastKeys: No Podcasts to read.");
+            try {fileStream.close();} catch (Exception ex) {}
+            return keyList;
+        } catch (Exception e) {
+            Log.getInstance().write(Log.LOGLEVEL_ERROR, "getAllFavoritePodcastKeys: Exception " + e.getMessage());
+            e.printStackTrace();
+            try {fileStream.close();} catch (Exception ex) {}
+            return keyList;
+        }
+
+        Object p = null;
+        Podcast podcast = null;
+
+        try {
+            while ((p=objectStream.readObject()) != null) {
+                podcast = new Podcast((PodcastData)p);
+                PodcastKey key = new PodcastKey(podcast.getOnlineVideoType(), podcast.getOnlineVideoItem());
+                if (!keyList.add(key))
+                    Log.getInstance().write(Log.LOGLEVEL_ERROR, "getAllFavoritePodcastKeys: Failed to add key.");
+        }
+
+        } catch(EOFException eof) {
+            Log.getInstance().write(Log.LOGLEVEL_ALL, "getAllFavoritePodcastKeys complete.");
+        } catch (InvalidClassException ic) {
+            Log.getInstance().write(Log.LOGLEVEL_WARN, "getAllFavoritePodcastKeys: Objects in DB are invalid.");
+            ic.printStackTrace();
+        } catch (Exception e) {
+            Log.getInstance().write(Log.LOGLEVEL_ERROR, "getAllFavoritePodcastKeys exception " + e.getMessage());
+            e.printStackTrace();
+        }
+
+        try {
+            objectStream.close();
+            fileStream.close();
+        } catch (Exception e) {
+            Log.getInstance().write(Log.LOGLEVEL_ERROR, "getAllFavoritePodcastKeys. Exception closing. " + e.getMessage());
+        }
+
+        Log.getInstance().write(Log.LOGLEVEL_ALL, "getAllFavoritePodcastKeys: found " + keyList.size());
+        return keyList;
+    }
+
+    public synchronized static Podcast readPodcast(PodcastKey key) {
+
+        // Create the database file if it does not exist.
+        File file = new File(FavoriteDB);
+        if (!file.exists()) {
+            try {
+                file.createNewFile();
+            } catch (Exception e) {
+                Log.getInstance().write(Log.LOGLEVEL_ERROR, "readPodcasts: Error creating new FavoriteDB file.");
+                return null;
+            }
+        }
+
+        FileInputStream fileStream = null;
+
+        try {
+            fileStream = new FileInputStream(FavoriteDB);
+        } catch (Exception e) {
+            Log.getInstance().write(Log.LOGLEVEL_ERROR, "readPodcasts: Error opening FileInputStream.");
+            e.printStackTrace();
+            return null;
+        }
+
+        ObjectInputStream objectStream;
+
+        try {
+            objectStream = new ObjectInputStream(fileStream);
+        } catch (EOFException eof) {
+            Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "readPodcasts: No Podcasts to read.");
+            try {fileStream.close();} catch (Exception ex) {}
+            return null;
+        } catch (Exception e) {
+            Log.getInstance().write(Log.LOGLEVEL_ERROR, "readPodcasts: Exception " + e.getMessage());
+            e.printStackTrace();
+            try {fileStream.close();} catch (Exception ex) {}
+            return null;
+        }
+
+        Object p = null;
+        Podcast podcast = null;
+
+        try {
+            boolean found = false;
+            while ((p=objectStream.readObject()) != null && !found) {
+                podcast = new Podcast((PodcastData)p);
+                PodcastKey thisKey = podcast.getKey();
+                if (key.equals(thisKey)) {
+                    found = true;
+                    Log.getInstance().write(Log.LOGLEVEL_TRACE, "readPodcasts: Found Podcast");
+                }
+            }
+        } catch(EOFException eof) {
+            Log.getInstance().write(Log.LOGLEVEL_ALL, "readPodcasts: complete.");
+        } catch (InvalidClassException ic) {
+            Log.getInstance().write(Log.LOGLEVEL_WARN, "readPodcasts: Objects in DB are invalid.");
+            ic.printStackTrace();
+        } catch (Exception e) {
+            Log.getInstance().write(Log.LOGLEVEL_ERROR, "readPodcasts: exception " + e.getMessage());
+            e.printStackTrace();
+        }
+
+        try {
+            objectStream.close();
+            fileStream.close();
+        } catch (Exception e) {
+            Log.getInstance().write(Log.LOGLEVEL_ERROR, "readPodcasts: Exception closing. " + e.getMessage());
+        }
+
+        Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "readFavoritePodcasts updated Podcast cache.");
+
+        return podcast;
+    }
+
+    public PodcastKey getKey() {
+        return new PodcastKey(this.onlineVideoType, this.onlineVideoItem);
+    }
+
     /*
      * Convenience method for API class. A return of null signifies that the cache in the API class is still valid.
      */
@@ -513,9 +755,6 @@ public class Podcast implements Serializable {
         return null;
     }
 
-    //public synchronized static List<Podcast> readFavoritePodcasts(boolean fromCache) {
-       // return readFavoritePodcasts(fromCache);
-    //}
 
 
     /**
@@ -551,18 +790,19 @@ public class Podcast implements Serializable {
 
             // Write all Podcasts to disk.
             for (Podcast p : favoritePodcasts) {
-                objectStream.writeObject(p);
+                PodcastData pData = new PodcastData(p);
+                objectStream.writeObject(pData);
             }
 
             objectStream.close();
             fileStream.close();
 
         } catch (Exception e) {
-            Log.getInstance().write(Log.LOGLEVEL_ERROR, "writeFavoritePodcasts Exception.");;
+            Log.getInstance().write(Log.LOGLEVEL_ERROR, "writeFavoritePodcasts Exception.");
             return false;
         }
 
-        cacheIsDirty = true;
+        cacheIsDirty = true;   
         return true;
     }
 
@@ -615,7 +855,7 @@ public class Podcast implements Serializable {
 
         if (unrecorded==null) {
             Log.getInstance().write(Log.LOGLEVEL_ERROR, "Podcast: null parameter for setEpisodesOnWebServerInDatabase.");
-            Log.getInstance().printStackTrace();
+            Log.printStackTrace();
             return false;
         }
 
@@ -623,12 +863,13 @@ public class Podcast implements Serializable {
 
         for (Podcast p : Favorites) {
             if (p.equals(this)) {
-                p.episodesOnServer = unrecorded;
+                p.episodesOnWebServer = unrecorded;
                 return writeFavoritePodcasts(Favorites);
             }
         }
 
         Log.getInstance().write(Log.LOGLEVEL_TRACE, "setEpisodesOnWebServerInDatabase: Did not find Podcast.");
+        Favorites = null;
         return false;
     }
 
@@ -694,6 +935,7 @@ public class Podcast implements Serializable {
         }
 
         Log.getInstance().write(Log.LOGLEVEL_TRACE, "setDuplicatesDeletedInDatabase: Did not find Podcast.");
+        Favorites = null;
         return false;
     }
 
@@ -862,7 +1104,7 @@ public class Podcast implements Serializable {
             }
 
             Log.getInstance().write(Log.LOGLEVEL_ERROR, "SRM getRSSItems:  UPnP2Podcast not implemented.");
-            Log.getInstance().printStackTrace();
+            Log.printStackTrace();
             return null;
         }
 
@@ -872,7 +1114,7 @@ public class Podcast implements Serializable {
             url = new URL(SearchURL);
             if (!(url instanceof URL)) {
                 Log.getInstance().write(Log.LOGLEVEL_ERROR, "SRM getRSSItems: Bad new url");
-                Log.getInstance().printStackTrace();
+                Log.printStackTrace();
                 return null;
             }
         } catch (MalformedURLException urle) {
@@ -920,7 +1162,7 @@ public class Podcast implements Serializable {
         // Loop through all the ChanItems and convert to a List.
         for (RSSItem item : ChanItems) {
             if (!ItemArray.add(item))
-                Log.getInstance().printStackTrace();
+                Log.printStackTrace();
         }
 
         // Done at last.
@@ -950,11 +1192,11 @@ public class Podcast implements Serializable {
     }
 
     public Set<UnrecordedEpisode> getEpisodesOnServer() {
-        return episodesOnServer;
+        return episodesOnWebServer;
     }
 
     public void addEpisodesOnServer(UnrecordedEpisode episode) {
-        episodesOnServer.add(episode);
+        episodesOnWebServer.add(episode);
     }
 
     public String getFeedContext() {

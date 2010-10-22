@@ -15,6 +15,11 @@ import sagex.api.*;
  * @author Default
  */
 public class EpisodeData implements Serializable {
-    private Podcast podcast;             // The Podcast that contains this Episode.
-    private String  ID;                  // A unique String that identifies each Episode.
+    Podcast podcast;
+    String  ID;
+
+    public EpisodeData(Episode e) {
+        podcast = e.podcast;
+        ID = e.ID;
+    }
 }

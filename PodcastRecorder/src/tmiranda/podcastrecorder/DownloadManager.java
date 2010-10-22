@@ -134,7 +134,7 @@ public class DownloadManager {
                 RSSItem I = episode.getOrigChanItem();
                 Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "getRSSItemsForActive Adding Item " + I.getDescription());
                 if (!ItemList.add(episode.getOrigChanItem()))
-                    Log.getInstance().printStackTrace();
+                    Log.printStackTrace();
             }
 
         }
@@ -160,7 +160,7 @@ public class DownloadManager {
             if (ID.equalsIgnoreCase(RSSHelper.makeID(ChanItem))) {
                 DT.removeItem(episode);                 // Remove from DownloadThread queue
                 if (!ActiveDownloads.remove(RequestID))
-                    Log.getInstance().printStackTrace();// remove from DownloadManager queue
+                    Log.printStackTrace();// remove from DownloadManager queue
                 Recordings.remove(RequestID);
 
                 return;
@@ -205,7 +205,7 @@ public class DownloadManager {
             } else {
                 Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "Adding Item.");
                 if (!ItemList.add(episode.getChanItem()))
-                    Log.getInstance().printStackTrace();
+                    Log.printStackTrace();
             }
 
         }
@@ -409,7 +409,7 @@ public class DownloadManager {
         }
     }
 
-    public boolean updateDatabase() {
+    public synchronized boolean updateDatabase() {
 
         List<Podcast> Podcasts = Podcast.readFavoritePodcasts();
         if (Podcasts==null || Podcasts.isEmpty()) {
@@ -424,6 +424,8 @@ public class DownloadManager {
         for (Podcast podcast : Podcasts) {
             newPodcasts.add(updatePodcast(podcast));
         }
+
+        Podcasts = null;
 
         if (!Podcast.writeFavoritePodcasts(newPodcasts)) {
             Log.getInstance().write(Log.LOGLEVEL_ERROR, "updateDatabase: Error writing favorite podcasts.");
@@ -462,7 +464,7 @@ public class DownloadManager {
             // If we found one, see if it's already in the database.
             if (MediaFile != null) {
 
-                Log.getInstance().write(Log.LOGLEVEL_TRACE, "updatePodcast: Found recorded episode " + episode.getEpisodeTitle());
+                Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "updatePodcast: Found recorded episode " + episode.getEpisodeTitle());
                 
                 Episode newEpisode = new Episode(newPodcast, RSSHelper.makeID(ChanItem));
                 

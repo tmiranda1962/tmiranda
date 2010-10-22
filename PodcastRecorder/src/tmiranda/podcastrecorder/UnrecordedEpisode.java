@@ -31,14 +31,20 @@ import sagex.api.*;
         ChanItem = Item;
     }
 
+    public UnrecordedEpisode(Podcast p, UnrecordedEpisodeData e) {
+        super(p,RSSHelper.makeID(e.ChanItem));
+        ChanItem = e.ChanItem;
+        SPRRequestID = e.SPRRequestID;
+    }
+
     /*
      **********************
      * Instance variables.*
      * ********************
      */
 
-    private RSSItem ChanItem;           // The RSSItem for this particular Episode.
-    private String SPRRequestID;        // A unique ID supplied by the SagePodcastRecorder.
+    RSSItem ChanItem;           // The RSSItem for this particular Episode.
+    String SPRRequestID;        // A unique ID supplied by the SagePodcastRecorder.
 
     /**
      * Get the ChanItem (RSSItem) for this UnrecordedPodcast.
@@ -90,7 +96,7 @@ import sagex.api.*;
 
                 if (URL!=null && !URL.isEmpty()) {
                     if (!URLs.add(URL))
-                        Log.getInstance().printStackTrace();
+                        Log.printStackTrace();
                     Log.getInstance().write(Log.LOGLEVEL_TRACE, "setDefaultVideoURL: found for xPodcast = " + URL);
                     return URLs;
                 } else {
@@ -138,7 +144,7 @@ import sagex.api.*;
         }
 
         if (!URLs.add(VideoURL))
-            Log.getInstance().printStackTrace();
+            Log.printStackTrace();
 
         return URLs;
     }
@@ -266,15 +272,15 @@ import sagex.api.*;
         String Quality = Configuration.GetProperty("online_video/YouTube/default_quality2","xHD1080");
 
         if (Quality.equals("xHD720")) {
-            if (!ResSkipList.add("37")) Log.getInstance().printStackTrace();
+            if (!ResSkipList.add("37")) Log.printStackTrace();
         } else if (Quality.equals("xHiRes")) {
-            if (!ResSkipList.add("37")) Log.getInstance().printStackTrace();
-            if (!ResSkipList.add("22")) Log.getInstance().printStackTrace();
+            if (!ResSkipList.add("37")) Log.printStackTrace();
+            if (!ResSkipList.add("22")) Log.printStackTrace();
         } else if (Quality.equals("xLowRes")) {
-            if (!ResSkipList.add("37")) Log.getInstance().printStackTrace();
-            if (!ResSkipList.add("22")) Log.getInstance().printStackTrace();
-            if (!ResSkipList.add("35")) Log.getInstance().printStackTrace();
-            if (!ResSkipList.add("18")) Log.getInstance().printStackTrace();
+            if (!ResSkipList.add("37")) Log.printStackTrace();
+            if (!ResSkipList.add("22")) Log.printStackTrace();
+            if (!ResSkipList.add("35")) Log.printStackTrace();
+            if (!ResSkipList.add("18")) Log.printStackTrace();
         }
 
         Log.getInstance().write(Log.LOGLEVEL_TRACE, "handleYouTube: ResSkipList = " + ResSkipList.toArray());
@@ -289,7 +295,7 @@ import sagex.api.*;
             if (!ResSkipList.contains(ThisResNum)) {
                 Log.getInstance().write(Log.LOGLEVEL_TRACE, "handleYouTube: Adding URL = " + ThisResURL);
                 if (!URLs.add(ThisResURL))
-                    Log.getInstance().printStackTrace();
+                    Log.printStackTrace();
             }
         }
 

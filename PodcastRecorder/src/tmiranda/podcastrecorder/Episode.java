@@ -18,8 +18,8 @@ import sagex.api.*;
  */
  public class Episode implements Serializable {
 
-    private Podcast podcast;             // The Podcast that contains this Episode.
-    private String  ID;                  // A unique String that identifies each Episode.
+    Podcast podcast;             // The Podcast that contains this Episode.
+    String  ID;                  // A unique String that identifies each Episode.
 
     /**
      * Constructor for an Episode object.
@@ -29,6 +29,10 @@ import sagex.api.*;
         ID = EpID;
     }
 
+    public Episode(EpisodeData e) {
+        podcast = e.podcast;
+        ID = e.ID;
+    }
 
     public Podcast getPodcast() {
         return podcast;

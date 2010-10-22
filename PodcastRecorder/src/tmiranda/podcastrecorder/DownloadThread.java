@@ -131,7 +131,7 @@ public class DownloadThread extends Thread {
     public void run() {
         Log.getInstance().write(Log.LOGLEVEL_TRACE, "DT: Starting.");
 
-        Thread.currentThread().setName("SageDownloadThread");
+        Thread.currentThread().setName("DownloadThread");
 
         while (!stop) {
 

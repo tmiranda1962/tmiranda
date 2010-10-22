@@ -158,12 +158,12 @@ public class SageUtil {
         Object[] AllClientPlugins = PluginAPI.GetInstalledClientPlugins();
         if (AllClientPlugins!=null && AllClientPlugins.length != 0)
             if (!AllPluginsList.addAll(Arrays.asList(AllClientPlugins)))
-                Log.getInstance().printStackTrace();
+                Log.printStackTrace();
 
         Object[] AllServerPlugins = PluginAPI.GetInstalledPlugins();
         if (AllServerPlugins!=null && AllServerPlugins.length != 0)
             if (!AllPluginsList.addAll(Arrays.asList(AllServerPlugins)))
-                Log.getInstance().printStackTrace();
+                Log.printStackTrace();
 
         for (Object p : AllPluginsList) {
             Log.getInstance().write(Log.LOGLEVEL_TRACE, "IDENTIFIER="+PluginAPI.GetPluginIdentifier(p));

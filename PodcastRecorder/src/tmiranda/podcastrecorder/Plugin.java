@@ -68,14 +68,6 @@ import ortus.mq.EventListener;
  */
 public class Plugin implements sage.SageTVPlugin, SageTVEventListener {
 
-    // 0.25
-    //  - Import as Recordings.
-    //  - Fixed bug that caused loglevel to reset to ERROR.
-    //  - Fixed bug that caused database to continually grow.
-    //  - Add Manual Run of RecMgr.
-    //  - Add setting to dump database to logfile.
-    //  - Improve stop() and destroy().
-
     private final String VERSION = "0.25";
 
     private TimerTask RecordManager;
@@ -91,6 +83,7 @@ public class Plugin implements sage.SageTVPlugin, SageTVEventListener {
     // Define all of the properties used in this plugin.
     public static final String PROPERTY_LOGLEVEL                    = "podcastrecorder/loglevel";
     public static final String PROPERTY_RECORD_MANAGER_CYCLE_TIME   = "podcastrecorder/record_manager_cycle_time";
+    public static final String PROPERTY_DEFAULT_RECORD_MANAGER_CYCLE_TIME = "43200000";
     public static final String PROPERTY_ENABLE_CLEANUP_THREAD       = "podcastrecorder/enable_cleanup_thread";
     public static final String PROPERTY_CLEANUP_THREAD_DELAY        = "podcastrecorder/cleanup_thread_delay";
     public static final String PROPERTY_CLEANUP_MAX_AGE_OF_TEMPFILE = "podcastrecorder/max_age_of_tempfile";  // Not implemented in Plugin
@@ -129,6 +122,9 @@ public class Plugin implements sage.SageTVPlugin, SageTVEventListener {
     public static final String SETTING_DUMP_DB                  = "DumpDB";
     public static final String SETTING_REC_MGR_MANUAL_RUN       = "ManualRun";
     public static final String SETTING_UPDATE_DB                = "UpdateDB";
+
+    public static boolean DBDumped = false;
+    public static boolean DBUpdated = false;
 
     public static final String SETTING_MESSAGE_AFTER_RECORD     = "RecordMessage";
     public static final String PROPERTY_MESSAGE_AFTER_RECORD    = "podcastrecorder/record_message";
@@ -201,7 +197,7 @@ public class Plugin implements sage.SageTVPlugin, SageTVEventListener {
         // Start the RecordManager as a TimerTask.
         RecordManager = new RecordManager();
         RecordManagerTimer = new Timer();
-        Long sleeptime = SageUtil.GetLongProperty(PROPERTY_RECORD_MANAGER_CYCLE_TIME, "43200000");
+        Long sleeptime = SageUtil.GetLongProperty(PROPERTY_RECORD_MANAGER_CYCLE_TIME, PROPERTY_DEFAULT_RECORD_MANAGER_CYCLE_TIME);
         RecordManagerTimer.scheduleAtFixedRate(RecordManager, 60000L, sleeptime);
     }
 
@@ -259,22 +255,32 @@ public class Plugin implements sage.SageTVPlugin, SageTVEventListener {
         CommandList.add(SETTING_SHOWTITLEINFILENAME);
         CommandList.add(SETTING_MAXFILENAMELENGTH);
         CommandList.add(SETTING_RERECORD_DELETED);
-        CommandList.add(SETTING_SRMCYCLETIME);
+
+        if (!Global.IsClient()) {
+            CommandList.add(SETTING_SRMCYCLETIME);
+        }
+        
         CommandList.add(SETTING_ENABLE_CLEANUP_THREAD);
         CommandList.add(SETTING_LOGLEVEL);
         CommandList.add(SETTING_SHOW_ADVANCED);
 
         if (SageUtil.GetBoolProperty(PROPERTY_SHOW_ADVANCED, Boolean.FALSE)) {
             CommandList.add(SETTING_MESSAGE_AFTER_RECORD);
-            CommandList.add(SETTING_REC_MGR_MANUAL_RUN);
-            CommandList.add(SETTING_UPDATE_DB);
-            CommandList.add(SETTING_DUMP_DB);
+            CommandList.add(SETTING_MESSAGE_IF_NEW_AVAIL);
+
+
+            // Can't do these actions from a SageClient.
+            if (!Global.IsClient()) {
+                CommandList.add(SETTING_REC_MGR_MANUAL_RUN);
+                CommandList.add(SETTING_UPDATE_DB);
+                CommandList.add(SETTING_DUMP_DB);
+            }
         }
 
         return (String[])CommandList.toArray(new String[CommandList.size()]);
     }
 
-	// Returns the current value of the specified setting for this plugin
+    // Returns the current value of the specified setting for this plugin
     public String getConfigValue(String setting) {
         Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "Plugin: getConfigValue received from Plugin Manager. Setting = " + setting);
 
@@ -304,10 +310,12 @@ public class Plugin implements sage.SageTVPlugin, SageTVEventListener {
             return Configuration.GetServerProperty(PROPERTY_SHOW_ADVANCED, "false");
         else if (setting.startsWith(SETTING_MESSAGE_AFTER_RECORD))
             return Configuration.GetServerProperty(PROPERTY_MESSAGE_AFTER_RECORD, "false");
+        else if (setting.startsWith(SETTING_MESSAGE_IF_NEW_AVAIL))
+            return Configuration.GetServerProperty(PROPERTY_MESSAGE_IF_NEW_AVAIL, "false");
         else if (setting.startsWith(SETTING_DUMP_DB))
-            return "Do It Now";
+            return (DBDumped ? "Reset" : "Do It Now");
         else if (setting.startsWith(SETTING_UPDATE_DB))
-            return "Do It Now";
+            return (DBUpdated ? "Reset" : "Do It Now");
         else if (setting.startsWith(SETTING_REC_MGR_MANUAL_RUN)) {
             if (DownloadManager.getInstance().getRecMgrStatus()) {
                 return "Already Running";
@@ -315,8 +323,7 @@ public class Plugin implements sage.SageTVPlugin, SageTVEventListener {
                 return "Run Now";
             }
         } else if (setting.startsWith(SETTING_SRMCYCLETIME)) {
-            Long sleeptime = 12L * 60L * 60L * 1000L;   // 12 hours.
-            String ms = Configuration.GetServerProperty(PROPERTY_RECORD_MANAGER_CYCLE_TIME, sleeptime.toString());
+            String ms = Configuration.GetServerProperty(PROPERTY_RECORD_MANAGER_CYCLE_TIME, PROPERTY_DEFAULT_RECORD_MANAGER_CYCLE_TIME);
             Long hours = java.lang.Long.parseLong(ms) / 60L / 60L / 1000L;
             return hours.toString();
         } else if (setting.startsWith(SETTING_LOGLEVEL)) {
@@ -407,6 +414,8 @@ public class Plugin implements sage.SageTVPlugin, SageTVEventListener {
             return CONFIG_BOOL;
         else if (setting.startsWith(SETTING_MESSAGE_AFTER_RECORD))
             return CONFIG_BOOL;
+        else if (setting.startsWith(SETTING_MESSAGE_IF_NEW_AVAIL))
+            return CONFIG_BOOL;
         else if (setting.startsWith(SETTING_DUMP_DB))
             return CONFIG_BUTTON;
         else if (setting.startsWith(SETTING_UPDATE_DB))
@@ -445,11 +454,23 @@ public class Plugin implements sage.SageTVPlugin, SageTVEventListener {
             Configuration.SetServerProperty(PROPERTY_SHOW_ADVANCED, value);
         } else if (setting.startsWith(SETTING_MESSAGE_AFTER_RECORD)) {
             Configuration.SetServerProperty(PROPERTY_MESSAGE_AFTER_RECORD, value);
+        } else if (setting.startsWith(SETTING_MESSAGE_IF_NEW_AVAIL)) {
+            Configuration.SetServerProperty(PROPERTY_MESSAGE_IF_NEW_AVAIL, value);
         } else if (setting.startsWith(SETTING_UPDATE_DB)) {
-            DownloadManager.getInstance().updateDatabase();
+            if (!DBUpdated) {
+                DownloadManager.getInstance().updateDatabase();
+                DBUpdated = true;
+            } else {
+                DBUpdated = false;
+            }
         } else if (setting.startsWith(SETTING_DUMP_DB)) {
-            String[] args = {};
-            Main.main(args);
+            if (!DBDumped) {
+                String[] args = {};
+                Main.main(args);
+                DBDumped =  true;
+            } else {
+                DBDumped = false;
+            }
         } else if (setting.startsWith(SETTING_REC_MGR_MANUAL_RUN)) {
             if (!DownloadManager.getInstance().getRecMgrStatus()) {
                 RecordManagerManualRun();
@@ -471,6 +492,7 @@ public class Plugin implements sage.SageTVPlugin, SageTVEventListener {
             try {
                 hours = java.lang.Integer.parseInt(value);
             } catch (NumberFormatException e) {
+                Log.getInstance().write(Log.LOGLEVEL_WARN, "Plugin: Invalid cycle time, setting to 12 hours.");
                 hours = 12;
             }
 
@@ -479,7 +501,16 @@ public class Plugin implements sage.SageTVPlugin, SageTVEventListener {
             } else {
                 ms = hours * 60L * 60L * 1000L;
             }
+
+            Log.getInstance().write(Log.LOGLEVEL_TRACE, "Plugin: Setting cycle time to " + ms.toString());
             Configuration.SetServerProperty(PROPERTY_RECORD_MANAGER_CYCLE_TIME, ms.toString());
+            
+            // Cancel the currently scheduled runs and reset the schedule.
+            RecordManagerTimer.cancel();
+            RecordManagerTimer = new Timer();
+            Long sleeptime = SageUtil.GetLongProperty(PROPERTY_RECORD_MANAGER_CYCLE_TIME, PROPERTY_DEFAULT_RECORD_MANAGER_CYCLE_TIME);
+            RecordManagerTimer.scheduleAtFixedRate(RecordManager, 60000L, sleeptime);
+
         } else if (setting.startsWith(SETTING_LOGLEVEL)) {
             if (value.startsWith("None"))
                 Log.getInstance().SetLogLevel(Log.LOGLEVEL_NONE);
@@ -572,6 +603,8 @@ public class Plugin implements sage.SageTVPlugin, SageTVEventListener {
             return "Check the web for new Episodes and record them as needed.";
         } else if (setting.startsWith(SETTING_MESSAGE_AFTER_RECORD)) {
             return "To view the System Messages go to Setup -> System Messages.";
+        } else if (setting.startsWith(SETTING_MESSAGE_IF_NEW_AVAIL)) {
+            return "To view the System Messages go to Setup -> System Messages.";
         } else
             return null;
     }
@@ -614,7 +647,9 @@ public class Plugin implements sage.SageTVPlugin, SageTVEventListener {
         } else if (setting.startsWith(SETTING_REC_MGR_MANUAL_RUN)) {
             return "Check for New Episodes Now";
         } else if (setting.startsWith(SETTING_MESSAGE_AFTER_RECORD)) {
-            return "Show a System Information Message After Favorite Podcasts are Recorded";
+            return "Show a Message After Favorite Podcasts are Recorded";
+        } else if (setting.startsWith(SETTING_MESSAGE_IF_NEW_AVAIL)) {
+            return "Show a Message if New Episodes Are Available";
         } else
             return null;
     }
@@ -633,10 +668,13 @@ public class Plugin implements sage.SageTVPlugin, SageTVEventListener {
         Configuration.SetServerProperty(PROPERTY_RECORD_NEW, "false");
         Configuration.SetServerProperty(PROPERTY_AUTO_DELETE, "false");
         Configuration.SetServerProperty(PROPERTY_MAX_RECORD, "0");
-        Long sleeptime = 12L * 60L * 60L * 1000L;   // 12 hours.
-        Configuration.SetServerProperty(PROPERTY_RECORD_MANAGER_CYCLE_TIME, sleeptime.toString());
+        Configuration.SetServerProperty(PROPERTY_RECORD_MANAGER_CYCLE_TIME, PROPERTY_DEFAULT_RECORD_MANAGER_CYCLE_TIME);
         Configuration.SetServerProperty(PROPERTY_SHOW_ADVANCED, "false");
+        Configuration.SetServerProperty(PROPERTY_MESSAGE_AFTER_RECORD, "false");
+        Configuration.SetServerProperty(PROPERTY_MESSAGE_IF_NEW_AVAIL, "false");
         Log.getInstance().SetLogLevel(Log.LOGLEVEL_WARN);
+        DBDumped = false;
+        DBUpdated = false;
     }
 
     /**

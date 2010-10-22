@@ -67,8 +67,8 @@ public class API {
 
     public static boolean IsServerAlive() {
         if (Global.IsClient()) {
-            Boolean RC = (Boolean)GetMQDataGetter().getDataFromServer(THIS_CLASS, "IsServerAlive", DEFAULT_TIMEOUT);
-            return (RC==null ? false : RC);
+            Object RC = GetMQDataGetter().getDataFromServer(THIS_CLASS, "IsServerAlive", DEFAULT_TIMEOUT);
+            return (RC==null || !(RC instanceof Boolean) ? false : (Boolean)RC);
         } else {
             return true;
         }
@@ -231,7 +231,8 @@ public class API {
         }
 
         if (Global.IsClient()) {
-            return (Boolean)GetMQDataGetter().getDataFromServer(THIS_CLASS, "DeleteMediaFileForRSSItem", new Object[] {Item}, TEN_SECOND_TIMEOUT);
+            Object RC = GetMQDataGetter().getDataFromServer(THIS_CLASS, "DeleteMediaFileForRSSItem", new Object[] {Item}, TEN_SECOND_TIMEOUT);
+            return (RC==null || !(RC instanceof Boolean) ? false : (Boolean)RC);
         } else {
             Object MediaFile = RSSHelper.getMediaFileForRSSItem(Item);
             if (MediaFile==null) {
@@ -250,11 +251,27 @@ public class API {
         }
 
         if (Global.IsClient()) {
-            Boolean RC =(Boolean)GetMQDataGetter().getDataFromServer(THIS_CLASS, "IsRSSItemOnDisk", new Object[] {Item}, TEN_SECOND_TIMEOUT);
-            return (RC==null ? false : RC);
+            Object RC = GetMQDataGetter().getDataFromServer(THIS_CLASS, "IsRSSItemOnDisk", new Object[] {Item}, TEN_SECOND_TIMEOUT);
+            return (RC==null || !(RC instanceof Boolean) ? false : (Boolean)RC);
         } else {
             return (RSSHelper.getMediaFileForRSSItem(Item)!=null);
         }
+    }
+
+    public static boolean IsAiringPodcast(Object MediaFile) {
+        String ID = ShowAPI.GetShowMisc(MediaFile);
+
+        if (ID==null || ID.isEmpty()) {
+            return false;
+        }
+
+        String Category = ShowAPI.GetShowCategory(MediaFile);
+
+        if (Category==null || Category.isEmpty()) {
+            return false;
+        }
+        
+        return (Category.equalsIgnoreCase("PodcastRecorder") ? true : false);
     }
 
     /**
@@ -264,8 +281,8 @@ public class API {
      */
     public static boolean IsRecording() {
         if (Global.IsClient()) {
-            Boolean RC = (Boolean)GetMQDataGetter().getDataFromServer(THIS_CLASS, "IsRecording", DEFAULT_TIMEOUT);
-            return (RC==null ? false : RC);
+            Object RC = GetMQDataGetter().getDataFromServer(THIS_CLASS, "IsRecording", DEFAULT_TIMEOUT);
+            return (RC==null || !(RC instanceof Boolean) ? false : (Boolean)RC);
         } else {
             return (DownloadManager.getInstance().getCurrentlyRecordingID()==null ? false : true);
         }
@@ -284,8 +301,8 @@ public class API {
      */
     public static Long GetCurrentDownloadSize() {
         if (Global.IsClient()) {
-            Long RC = (Long)GetMQDataGetter().getDataFromServer(THIS_CLASS, "GetCurrentDownloadSize", DEFAULT_TIMEOUT);
-            return (RC==null ? 0 : RC);
+            Object RC = GetMQDataGetter().getDataFromServer(THIS_CLASS, "GetCurrentDownloadSize", DEFAULT_TIMEOUT);
+            return (RC==null || !(RC instanceof Long) ? 0 : (Long)RC);
         } else {
             return DownloadManager.getInstance().getCurrentDownloadSize();
         }
@@ -299,7 +316,8 @@ public class API {
     @SuppressWarnings("unchecked")
     public static List<RSSItem> GetRSSItemsForCurrent() {
         if (Global.IsClient()) {
-            return (List<RSSItem>)GetMQDataGetter().getDataFromServer(THIS_CLASS, "GetRSSItemsForCurrent", DEFAULT_TIMEOUT);
+            Object RC = GetMQDataGetter().getDataFromServer(THIS_CLASS, "GetRSSItemsForCurrent", DEFAULT_TIMEOUT);
+            return (RC==null || !(RC instanceof List) ? null : (List<RSSItem>)RC);
         } else {
             return DownloadManager.getInstance().getRSSItemsForCurrent();
         }
@@ -312,9 +330,9 @@ public class API {
         }
 
         if (Global.IsClient()) {
-            Boolean RC = (Boolean)GetMQDataGetter().getDataFromServer(THIS_CLASS, "IsRecordingNow", new Object[] {RSSItem}, DEFAULT_TIMEOUT);
+            Object RC = GetMQDataGetter().getDataFromServer(THIS_CLASS, "IsRecordingNow", new Object[] {RSSItem}, DEFAULT_TIMEOUT);
             Log.Write(Log.LOGLEVEL_VERBOSE, "IsRecordingNow returning " + RC);
-            return (RC==null ? false : RC);
+            return (RC==null || !(RC instanceof Boolean) ? false : (Boolean)RC);
         } else {
             List<RSSItem> Items = DownloadManager.getInstance().getRSSItemsForCurrent();
             Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "IsRecordingNow returning " + RSSHelper.RSSListContains(Items, RSSItem));
@@ -336,8 +354,8 @@ public class API {
      */
     public static Integer GetSizeActive() {
         if (Global.IsClient()) {
-            Integer RC = (Integer)GetMQDataGetter().getDataFromServer(THIS_CLASS, "GetSizeActive", DEFAULT_TIMEOUT);
-            return (RC==null ? 0 : RC);
+            Object RC = GetMQDataGetter().getDataFromServer(THIS_CLASS, "GetSizeActive", DEFAULT_TIMEOUT);
+            return (RC==null || !(RC instanceof Integer) ? 0 : (Integer)RC);
         } else {
             return DownloadManager.getInstance().getSizeActive();
         }
@@ -346,7 +364,8 @@ public class API {
     @SuppressWarnings("unchecked")
     public static List<RSSItem> GetRSSItemsForActive() {
         if (Global.IsClient()) {
-            return (List<RSSItem>)GetMQDataGetter().getDataFromServer(THIS_CLASS, "GetRSSItemsForActive", DEFAULT_TIMEOUT);
+            Object RC = GetMQDataGetter().getDataFromServer(THIS_CLASS, "GetRSSItemsForActive", DEFAULT_TIMEOUT);
+            return (RC==null || !(RC instanceof List) ? null : (List<RSSItem>)RC);
         } else {
             return DownloadManager.getInstance().getRSSItemsForActive();
         }
@@ -359,9 +378,9 @@ public class API {
         }
 
         if (Global.IsClient()) {
-            Boolean RC = (Boolean)GetMQDataGetter().getDataFromServer(THIS_CLASS, "IsInQueue", new Object[] {RSSItem}, DEFAULT_TIMEOUT);
+            Object RC = GetMQDataGetter().getDataFromServer(THIS_CLASS, "IsInQueue", new Object[] {RSSItem}, DEFAULT_TIMEOUT);
             Log.Write(Log.LOGLEVEL_VERBOSE, "IsInQueue returning " + RC);
-            return (RC==null ? false : RC);
+            return (RC==null || !(RC instanceof Boolean) ? false : (Boolean)RC);
         } else {
             List<RSSItem>Items = DownloadManager.getInstance().getRSSItemsForActive();
             Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "IsInQueue returning " + RSSHelper.RSSListContains(Items, RSSItem));
@@ -388,7 +407,8 @@ public class API {
     @SuppressWarnings("unchecked")
     public static List<RSSItem> GetRSSItemsForCompleted() {
         if (Global.IsClient()) {
-            return (List<RSSItem>)GetMQDataGetter().getDataFromServer(THIS_CLASS, "GetRSSItemsForCompleted", DEFAULT_TIMEOUT);
+            Object RC = GetMQDataGetter().getDataFromServer(THIS_CLASS, "GetRSSItemsForCompleted", DEFAULT_TIMEOUT);
+            return (RC==null || !(RC instanceof List) ? null : (List<RSSItem>)RC);
         } else {
             return DownloadManager.getInstance().getRSSItemsForCompleted();
         }
@@ -396,8 +416,8 @@ public class API {
     
     public static Integer GetSizeCompleted() {
         if (Global.IsClient()) {
-            Integer RC = (Integer)GetMQDataGetter().getDataFromServer(THIS_CLASS, "GetSizeCompleted", DEFAULT_TIMEOUT);
-            return (RC==null ? 0 : RC);
+            Object RC = GetMQDataGetter().getDataFromServer(THIS_CLASS, "GetSizeCompleted", DEFAULT_TIMEOUT);
+            return (RC==null || !(RC instanceof Integer) ? 0 : (Integer)RC);
         } else {
             return DownloadManager.getInstance().getSizeCompleted();
         }
@@ -410,7 +430,8 @@ public class API {
     @SuppressWarnings("unchecked")
     public static List<RSSItem> GetRSSItemsForFailed() {
         if (Global.IsClient()) {
-            return (List<RSSItem>)GetMQDataGetter().getDataFromServer(THIS_CLASS, "GetRSSItemsForFailed", DEFAULT_TIMEOUT);
+            Object RC = GetMQDataGetter().getDataFromServer(THIS_CLASS, "GetRSSItemsForFailed", DEFAULT_TIMEOUT);
+            return (RC==null || !(RC instanceof List) ? null : (List<RSSItem>)RC);
         } else {
             return DownloadManager.getInstance().getRSSItemsForFailed();
         }
@@ -418,8 +439,8 @@ public class API {
    
     public static Integer GetSizeFailed() {
         if (Global.IsClient()) {
-            Integer RC = (Integer)GetMQDataGetter().getDataFromServer(THIS_CLASS, "GetSizeFailed", DEFAULT_TIMEOUT);
-            return (RC==null ? 0 : RC);
+            Object RC = GetMQDataGetter().getDataFromServer(THIS_CLASS, "GetSizeFailed", DEFAULT_TIMEOUT);
+            return (RC==null || !(RC instanceof Integer) ? 0 : (Integer)RC);
         } else {
             return DownloadManager.getInstance().getSizeFailed();
         }
@@ -440,7 +461,7 @@ public class API {
      */
     public static String StripPodcastText(String podcast) {
         if (podcast==null) {
-            Log.Write(Log.LOGLEVEL_ERROR, "null parameter.");
+            Log.Write(Log.LOGLEVEL_ERROR, "null parameter 1.");
             return null;
         }
         return podcast.replaceAll("()", "");
@@ -449,7 +470,7 @@ public class API {
     public static String GetTextForPodcast(Properties properties, String podcast) {
 
         if (properties==null || podcast==null) {
-            Log.Write(Log.LOGLEVEL_ERROR, "null parameter.");
+            Log.Write(Log.LOGLEVEL_ERROR, "null parameter 2.");
             return null;
         }
 
@@ -673,7 +694,7 @@ public class API {
 
                 // Add it to the new List.
                 if (!newPodcastList.add(p))
-                    Log.getInstance().write(Log.LOGLEVEL_ERROR, "DecreasePodcastPriority failed to add.");;
+                    Log.getInstance().write(Log.LOGLEVEL_ERROR, "DecreasePodcastPriority failed to add.");
 
                 // If it's already last there is nothing to do.
                 if (i!=favoritePodcasts.size()-1) {
@@ -708,7 +729,7 @@ public class API {
         // Create the List of OVIs.
         for (Podcast p : newPodcastList) {
             if (!OVIs.add(p.getOnlineVideoItem()))
-                Log.getInstance().printStackTrace();
+                Log.printStackTrace();
         }
 
         return OVIs;
@@ -743,7 +764,7 @@ public class API {
         Log.Write(Log.LOGLEVEL_VERBOSE, "GetOVTforPodcast.");
 
         if (SageUtil.isNull(OVI)) {
-            Log.Write(Log.LOGLEVEL_ERROR, "null parameter.");
+            Log.Write(Log.LOGLEVEL_ERROR, "null parameter 3.");
             return null;
         }
 
@@ -778,7 +799,7 @@ public class API {
         Log.Write(Log.LOGLEVEL_ALL, "GetPodcast.");
 
         if (SageUtil.isNull(OVT, OVI)) {
-            Log.Write(Log.LOGLEVEL_ERROR, "null parameter.");
+            Log.Write(Log.LOGLEVEL_ERROR, "null parameter 4.");
             return null;
         }
 
@@ -859,7 +880,7 @@ public class API {
         Log.Write(Log.LOGLEVEL_ALL, "IsPodcastFavorite2: Looking for " + OVT + ":" + OVI);
 
         if (SageUtil.isNull(OVT, OVI)) {
-            Log.Write(Log.LOGLEVEL_WARN, "null parameter.");
+            Log.Write(Log.LOGLEVEL_WARN, "null parameter 5.");
             return false;
         }
 
@@ -892,7 +913,7 @@ public class API {
         Log.Write(Log.LOGLEVEL_VERBOSE, "SetIsFavorite.");
 
         if (SageUtil.isNull(OVT, OVI)) {
-            Log.Write(Log.LOGLEVEL_ERROR, "null parameter.");
+            Log.Write(Log.LOGLEVEL_ERROR, "null parameter 6.");
             return false;
         }
 
@@ -939,20 +960,26 @@ public class API {
         return true;
     }
 
-    @SuppressWarnings("unchecked")
     public static List<Podcast> getFavoritePodcastsFromServer() {
         Log.Write(Log.LOGLEVEL_ALL, "Getting podcasts from server.");
 
-        List<Podcast> Podcasts = (List<Podcast>)GetMQDataGetter().getDataFromServer("tmiranda.podcastrecorder.Podcast", "readFavoritePodcasts", new Object[] {cacheDate}, DEFAULT_TIMEOUT);
+        // Clear the cache to reclaim the memory.
+        PodcastCache.clear();
+        PodcastCache = null;
+    
+        Object RC = GetMQDataGetter().getDataFromServer("tmiranda.podcastrecorder.Podcast", "readFavoritePodcasts", new Object[] {cacheDate}, DEFAULT_TIMEOUT);
+        @SuppressWarnings("unchecked")
+        List<Podcast> Podcasts = (RC==null || !(RC instanceof List) ? null : (List<Podcast>)RC);
 
         // If it's not null it contains updated Podcasts.  If it is null the Podcasts in the local cache are still valid.
         if (Podcasts!=null) {
             Log.Write(Log.LOGLEVEL_VERBOSE, "API Podcast cache updated.");
             PodcastCache = Podcasts;
             cacheDate = new Date();
+            return PodcastCache;
+        } else {
+            return new ArrayList<Podcast>();
         }
-
-        return PodcastCache;
     }
 
     /**
@@ -967,7 +994,7 @@ public class API {
         Log.Write(Log.LOGLEVEL_TRACE, "RemoveFavorite: Removing " + OVT + ":" + OVI);
 
         if (SageUtil.isNull(OVT, OVI)) {
-            Log.Write(Log.LOGLEVEL_ERROR, "null parameter.");
+            Log.Write(Log.LOGLEVEL_ERROR, "null parameter 7.");
             return false;
         }
 
@@ -1010,7 +1037,7 @@ public class API {
         Log.Write(Log.LOGLEVEL_TRACE, "DisableFavorite: Disabling " + OVT + ":" + OVI);
 
         if (SageUtil.isNull(OVT, OVI)) {
-            Log.Write(Log.LOGLEVEL_ERROR, "null parameter.");
+            Log.Write(Log.LOGLEVEL_ERROR, "null parameter 8.");
             return false;
         }
 
@@ -1089,7 +1116,7 @@ public class API {
         Log.Write(Log.LOGLEVEL_VERBOSE, "SetRecordNew.");
 
         if (SageUtil.isNull(OVT, OVI)) {
-            Log.Write(Log.LOGLEVEL_ERROR, "null parameter.");
+            Log.Write(Log.LOGLEVEL_ERROR, "null parameter 9.");
             return false;
         }
 
@@ -1152,7 +1179,7 @@ public class API {
         Log.Write(Log.LOGLEVEL_VERBOSE, "SetReRecord.");
 
         if (SageUtil.isNull(OVT, OVI)) {
-            Log.Write(Log.LOGLEVEL_ERROR, "null parameter.");
+            Log.Write(Log.LOGLEVEL_ERROR, "null parameter 10.");
             return false;
         }
 
@@ -1219,7 +1246,7 @@ public class API {
         Log.Write(Log.LOGLEVEL_VERBOSE, "SetAutoDelete.");
 
         if (SageUtil.isNull(OVT, OVI)) {
-            Log.Write(Log.LOGLEVEL_ERROR, "null parameter.");
+            Log.Write(Log.LOGLEVEL_ERROR, "null parameter 11.");
             return false;
         }
 
@@ -1286,7 +1313,7 @@ public class API {
         Log.Write(Log.LOGLEVEL_VERBOSE, "SetKeepNewest.");
 
         if (SageUtil.isNull(OVT, OVI)) {
-            Log.Write(Log.LOGLEVEL_ERROR, "null parameter.");
+            Log.Write(Log.LOGLEVEL_ERROR, "null parameter 12.");
             return false;
         }
 
@@ -1353,7 +1380,7 @@ public class API {
         Log.Write(Log.LOGLEVEL_VERBOSE, "SetRemoveDuplicates.");
 
         if (SageUtil.isNull(OVT, OVI)) {
-            Log.Write(Log.LOGLEVEL_ERROR, "null parameter.");
+            Log.Write(Log.LOGLEVEL_ERROR, "null parameter 13.");
             return false;
         }
 
@@ -1420,7 +1447,7 @@ public class API {
         Log.Write(Log.LOGLEVEL_VERBOSE, "SetUseTitleAsSubdir.");
 
         if (SageUtil.isNull(OVT, OVI)) {
-            Log.Write(Log.LOGLEVEL_ERROR, "null parameter.");
+            Log.Write(Log.LOGLEVEL_ERROR, "null parameter 14.");
             return false;
         }
 
@@ -1475,7 +1502,7 @@ public class API {
         Log.Write(Log.LOGLEVEL_VERBOSE, "SetUseTitleInFileName.");
 
         if (SageUtil.isNull(OVT, OVI)) {
-            Log.Write(Log.LOGLEVEL_ERROR, "null parameter.");
+            Log.Write(Log.LOGLEVEL_ERROR, "null parameter 15.");
             return false;
         }
 
@@ -1554,7 +1581,7 @@ public class API {
         Log.Write(Log.LOGLEVEL_VERBOSE, "SetShowTitle.");
 
         if (SageUtil.isNull(OVT, OVI, Title)) {
-            Log.Write(Log.LOGLEVEL_ERROR, "null parameter.");
+            Log.Write(Log.LOGLEVEL_ERROR, "null parameter 16.");
             return false;
         }
 
@@ -1629,7 +1656,7 @@ public class API {
         Log.Write(Log.LOGLEVEL_VERBOSE, "SetKeepAtMost.");
 
         if (SageUtil.isNull(OVT, OVI)) {
-            Log.Write(Log.LOGLEVEL_ERROR, "null parameter.");
+            Log.Write(Log.LOGLEVEL_ERROR, "null parameter 17.");
             return false;
         }
 
@@ -1692,7 +1719,7 @@ public class API {
         Log.Write(Log.LOGLEVEL_VERBOSE, "SetRecDir.");
 
         if (SageUtil.isNull(OVT, OVI, Dir)) {
-            Log.Write(Log.LOGLEVEL_ERROR, "null parameter.");
+            Log.Write(Log.LOGLEVEL_ERROR, "null parameter 18.");
             return false;
         }
 
@@ -1759,7 +1786,7 @@ public class API {
         Log.Write(Log.LOGLEVEL_VERBOSE, "SetSubdir.");
 
         if (SageUtil.isNull(OVT, OVI, Subdir)) {
-            Log.Write(Log.LOGLEVEL_ERROR, "null parameter.");
+            Log.Write(Log.LOGLEVEL_ERROR, "null parameter 19.");
             return false;
         }
 
@@ -1926,7 +1953,7 @@ public class API {
                                                     ShowTitle,
                                                     bUseShowTitleAsSubdir,
                                                     bUseShowTitleInFileName}, DEFAULT_TIMEOUT);
-        return (result==null ? false : (Boolean)result);
+        return (result==null || !(result instanceof Boolean) ? false : (Boolean)result);
     }
 
 
@@ -1992,7 +2019,7 @@ public class API {
                                                             new Object[] {OnlineVideoType, OnlineVideoItem, FeedContext, RecordDir, RecordSubdir, ShowTitle, UseShowTitleAsSubdir, UseShowTitleInFileName, ChanItem},
                                                             DEFAULT_TIMEOUT);
 
-        return (result==null ? false : (Boolean)result);
+        return (result==null || !(result instanceof Boolean) ? false : (Boolean)result);
     }
 
 
@@ -2059,7 +2086,7 @@ public class API {
                                                                             ShowTitle, bUseShowTitleAsSubdir},
                                                             DEFAULT_TIMEOUT);
 
-        return (result==null ? false : (Boolean)result);
+        return (result==null || !(result instanceof Boolean) ? false : (Boolean)result);
     }
 
     public static boolean OLDRecordAllEpisodes(String OnlineVideoType, String OnlineVideoItem, String FeedContext, File RecordDir, String RecordSubdir, String ShowTitle, Boolean UseShowTitleAsSubdir) {

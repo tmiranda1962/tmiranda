@@ -362,7 +362,8 @@ public class RSSHelper {
                 return RSSItems;
             }
 
-            String RSSReadFilePath = "file:" + RSSWriteFilePath;
+            //String RSSReadFilePath = "file:" + RSSWriteFilePath;
+            String RSSReadFilePath = RSSWriteFilePath;
             Log.getInstance().write(Log.LOGLEVEL_TRACE, "getRSSItems: RSSReadFilePath = " + RSSReadFilePath);
 
             // Write the text to a file.
@@ -421,7 +422,7 @@ public class RSSHelper {
 
         // Loop through all the ChanItems and convert to a List.
         for (RSSItem item : ChanItems) {
-            if (!RSSItems.add(item)) Log.getInstance().printStackTrace();
+            if (!RSSItems.add(item)) Log.printStackTrace();
         }
 
         // Done at last.

@@ -7,32 +7,72 @@ package tmiranda.podcastrecorder;
 
 import java.io.*;
 import java.util.*;
-import sage.media.rss.*;
-import sagex.api.*;
 
 /**
  *
  * @author Tom Miranda.
  */
 public class PodcastData implements Serializable {
-    private List<UnrecordedEpisode> episodesOnServer = null;    // Episodes available on the web.
-    private List<Episode> episodesEverRecorded = null;          // Complete Episode recording history.
 
-    private boolean recordNew = false;
-    private boolean isFavorite = false;
-    private boolean deleteDuplicates = false;
-    private boolean keepNewest = true;
-    private boolean reRecordDeleted = false;
-    private int     maxToRecord = 0;
-    private boolean autoDelete = false;
-    private long    lastChecked = 0L;
-    private String  recDir = null;
-    private String  recSubdir = null;
-    private String  showTitle = null;
-    private String  onlineVideoType = null;
-    private String  onlineVideoItem = null;
-    private String  feedContext = null;
-    private boolean useShowTitleAsSubdir = false;
-    private boolean useShowTitleInFileName = false;
-    private int duplicatesDeleted = 0;
+    Set<UnrecordedEpisodeData>  episodesOnWebServer = null;
+    Set<EpisodeData>            episodesEverRecorded = null;
+
+    boolean recordNew = false;
+    boolean isFavorite = false;
+    boolean deleteDuplicates = false;
+    boolean keepNewest = true;
+    boolean reRecordDeleted = false;
+    int     maxToRecord = 0;
+    boolean autoDelete = false;
+    long    lastChecked = 0L;
+    String  recDir = null;
+    String  recSubdir = null;
+    String  showTitle = null;
+    String  onlineVideoType = null;
+    String  onlineVideoItem = null;
+    String  feedContext = null;
+    boolean useShowTitleAsSubdir = false;
+    boolean useShowTitleInFileName = false;
+    int     duplicatesDeleted = 0;
+
+    /**
+     * Constructor - Creates a new PodcastData Object suitable for serialization.
+     * @param p A Podcast Object.
+     */
+    public PodcastData(Podcast p) {
+        recordNew               = p.recordNew;
+        isFavorite              = p.isFavorite;
+        deleteDuplicates        = p.deleteDuplicates;
+        keepNewest              = p.keepNewest;
+        reRecordDeleted         = p.reRecordDeleted;
+        maxToRecord             = p.maxToRecord;
+        autoDelete              = p.autoDelete;
+        lastChecked             = p.lastChecked;
+        recDir                  = p.recDir;
+        recSubdir               = p.recSubdir;
+        showTitle               = p.showTitle;
+        onlineVideoType         = p.onlineVideoType;
+        onlineVideoItem         = p.onlineVideoItem;
+        feedContext             = p.feedContext;
+        useShowTitleAsSubdir    = p.useShowTitleAsSubdir;
+        useShowTitleInFileName  = p.useShowTitleInFileName;
+        duplicatesDeleted       = p.duplicatesDeleted;
+
+        episodesOnWebServer     = new HashSet<UnrecordedEpisodeData>();
+        episodesEverRecorded    = new HashSet<EpisodeData>();
+
+        if (p.episodesOnWebServer != null) {
+            for (UnrecordedEpisode e : p.episodesOnWebServer) {
+                UnrecordedEpisodeData eData = new UnrecordedEpisodeData(e);
+                episodesOnWebServer.add(eData);
+            }
+        }
+
+        if (p.episodesEverRecorded != null) {
+            for (Episode e : p.episodesEverRecorded) {
+                EpisodeData eData = new EpisodeData(e);
+                episodesEverRecorded.add(eData);
+            }
+        }
+    }
 }

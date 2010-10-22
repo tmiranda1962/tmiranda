@@ -15,7 +15,7 @@ import ortus.mq.EventListener;
 
 /**
  *
- * @author Default
+ * @author Tom Miranda.
  */
 public class MQDataGetter extends EventListener {
     
@@ -37,8 +37,14 @@ public class MQDataGetter extends EventListener {
 
         Log.getInstance().write(Log.LOGLEVEL_ALL, "getDataFromServerWithArgs invoked " + c + "." + m + ":" + args.length);
 
+        if (c==null || m==null || c.isEmpty() || m.isEmpty()) {
+            Log.getInstance().write(Log.LOGLEVEL_ERROR, "getDataFromServerWithArgs: null Class or Method " + c + ":" + m);
+            return null;
+        }
+
         if (anyNullArgs(args)) {
             Log.getInstance().write(Log.LOGLEVEL_ERROR, "Fatal error. Found null arg in " + c + "." + m);
+            return null;
         }
 
         ortus.mq.api.fireMQMessage(ortus.mq.vars.MsgPriority.High,
@@ -51,7 +57,7 @@ public class MQDataGetter extends EventListener {
         catch (InterruptedException e) {data=null;}
 
         if (data==null) {
-            Log.getInstance().write(Log.LOGLEVEL_WARN, "getDataFromServer returned null. Operation may have timed out");
+            Log.getInstance().write(Log.LOGLEVEL_WARN, "getDataFromServer returned null. Operation may have timed out for " + c + "." + m);
             return null;
         }
 
@@ -63,6 +69,11 @@ public class MQDataGetter extends EventListener {
 
         Log.getInstance().write(Log.LOGLEVEL_ALL, "getDataFromServerWithoutArgs invoked " + c + "." + m);
 
+        if (c==null || m==null || c.isEmpty() || m.isEmpty()) {
+            Log.getInstance().write(Log.LOGLEVEL_ERROR, "getDataFromServerWithoutArgs: null Class or Method " + c + ":" + m);
+            return null;
+        }
+
         ortus.mq.api.fireMQMessage(ortus.mq.vars.MsgPriority.High,
                                 ortus.mq.vars.EvenType.Server,
                                 "MQDataPutterWithoutArgs",
@@ -73,7 +84,7 @@ public class MQDataGetter extends EventListener {
         catch (InterruptedException e) {data=null;}
 
         if (data==null) {
-            Log.getInstance().write(Log.LOGLEVEL_WARN, "getDataFromServer returned null. Operation may have timed out");
+            Log.getInstance().write(Log.LOGLEVEL_WARN, "getDataFromServer returned null. Operation may have timed out for " + c + "." + m);
             return null;
         }
 
@@ -103,7 +114,7 @@ public class MQDataGetter extends EventListener {
         }
 
         // Add the data to the Queue, unblocking getDataFromServer.
-        if (!Queue.add(data)) Log.getInstance().printStackTrace();
+        if (!Queue.add(data)) Log.printStackTrace();
         Log.getInstance().write(Log.LOGLEVEL_ALL, "doDataGetter done.");
     }
 
@@ -111,8 +122,14 @@ public class MQDataGetter extends EventListener {
 
         Log.getInstance().write(Log.LOGLEVEL_ALL, "invokeMethodOnServer " + c + "." + m + ":" + args.length);
 
+        if (c==null || m==null || c.isEmpty() || m.isEmpty()) {
+            Log.getInstance().write(Log.LOGLEVEL_ERROR, "invokeMethodOnServer: null Class or Method " + c + ":" + m);
+            return;
+        }
+
         if (anyNullArgs(args)) {
             Log.getInstance().write(Log.LOGLEVEL_ERROR, "Fatal error. Found null arg in " + c + "." + m);
+            return;
         }
 
         ortus.mq.api.fireMQMessage(ortus.mq.vars.MsgPriority.High,
@@ -126,6 +143,11 @@ public class MQDataGetter extends EventListener {
     public void invokeMethodOnServer(String c, String m) {
 
         Log.getInstance().write(Log.LOGLEVEL_ALL, "invokeMethodOnServer " + c + "." + m);
+
+        if (c==null || m==null || c.isEmpty() || m.isEmpty()) {
+            Log.getInstance().write(Log.LOGLEVEL_ERROR, "invokeMethodOnServer: null Class or Method " + c + ":" + m);
+            return;
+        }
 
         ortus.mq.api.fireMQMessage(ortus.mq.vars.MsgPriority.High,
                                 ortus.mq.vars.EvenType.Server,
@@ -154,8 +176,5 @@ public class MQDataGetter extends EventListener {
 
         return (O.toString().equals(NULL_DATA) ? null : O);
     }
+
 }
-
-
-
-
