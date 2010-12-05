@@ -19,7 +19,7 @@ public class Log {
     public static final int LOGLEVEL_VERBOSE    = 10;
     public static final int LOGLEVEL_ALL        = 0;
 
-    private static int CurrentLogLevel = LOGLEVEL_TRACE;
+    private static int CurrentLogLevel = LOGLEVEL_VERBOSE;
 
     private static final Log instance = new Log();
 
@@ -47,7 +47,7 @@ public class Log {
      */
     public void write(int level, String s) {
         if (level >= CurrentLogLevel)
-            System.out.println("PR: " + s);
+            System.out.println("RPAD: " + s);
         if (level == Log.LOGLEVEL_ERROR)
             printStackTrace();
     }
@@ -57,11 +57,16 @@ public class Log {
      * <p>
      * @param NewLevel  The new Loglevel.
      */
-    public void SetLogLevel(Integer NewLevel) {
+    public static void SetLogLevel(Integer NewLevel) {
         CurrentLogLevel = NewLevel;
-        Configuration.SetServerProperty(PROPERTY_LOGLEVEL, NewLevel.toString());
+        Configuration.SetProperty(PROPERTY_LOGLEVEL, NewLevel.toString());
         Configuration.SaveProperties();
         System.out.println("RPAD: Setting loglevel to " + NewLevel.toString());
+    }
+
+    public static void SetLogLevel(String NewLevel) {
+        Integer Level = Integer.parseInt(NewLevel);
+        SetLogLevel(Level);
     }
 
     /**
@@ -69,7 +74,7 @@ public class Log {
      * <p>
      * @return  The current LogLevel.
      */
-    public int GetLogLevel() {
+    public static int GetLogLevel() {
         return CurrentLogLevel;
     }
 
