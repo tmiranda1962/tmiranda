@@ -19,7 +19,7 @@ public class Log {
     public static final int LOGLEVEL_VERBOSE    = 10;
     public static final int LOGLEVEL_ALL        = 0;
 
-    private static int CurrentLogLevel = LOGLEVEL_VERBOSE;
+    private static int CurrentLogLevel = LOGLEVEL_WARN;
 
     private static final Log instance = new Log();
 

@@ -136,21 +136,15 @@ public class api {
     }
 
     /*
-     * May return null if ID does not match any Plugin.
-     */
-    public static Object getPluginForID(String ID) {
-        return (ID == null ? null : getAllIDPluginMap().get(ID));
-    }
-
-    /*
      * May return null if Description does not match any Plugin.
      */
     public static Object getPluginForDescription(String Description) {
-        Log.getInstance().write(Log.LOGLEVEL_ALL, "getPluginForDescription: ID " + createIdFromDescription(Description));
-        return (Description == null ? null : getAllIDPluginMap().get(createIdFromDescription(Description)));
+        String ID = createIdFromDescription(Description);
+        Log.getInstance().write(Log.LOGLEVEL_ALL, "getPluginForDescription: ID " + ID);
+        return (Description == null ? null : PluginAPI.GetAvailablePluginForID(ID));
     }
 
-    public static Map<Object, List<Object>> getPluginDependencyMap(Object Plugin) {
+    public static Map<Object, List<Object>> XXgetPluginDependencyMap(Object Plugin) {
         Map<Object, List<Object>> DependencyMap = new HashMap<Object, List<Object>>();
 
         if (Plugin == null) {
