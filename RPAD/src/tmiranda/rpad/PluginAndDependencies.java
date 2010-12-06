@@ -15,9 +15,6 @@ public class PluginAndDependencies {
     private Object Plugin;                              // The Plugin we are interested in.
     private Object Parent;                              // The parent Plugin
     private List<PluginAndDependencies> Dependencies;   // null means the end of the branch.
-    private String Status;                              // Used to keep track of the uninstall status.
-
-
 
     /**
      * Constructor.  Used to create a new PluginAndDependencies tree.
@@ -28,7 +25,6 @@ public class PluginAndDependencies {
     public PluginAndDependencies(Object ThePlugin, Object TheParent) {
         Plugin = ThePlugin;
         Parent = TheParent;
-        Status = null;
 
         if (ThePlugin == null || TheParent == null) {
             Log.getInstance().write(Log.LOGLEVEL_ERROR, "PluginAndDependecies: Error. null paramter.");
@@ -41,7 +37,7 @@ public class PluginAndDependencies {
             Dependencies = new ArrayList<PluginAndDependencies>();
         }
 
-        List<Object> Plugins = api.getPluginDependencies(ThePlugin);
+        List<Object> Plugins = getPluginDependencies(ThePlugin);
 
         if (Plugins == null || Plugins.isEmpty()) {
             Log.getInstance().write(Log.LOGLEVEL_TRACE, "PluginAndDependecies: No dependencies for " + PluginAPI.GetPluginIdentifier(Plugin));
@@ -58,14 +54,6 @@ public class PluginAndDependencies {
         return;
     }
 
-    public String getStatus() {
-        return Status;
-    }
-
-    public void setStatus(String Status) {
-        this.Status = Status;
-    }
-
     /**
      * Prints the complete dependency tree to the debug log.
      *
@@ -75,7 +63,7 @@ public class PluginAndDependencies {
 
         System.out.println("RPAD: Showing Tree for " + PluginAPI.GetPluginIdentifier(Tree.Plugin));
 
-        if (Tree.Plugin == Tree.Parent) {
+        if (isRoot(Tree)) {
             System.out.println("RPAD: == It is the root.");
         } else {
             System.out.println("RPAD: == It's parent is " + PluginAPI.GetPluginIdentifier(Tree.Parent));
@@ -108,12 +96,13 @@ public class PluginAndDependencies {
      *
      * No Plugins are duplicated.
      *
+     * It does NOT return the root of the Tree. (The Plugin that is the parent.)
+     *
      * @param Tree The PluginAndDependencies tree to process.
      * @param CurrentList The current List of Plugins.  Use null to start.
      * @return A List of Plugins that are dependencies of the parent Plugin.
      */
-
-    public static Set<Object> getListOfDependencies(PluginAndDependencies Tree) {
+    public static List<Object> getListOfDependencies(PluginAndDependencies Tree) {
 
         // Parameter check.
         if (Tree == null) {
@@ -121,7 +110,7 @@ public class PluginAndDependencies {
             return null;
         }
 
-        Set<Object> NewList = new LinkedHashSet<Object>();
+        List<Object> NewList = new ArrayList<Object>();
 
         // Recursively add dependencies.
         if (Tree.Dependencies != null && !Tree.Dependencies.isEmpty()) {
@@ -129,12 +118,12 @@ public class PluginAndDependencies {
                 Log.getInstance().write(Log.LOGLEVEL_TRACE, "getListOfDependecies: Processing dependency " + PluginAPI.GetPluginIdentifier(Dependency.Plugin));
 
                 // Get the Set.
-                Set<Object> TempList = getListOfDependencies(Dependency);
+                List<Object> TempList = getListOfDependencies(Dependency);
 
                 // If there are items in it add them, if not already added.
                 if (TempList != null && !TempList.isEmpty()) {
                     for (Object Plugin : TempList) {
-                        if (!setContainsPlugin(NewList, Plugin)) {
+                        if (!listContainsPlugin(NewList, Plugin)) {
                             NewList.add(Plugin);
                         }
                     }
@@ -144,51 +133,14 @@ public class PluginAndDependencies {
         }
 
         // Add in this Plugin if it's not the root and it's not already added.
-        if (!setContainsPlugin(NewList, Tree.Plugin) && !PluginsAreEqual(Tree.Parent, Tree.Plugin)) {
+        if (!listContainsPlugin(NewList, Tree.Plugin) && !isRoot(Tree)) {
             NewList.add(Tree.Plugin);
         }
 
         return NewList;
     }
 
-
-    public static Set<Object> OLDgetListOfDependencies(PluginAndDependencies Tree, Set<Object> CurrentList) {
-
-        // Parameter check.
-        if (Tree == null) {
-            Log.getInstance().write(Log.LOGLEVEL_ERROR, "getListOfDependecies: Error. null Tree.");
-            return null;
-        }
-
-        Set<Object> NewList;
-
-        if (CurrentList == null) {
-            Log.getInstance().write(Log.LOGLEVEL_TRACE, "getListOfDependecies: Starting new List for " + PluginAPI.GetPluginIdentifier(Tree.Plugin));
-            NewList = new LinkedHashSet<Object>();
-        } else {
-            Log.getInstance().write(Log.LOGLEVEL_TRACE, "getListOfDependecies: Adding to CurrentList for " + PluginAPI.GetPluginIdentifier(Tree.Plugin));
-            NewList = CurrentList;
-        }
-
-        // If there are no dependencies, add this Plugin (if not already added) and it's not the root.
-        if (Tree.Dependencies == null || Tree.Dependencies.isEmpty()) {
-            Log.getInstance().write(Log.LOGLEVEL_TRACE, "getListOfDependecies: No dependencies. Adding " + PluginAPI.GetPluginIdentifier(Tree.Plugin));
-            if (!setContainsPlugin(NewList, Tree.Plugin) && !PluginsAreEqual(Tree.Parent, Tree.Plugin)) {
-                NewList.add(Tree.Plugin);
-            }
-            return NewList;
-        }
-
-        // Recursively add dependencies.
-        for (PluginAndDependencies Dependency : Tree.Dependencies) {
-            Log.getInstance().write(Log.LOGLEVEL_TRACE, "getListOfDependecies: Processing dependency " + PluginAPI.GetPluginIdentifier(Dependency.Plugin));
-            NewList = OLDgetListOfDependencies(Dependency, NewList);
-        }
-
-        return NewList;
-    }
-
-    public static void showDependencyList(Set<Object> Plugins) {
+    public static void showDependencyList(List<Object> Plugins) {
 
         System.out.println("RPAD: Showing dependencies.");
 
@@ -205,33 +157,196 @@ public class PluginAndDependencies {
 
     /**
      * Determines if the Plugin specified is needed by any of the Plugins in the List
-     * of dependencies.
+     * of PluginAndDependencies.
      *
      * @param Plugin
      * @param Dependencies
      * @return
      */
-    public static boolean isNeeded(Object Plugin, List<PluginAndDependencies> Dependencies) {
+    public static boolean isNeeded(Object ThePlugin, List<PluginAndDependencies> Dependencies) {
 
-        // If the parameters are bad or there are no more dependencies return false.
-        if (Plugin == null || Dependencies == null || Dependencies.isEmpty()) {
+        // Parameter check.
+        if (ThePlugin == null || Dependencies == null) {
+            Log.getInstance().write(Log.LOGLEVEL_WARN, "isNeeded: Found null Plugin or Dependencies.");
             return false;
         }
 
         for (PluginAndDependencies Dependency : Dependencies) {
-            
-            if (PluginsAreEqual(Plugin, Dependency.Plugin) || isNeeded(Dependency.Plugin, Dependency.Dependencies)) {
-                return true;
+
+            // Check if we have a bad parameter.
+            if (Dependency == null) {
+                Log.getInstance().write(Log.LOGLEVEL_WARN, "isNeeded: Found null Dependency.");
+                return false;
+            }
+
+            // Skip if we are comparing ThePlugin to itself.
+            if (!(PluginsAreEqual(ThePlugin, Dependency.Plugin) && isRoot(Dependency))) {
+             
+                // Return true if it's needed by this Plugin or any of its dependencies.
+                if (PluginsAreEqual(ThePlugin, Dependency.Plugin) || isNeeded(ThePlugin, Dependency.Dependencies)) {
+                    return true;
+                }
             }
         }
 
+        // It wasn't needed.
         return false;
+    }
+
+    /**
+     * Looks through the InstalledPlugins List and returns the plugins that use Plugin.
+     *
+     * @param Plugin The Plugin that we are interested in.
+     * @param InstalledPlugins The List of Plugins to scan.
+     * @return A List of Plugins that use the referenced Plugin.
+     */
+    public static List<String> getPluginNamesThatUse(Object Plugin, List<Object> InstalledPlugins) {
+
+        List<String> NewList = new ArrayList<String>();
+
+        if (Plugin == null || InstalledPlugins == null || InstalledPlugins.isEmpty())
+            return NewList;
+
+        String ThisID = PluginAPI.GetPluginIdentifier(Plugin);
+
+        for (Object ThisPlugin : InstalledPlugins) {
+
+            if (!PluginAndDependencies.PluginsAreEqual(Plugin, ThisPlugin)) {
+                List<String> DependencyIDs = getDependencyIDs(ThisPlugin);
+
+                if (DependencyIDs.contains(ThisID)) {
+                    NewList.add(PluginAPI.GetPluginName(ThisPlugin));
+                }
+            }
+
+        }
+
+        return NewList;
+
+    }
+
+    /*
+     * Returns true if this Tree is the root, false otherwise.
+     */
+    private static boolean isRoot(PluginAndDependencies Tree) {
+        return PluginsAreEqual(Tree.Parent, Tree.Plugin);
+    }
+
+    private static List<Object> getPluginDependencies(Object Plugin) {
+
+        List<Object> Dependencies = new ArrayList<Object>();
+
+        if (Plugin == null) {
+            Log.getInstance().write(Log.LOGLEVEL_ERROR, "getPluginDependencies: null Plugin.");
+            return Dependencies;
+        }
+
+        List<String> Descriptions = getDependencyDescriptions(Plugin);
+        Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "getPluginDependencies: Descriptions = " + Descriptions);
+
+        if (Descriptions.size() == 0) {
+            Log.getInstance().write(Log.LOGLEVEL_TRACE, "getPluginDependencies: No dependencies.");
+            return Dependencies;
+        }
+
+        List<Object> PluginsForDependencies = new ArrayList<Object>();
+
+        for (String Description : Descriptions) {
+            if (Description != null) {
+
+                Log.getInstance().write(Log.LOGLEVEL_ALL, "getPluginDependencies: Description = " + Description);
+
+                Object P = getPluginForDescription(Description);
+
+                if (P != null) {
+                    PluginsForDependencies.add(P);
+                    Log.getInstance().write(Log.LOGLEVEL_ALL, "getPluginDependencies: Adding " + PluginAPI.GetPluginDescription(P));
+                }
+
+            }
+        }
+
+        return PluginsForDependencies;
+    }
+
+    /*
+     * May return null if Description does not match any Plugin.
+     */
+    private static Object getPluginForDescription(String Description) {
+        String ID = createIdFromDescription(Description);
+        Log.getInstance().write(Log.LOGLEVEL_ALL, "getPluginForDescription: ID " + ID);
+        return (Description == null ? null : PluginAPI.GetAvailablePluginForID(ID));
+    }
+
+    /*
+     * Takes a description in the format "Type: ID xxx" and returns the ID.
+     */
+    private static String createIdFromDescription(String Description) {
+
+        if (Description == null) {
+            Log.getInstance().write(Log.LOGLEVEL_ERROR, "createIdFromDescription: null Description.");
+            return null;
+        }
+
+        String[] Parts = Description.split(" ");
+        if (Parts.length > 1)
+            Log.getInstance().write(Log.LOGLEVEL_ALL, "createIdFromDescription: Description and Parts[1] = " + Description + "&" + Parts[1]);
+        return (Parts.length > 1 ? Parts[1] : "UNKNOWN");
+    }
+
+      /*
+     * Will never return null.
+     */
+    private static List<String> getDependencyDescriptions(Object Plugin) {
+        List<String> Descriptions = new ArrayList<String>();
+
+        if (Plugin == null) {
+            Log.getInstance().write(Log.LOGLEVEL_ERROR, "getDependencyDescriptions: null Plugin.");
+            return Descriptions;
+        }
+
+        String[] DescriptionArray = PluginAPI.GetPluginDependencies(Plugin);
+
+        if (DescriptionArray == null) {
+            Log.getInstance().write(Log.LOGLEVEL_WARN, "getDependencyDescriptions: null DescriptionArray.");
+            return Descriptions;
+        }
+
+        if (DescriptionArray.length != 0) {
+            Descriptions = Arrays.asList(DescriptionArray);
+        }
+
+        Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "getDependencyDescriptions: Descriptions " + Descriptions);
+        return Descriptions;
+    }
+
+    /*
+     * Will never return null.
+     */
+    private static List<String> getDependencyIDs(Object Plugin) {
+
+        List<String> IDs = new ArrayList<String>();
+
+        if (Plugin == null) {
+            Log.getInstance().write(Log.LOGLEVEL_ERROR, "getDependencyIDs: null Plugin.");
+            return IDs;
+        }
+
+        List<String> Descriptions = getDependencyDescriptions(Plugin);
+
+        for (String D : Descriptions) {
+            if (D != null)
+                IDs.add(createIdFromDescription(D));
+        }
+
+        Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "getDependencyIDs: IDs = " + IDs);
+        return IDs;
     }
 
     /*
      * Helper method needed because .equals and .contains do not work for Sage Plugin Objects.
      */
-    static public boolean PluginsAreEqual(Object P1, Object P2) {
+    private static boolean PluginsAreEqual(Object P1, Object P2) {
         if (P1 == null || P2 == null) {
             return false;
         }
@@ -249,7 +364,7 @@ public class PluginAndDependencies {
     /*
      * Helper method needed because .equals and .contains do not work for Sage Plugin Objects.
      */
-    static private boolean setContainsPlugin(Set<Object> List, Object Plugin) {
+    private static boolean listContainsPlugin(List<Object> List, Object Plugin) {
 
         if (List == null || Plugin == null || List.isEmpty())
             return false;

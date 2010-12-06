@@ -33,7 +33,7 @@ public class Log {
     /**
      * Gets the one and only instance for the Log class.
      * <p>
-     * @return  The instance for hte Logger.
+     * @return  The instance for the Logger.
      */
     public static Log getInstance() {
         return instance;
