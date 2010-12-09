@@ -186,11 +186,68 @@ public class PluginAndDependencies {
                 if (PluginsAreEqual(ThePlugin, Dependency.Plugin) || isNeeded(ThePlugin, Dependency.Dependencies)) {
                     return true;
                 }
+
+                // Return false if the dependencies are all contained in this Plugin.
+                //if (containsAllDependencies(ThePlugin, Dependency.Dependencies)) {
+                    //return false;
+                //}
             }
         }
 
         // It wasn't needed.
         return false;
+    }
+
+    /*
+     * See if thePlugin is contained in TheTree or any of its dependencies.
+     */
+    private static boolean treeContainsPlugin(PluginAndDependencies TheTree, Object ThePlugin) {
+
+        // Parameter check.
+        if (ThePlugin == null || TheTree == null) {
+            Log.getInstance().write(Log.LOGLEVEL_WARN, "treeContainsPlugin: Found null parameter.");
+            return false;
+        }
+
+        // See if it matches the current Plugin.
+        if (PluginsAreEqual(ThePlugin, TheTree.Plugin)) {
+            return true;
+        }
+
+        // See if it matches any of the other dependencies.
+        for (PluginAndDependencies Dependency : TheTree.Dependencies) {
+            if (treeContainsPlugin(Dependency, ThePlugin)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /*
+     * See if SourceTree.Plugin and all dependencies appear in TestTree.
+     */
+    private static boolean treeContainsAllDependencies(PluginAndDependencies SourceTree, PluginAndDependencies TestTree) {
+
+        // Parameter check.
+        if (SourceTree == null || TestTree == null) {
+            Log.getInstance().write(Log.LOGLEVEL_WARN, "containsAllDependencies: Found null parameter.");
+            return false;
+        }
+
+        // Make sure testTree contains the Plugin.
+        if (!treeContainsPlugin(TestTree, SourceTree.Plugin)) {
+            return false;
+        }
+
+        // Now make sure TestTree contains ALL of the dependencies.
+        for (PluginAndDependencies Dependency : SourceTree.Dependencies) {
+            if (!treeContainsAllDependencies(Dependency, TestTree)) {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     /**
