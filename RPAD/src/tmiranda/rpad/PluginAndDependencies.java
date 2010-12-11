@@ -156,17 +156,17 @@ public class PluginAndDependencies {
     }
 
     /**
-     * Determines if the Plugin specified is needed by any of the Plugins in the List
+     * Determines if a Plugin is needed by any of the Plugins in the List
      * of PluginAndDependencies.
      *
-     * @param Plugin
-     * @param Dependencies
+     * @param The Tree for the Plugin.
+     * @param Dependencies.
      * @return
      */
-    public static boolean isNeeded(Object ThePlugin, List<PluginAndDependencies> Dependencies) {
+    public static boolean isNeeded(Object Plugin, List<PluginAndDependencies> Dependencies) {
 
         // Parameter check.
-        if (ThePlugin == null || Dependencies == null) {
+        if (Plugin == null || Dependencies == null) {
             Log.getInstance().write(Log.LOGLEVEL_WARN, "isNeeded: Found null Plugin or Dependencies.");
             return false;
         }
@@ -179,23 +179,72 @@ public class PluginAndDependencies {
                 return false;
             }
 
-            // Skip if we are comparing ThePlugin to itself.
-            if (!(PluginsAreEqual(ThePlugin, Dependency.Plugin) && isRoot(Dependency))) {
+            // Skip (not needed) if we are comparing ThePlugin to itself.
+            if (!(PluginsAreEqual(Plugin, Dependency.Plugin) && isRoot(Dependency))) {
              
                 // Return true if it's needed by this Plugin or any of its dependencies.
-                if (PluginsAreEqual(ThePlugin, Dependency.Plugin) || isNeeded(ThePlugin, Dependency.Dependencies)) {
+                if (PluginsAreEqual(Plugin, Dependency.Plugin) || isNeeded(Plugin, Dependency.Dependencies)) {
                     return true;
                 }
-
-                // Return false if the dependencies are all contained in this Plugin.
-                //if (containsAllDependencies(ThePlugin, Dependency.Dependencies)) {
-                    //return false;
-                //}
             }
         }
 
         // It wasn't needed.
         return false;
+    }
+
+    public static boolean isOnlyNeededBy(Object Plugin, PluginAndDependencies Tree, List<Object> InstalledPlugins) {
+
+        // Parameter check.
+        if (Plugin == null || Tree == null || InstalledPlugins == null) {
+            Log.getInstance().write(Log.LOGLEVEL_WARN, "isOnlyNeededBy: Found null parameter.");
+            return false;
+        }
+
+        // See what Plugins use this Plugin.
+        List<String> UsedIn = getPluginNamesThatUse(Plugin, InstalledPlugins);
+
+        // Error check.
+        if (UsedIn == null || UsedIn.isEmpty()) {
+            Log.getInstance().write(Log.LOGLEVEL_WARN, "isOnlyNeededBy: null or empty UsedIn.");
+            return false;
+        }
+
+        for (String PluginID : UsedIn) {
+
+            Object ThisPlugin = getPluginForID(PluginID, InstalledPlugins);
+
+            if (ThisPlugin != null) {
+
+                for (Object InstalledPlugin : InstalledPlugins) {
+
+                    // Skip if we are comparing Plugin to itself.
+                    if (!PluginsAreEqual(ThisPlugin, Plugin)) {
+
+                        // Create a Tree for this plugin.
+                        PluginAndDependencies InstalledPluginTree = new PluginAndDependencies(InstalledPlugin, InstalledPlugin);
+
+                        // See if the Tree contains it.
+                        if (treeContainsPlugin(InstalledPluginTree, ThisPlugin)) {
+                            return false;
+                        }
+                    }
+                }
+            }
+        }
+
+        return true;
+        
+    }
+
+    public static Object getPluginForID(String ID, List<Object> InstalledPlugins) {
+
+        for (Object Plugin : InstalledPlugins) {
+            if (ID.compareToIgnoreCase(PluginAPI.GetPluginIdentifier(Plugin)) == 0)
+                return Plugin;
+        }
+
+        return null;
     }
 
     /*
@@ -227,7 +276,7 @@ public class PluginAndDependencies {
     /*
      * See if SourceTree.Plugin and all dependencies appear in TestTree.
      */
-    private static boolean treeContainsAllDependencies(PluginAndDependencies SourceTree, PluginAndDependencies TestTree) {
+    private static boolean XXXtreeContainsAllDependencies(PluginAndDependencies TestTree, PluginAndDependencies SourceTree) {
 
         // Parameter check.
         if (SourceTree == null || TestTree == null) {
@@ -242,7 +291,7 @@ public class PluginAndDependencies {
 
         // Now make sure TestTree contains ALL of the dependencies.
         for (PluginAndDependencies Dependency : SourceTree.Dependencies) {
-            if (!treeContainsAllDependencies(Dependency, TestTree)) {
+            if (!XXXtreeContainsAllDependencies(Dependency, TestTree)) {
                 return false;
             }
         }
@@ -403,7 +452,7 @@ public class PluginAndDependencies {
     /*
      * Helper method needed because .equals and .contains do not work for Sage Plugin Objects.
      */
-    private static boolean PluginsAreEqual(Object P1, Object P2) {
+    public static boolean PluginsAreEqual(Object P1, Object P2) {
         if (P1 == null || P2 == null) {
             return false;
         }
