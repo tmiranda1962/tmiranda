@@ -27,7 +27,7 @@ public class PluginAndDependencies {
         Parent = TheParent;
 
         if (ThePlugin == null || TheParent == null) {
-            Log.getInstance().write(Log.LOGLEVEL_ERROR, "PluginAndDependecies: Error. null paramter.");
+            Log.getInstance().write(Log.LOGLEVEL_ERROR, "PluginAndDependecies: Error. null parameter.");
             return;
         }
 
@@ -193,6 +193,14 @@ public class PluginAndDependencies {
         return false;
     }
 
+    /**
+     * See if the specified Plugin is only needed in the dependency tree provided.
+     *
+     * @param Plugin
+     * @param Tree
+     * @param InstalledPlugins
+     * @return
+     */
     public static boolean isOnlyNeededBy(Object Plugin, PluginAndDependencies Tree, List<Object> InstalledPlugins) {
 
         // Parameter check.
@@ -202,7 +210,7 @@ public class PluginAndDependencies {
         }
 
         // See what Plugins use this Plugin.
-        List<String> UsedIn = getPluginNamesThatUse(Plugin, InstalledPlugins);
+        List<String> UsedIn = getPluginIDsThatUse(Plugin, InstalledPlugins);
 
         // Error check.
         if (UsedIn == null || UsedIn.isEmpty()) {
@@ -230,6 +238,8 @@ public class PluginAndDependencies {
                         }
                     }
                 }
+            } else {
+                Log.getInstance().write(Log.LOGLEVEL_WARN, "isOnlyNeededBy: Found null Plugin.");
             }
         }
 
@@ -237,6 +247,13 @@ public class PluginAndDependencies {
         
     }
 
+    /**
+     * Return the installed Plugin with the ID specified.
+     *
+     * @param ID
+     * @param InstalledPlugins
+     * @return
+     */
     public static Object getPluginForID(String ID, List<Object> InstalledPlugins) {
 
         for (Object Plugin : InstalledPlugins) {
@@ -245,6 +262,24 @@ public class PluginAndDependencies {
         }
 
         return null;
+    }
+
+    public static List<Object> getPluginsThatAreNotDependencies(List<Object> InstalledPlugins) {
+
+        List<Object> TheList = new ArrayList<Object>();
+
+        if ((InstalledPlugins == null) || (InstalledPlugins.isEmpty()))  {
+            Log.getInstance().write(Log.LOGLEVEL_WARN, "getPluginsThatAreNoDependencies: Found null or empty parameter.");
+            return TheList;
+        }
+
+        for (Object Plugin : InstalledPlugins) {
+            if (getPluginIDsThatUse(Plugin, InstalledPlugins).isEmpty()) {
+                TheList.add(Plugin);
+            }
+        }
+
+        return TheList;
     }
 
     /*
@@ -271,32 +306,6 @@ public class PluginAndDependencies {
         }
 
         return false;
-    }
-
-    /*
-     * See if SourceTree.Plugin and all dependencies appear in TestTree.
-     */
-    private static boolean XXXtreeContainsAllDependencies(PluginAndDependencies TestTree, PluginAndDependencies SourceTree) {
-
-        // Parameter check.
-        if (SourceTree == null || TestTree == null) {
-            Log.getInstance().write(Log.LOGLEVEL_WARN, "containsAllDependencies: Found null parameter.");
-            return false;
-        }
-
-        // Make sure testTree contains the Plugin.
-        if (!treeContainsPlugin(TestTree, SourceTree.Plugin)) {
-            return false;
-        }
-
-        // Now make sure TestTree contains ALL of the dependencies.
-        for (PluginAndDependencies Dependency : SourceTree.Dependencies) {
-            if (!XXXtreeContainsAllDependencies(Dependency, TestTree)) {
-                return false;
-            }
-        }
-
-        return true;
     }
 
     /**
@@ -329,6 +338,30 @@ public class PluginAndDependencies {
 
         return NewList;
 
+    }
+
+    public static List<String> getPluginIDsThatUse(Object Plugin, List<Object> InstalledPlugins) {
+
+        List<String> NewList = new ArrayList<String>();
+
+        if (Plugin == null || InstalledPlugins == null || InstalledPlugins.isEmpty())
+            return NewList;
+
+        String ThisID = PluginAPI.GetPluginIdentifier(Plugin);
+
+        for (Object ThisPlugin : InstalledPlugins) {
+
+            if (!PluginAndDependencies.PluginsAreEqual(Plugin, ThisPlugin)) {
+                List<String> DependencyIDs = getDependencyIDs(ThisPlugin);
+
+                if (DependencyIDs.contains(ThisID)) {
+                    NewList.add(PluginAPI.GetPluginIdentifier(ThisPlugin));
+                }
+            }
+
+        }
+
+        return NewList;
     }
 
     /*

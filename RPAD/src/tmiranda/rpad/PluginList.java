@@ -77,4 +77,18 @@ public class PluginList extends ArrayList {
         
         return Found;
     }
+
+    public void clear() {
+        TheList.clear();
+    }
+
+    @Override
+    public int size() {
+        return TheList.size();
+    }
+
+    @Override
+    public Object get(int i) {
+        return TheList.get(i);
+    }
 }
