@@ -19,6 +19,8 @@ public class Log {
     public static final int LOGLEVEL_VERBOSE    = 10;
     public static final int LOGLEVEL_ALL        = 0;
 
+    public static final String  DEFAULT_LOGLEVEL    = "50";
+
     private static int CurrentLogLevel = LOGLEVEL_WARN;
 
     private static final Log instance = new Log();
@@ -28,7 +30,17 @@ public class Log {
     /*
      * Private constructor.  Only let getInstance return a valid instance.
      */
-    private Log() {};
+    private Log() {
+        String LoglevelString = Configuration.GetProperty("rpad/loglevel", DEFAULT_LOGLEVEL);
+        
+        try {
+            CurrentLogLevel = Integer.parseInt(LoglevelString);
+            System.out.println("RPAD: Log - Setting CurrentLoglevel to " + LoglevelString);
+        } catch (NumberFormatException e) {
+            CurrentLogLevel = LOGLEVEL_WARN;
+            System.out.println("RPAD: Log - Malformed loglevel, setting to WARN. " + e.getMessage());
+        }
+    }
 
     /**
      * Gets the one and only instance for the Log class.
