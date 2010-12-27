@@ -19,7 +19,6 @@ public class DelimitedString {
     DelimitedString(String Str, String TheDelimiter) {
         Delimiter = TheDelimiter;
         TheString = (Str==null || Str.isEmpty() ? null : Str);
-System.out.println("THESTRING = <" + TheString + ">");
     }
 
     boolean contains(String Element) {
@@ -56,7 +55,6 @@ System.out.println("THESTRING = <" + TheString + ">");
         List<String> UpdatedList = new ArrayList<String>();
 
         for (String S : CurrentList) {
-System.out.println("S AND TheString <" + S + "><" + Element + ">");
             if (!S.equals(Element)) {
                 UpdatedList.add(S);
             }

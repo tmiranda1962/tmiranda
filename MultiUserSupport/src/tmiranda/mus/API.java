@@ -74,42 +74,66 @@ public class API {
 
     
     // Only invoke on MediaFile that has passed isMediaFileForLoggedOnUser filter.
-    public static boolean isDontLike(String UserID, Object MediaFile) {
-        MultiMediaFile MMF = new MultiMediaFile(UserID, MediaFile);
+    public static boolean isDontLike(Object MediaFile) {
+        MultiMediaFile MMF = new MultiMediaFile(getLoggedinUser(), MediaFile);
         return MMF.isDontLike();
     }
 
     // Only invoke on MediaFile that has passed isMediaFileForLoggedOnUser filter.
-    public static void setDontLike(String UserID, Object MediaFile, String value) {
-        MultiMediaFile MMF = new MultiMediaFile(UserID, MediaFile);
+    public static void setDontLike(Object MediaFile, String value) {
+        MultiMediaFile MMF = new MultiMediaFile(getLoggedinUser(), MediaFile);
         MMF.setDontLike(value);
         return;
     }
 
     // Only invoke on MediaFile that has passed isMediaFileForLoggedOnUser filter.
-    public static boolean isArchived(String UserID, Object MediaFile) {
-        MultiMediaFile MMF = new MultiMediaFile(UserID, MediaFile);
+    public static boolean isArchived(Object MediaFile) {
+        MultiMediaFile MMF = new MultiMediaFile(getLoggedinUser(), MediaFile);
         return MMF.isArchived();
     }
 
     // Only invoke on MediaFile that has passed isMediaFileForLoggedOnUser filter.
-    public static void setArchived(String UserID, Object MediaFile, String value) {
-        MultiMediaFile MMF = new MultiMediaFile(UserID, MediaFile);
+    public static void setArchived(Object MediaFile, String value) {
+        MultiMediaFile MMF = new MultiMediaFile(getLoggedinUser(), MediaFile);
         MMF.setArchived(value);
         return;
     }
 
-    // Only invoke on MediaFile that has passed isMediaFileForLoggedOnUser filter.
-    public static boolean isFavorite(String UserID, Object MediaFile) {
-        MultiMediaFile MMF = new MultiMediaFile(UserID, MediaFile);
-        return MMF.isFavorite();
+    // Invoke IN PLACE OF core API.
+    public static boolean isFavorite(Object MediaFile) {
+
+        Object Favorite = FavoriteAPI.GetFavoriteForAiring(MediaFile);
+
+        if (Favorite==null) {
+            return false;
+        }
+
+        MultiFavorite MF = new MultiFavorite(getLoggedinUser(), MediaFile);
+        return MF.isFavorite();
     }
 
-    // Only invoke on MediaFile that has passed isMediaFileForLoggedOnUser filter.
-    public static void setFavorite(String UserID, Object MediaFile, String value) {
-        MultiMediaFile MMF = new MultiMediaFile(UserID, MediaFile);
-        MMF.setFavorite(value);
+    // Invoke IN PLACE OF core API.
+    public static boolean isNotManualOrFavorite(Object MediaFile) {
+        return (!(AiringAPI.IsManualRecord(MediaFile) || isFavorite(MediaFile)));
+    }
+
+    // Invoke IN ADDITION TO core API.
+    public static void addFavorite(Object Favorite) {
+        MultiFavorite MF = new MultiFavorite(getLoggedinUser(), Favorite);
+        MF.addFavorite();
         return;
+    }
+
+    // Invoke this IN PLACE OF DeleteMediaFile().
+    public static boolean deleteMediaFile(Object MediaFile) {
+        MultiMediaFile MMF = new MultiMediaFile(getLoggedinUser(), MediaFile);
+        return MMF.delete(false);
+    }
+
+    // Invoke this IN PLACE OF DeleteMediaFileWithoutPrejudice().
+    public static boolean deleteMediaFileWithoutPrejudice(Object MediaFile) {
+        MultiMediaFile MMF = new MultiMediaFile(getLoggedinUser(), MediaFile);
+        return MMF.delete(true);
     }
 
 
@@ -146,10 +170,67 @@ public class API {
 
         for (Object Record : Records) {
             String User = UserRecordAPI.GetUserRecordData(Record, "UserID");
-            Log.getInstance().write(Log.LOGLEVEL_WARN, "getAllDefinedUsers: Found User " + User);
-            Users.add(User);
+            Log.getInstance().write(Log.LOGLEVEL_ALL, "getAllDefinedUsers: Found User " + User);
+            if (User != null && !User.isEmpty())
+                Users.add(User);
         }
 
         return Users;
+    }
+
+    public static void removeUserFromAllMediaFiles(String UserID) {
+
+        if (UserID==null || UserID.isEmpty()) {
+            Log.getInstance().write(Log.LOGLEVEL_TRACE, "removeUserFromAllMediaFiles: null UserID.");
+            return;
+        }
+
+        Object[] AllMediaFiles = MediaFileAPI.GetMediaFiles();
+
+        if (AllMediaFiles==null || AllMediaFiles.length==0) {
+            Log.getInstance().write(Log.LOGLEVEL_TRACE, "removeUserFromAllMediaFiles: No MediaFiles.");
+            return;
+        }
+
+        for (Object MediaFile : AllMediaFiles)
+            removeUserFromMediaFile(UserID, MediaFile);
+
+        return;
+    }
+
+    public static void addUserToAllMediaFiles(String UserID) {
+
+        if (UserID==null || UserID.isEmpty()) {
+            Log.getInstance().write(Log.LOGLEVEL_TRACE, "addUserToAllMediaFiles: null UserID.");
+            return;
+        }
+
+        Object[] AllMediaFiles = MediaFileAPI.GetMediaFiles();
+
+        if (AllMediaFiles==null || AllMediaFiles.length==0) {
+            Log.getInstance().write(Log.LOGLEVEL_TRACE, "addUserToAllMediaFiles: No MediaFiles.");
+            return;
+        }
+
+        for (Object MediaFile : AllMediaFiles)
+            addUserToMediaFile(UserID, MediaFile);
+
+        return;
+    }
+
+
+    public static void clearUserDatabase() {
+        UserRecordAPI.DeleteAllUserRecords(MediaFileControl.USER_RECORD_KEY);
+    }
+
+    public static void clearMediaFileDatabase() {
+
+        Object[] MediaFiles = MediaFileAPI.GetMediaFiles();
+
+        if (MediaFiles == null || MediaFiles.length==0)
+            return;
+
+        for (Object MediaFile : MediaFiles)
+            removeAllUsersFromMediaFile(MediaFile);
     }
 }

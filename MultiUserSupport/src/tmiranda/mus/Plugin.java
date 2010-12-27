@@ -115,8 +115,8 @@ public class Plugin implements sage.SageTVPlugin, SageTVEventListener {
 
         List<String> CommandList = new ArrayList<String>();
 
+        // See if the user is logged in as "Admin".
         String User = API.getLoggedinUser();
-
         boolean isAdmin = (User == null ? false : User.equalsIgnoreCase("Admin"));
 
         if (!isAdmin) {

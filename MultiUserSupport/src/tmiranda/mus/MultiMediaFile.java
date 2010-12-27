@@ -3,6 +3,7 @@
  */
 package tmiranda.mus;
 
+import java.util.*;
 import sagex.api.*;
 
 /**
@@ -25,62 +26,102 @@ public class MultiMediaFile extends MediaFileControl {
     }
 
     boolean isDeleted() {
-        String deleted = MediaFileAPI.GetMediaFileMetadata(sageMediaFile, userID+DELETED);
+        if (!isValid())
+            return true;
+
+        String deleted = null;
+          
+        if (isMediaFile()) 
+            deleted = MediaFileAPI.GetMediaFileMetadata(sageMediaFile, userID+DELETED);
+        else
+            deleted = UserRecordAPI.GetUserRecordData(userRecord, userID+DELETED);
+
         return (deleted == null ? false : deleted.equalsIgnoreCase("true"));
     }
 
     boolean isDontLike() {
 
-        if (useSageDataBase(userID)) {
+        if (!isValid() || useSageDataBase(userID)) {
             return AiringAPI.IsDontLike(sageMediaFile);
         }
 
-        String DontLike = MediaFileAPI.GetMediaFileMetadata(sageMediaFile, userID+DONTLIKE);
+        String DontLike = null;
+         
+        if (isMediaFile()) 
+            DontLike = MediaFileAPI.GetMediaFileMetadata(sageMediaFile, userID+DONTLIKE);
+        else
+            DontLike = UserRecordAPI.GetUserRecordData(userRecord, userID+DONTLIKE);
 
         return (DontLike==null ? false : DontLike.equalsIgnoreCase("true"));
     }
     
     void setDontLike(String value) {
-        MediaFileAPI.SetMediaFileMetadata(sageMediaFile, userID+DONTLIKE, checkBooleanString(value));
+        if (!isValid())
+            return;
+
+        if (isMediaFile())
+            MediaFileAPI.SetMediaFileMetadata(sageMediaFile, userID+DONTLIKE, checkBooleanString(value));
+        else
+            UserRecordAPI.SetUserRecordData(userRecord, userID+DONTLIKE, checkBooleanString(value));
     }
 
     boolean isArchived() {
 
-        if (useSageDataBase(userID)) {
+        if (!isValid() || useSageDataBase(userID)) {
             return MediaFileAPI.IsLibraryFile(sageMediaFile);
         }
 
-        String Archived = MediaFileAPI.GetMediaFileMetadata(sageMediaFile, userID+ARCHIVED);
+        String Archived = null;
+                
+        if (isMediaFile()) 
+            Archived = MediaFileAPI.GetMediaFileMetadata(sageMediaFile, userID+ARCHIVED);
+        else
+            Archived = UserRecordAPI.GetUserRecordData(userRecord, userID+ARCHIVED);
 
         return (Archived==null ? false : Archived.equalsIgnoreCase("true"));
     }
 
     void setArchived(String value) {
-        MediaFileAPI.SetMediaFileMetadata(sageMediaFile, userID+ARCHIVED, checkBooleanString(value));
+        if (!isValid())
+            return;
+
+        if (isMediaFile())
+            MediaFileAPI.SetMediaFileMetadata(sageMediaFile, userID+ARCHIVED, checkBooleanString(value));
+        else
+            UserRecordAPI.SetUserRecordData(userRecord, userID+ARCHIVED, checkBooleanString(value));
     }
 
-    boolean isFavorite() {
+    boolean delete(boolean WithoutPrejudice) {
 
-        if (useSageDataBase(userID)) {
-            return AiringAPI.IsFavorite(sageMediaFile);
+        // If we have an invalid MMF, just return error.
+        if (!isValid()) {
+            return false;
         }
 
-        String Favorite = MediaFileAPI.GetMediaFileMetadata(sageMediaFile, userID+FAVORITE);
+        // Mark the MediaFile as deleted.
+        if (isMediaFile())
+            MediaFileAPI.SetMediaFileMetadata(sageMediaFile, userID+DELETED, "true");
+        else
+            UserRecordAPI.SetUserRecordData(userRecord, userID+DELETED, "true");
 
-        return (Favorite==null ? false : Favorite.equalsIgnoreCase("true"));
-    }
+        // If the user has access to the file (Admin, explicitly allowed, globally all allowed, global allow this user)
+        // delete it if this is the last user.
+        if (isUserAllowed(userID)) {
 
-    void setFavorite(String value) {
-        MediaFileAPI.SetMediaFileMetadata(sageMediaFile, userID+FAVORITE, checkBooleanString(value));
-    }
+            // Remove this user.
+            removeUser(userID);
 
-    boolean delete() {
+            // See who else can access it.
+            List<String> allowedUsers = getUserList();
 
-        if (useSageDataBase(userID)) {
-            return MediaFileAPI.DeleteFile(sageMediaFile);
+            // If nobody, then delete it for real.
+            if (allowedUsers == null || allowedUsers.isEmpty()) {
+                Log.getInstance().write(Log.LOGLEVEL_TRACE, "delete: Deleting physical file for user " + userID);
+                return (WithoutPrejudice ? MediaFileAPI.DeleteFileWithoutPrejudice(sageMediaFile) : MediaFileAPI.DeleteFile(sageMediaFile));
+            }
         }
 
-        MediaFileAPI.SetMediaFileMetadata(sageMediaFile, userID+DELETED, "true");
+        Log.getInstance().write(Log.LOGLEVEL_TRACE, "delete: Leaving physical file intact.");
         return true;
     }
 
