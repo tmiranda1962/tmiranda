@@ -14,7 +14,7 @@ import sagex.api.*;
  */
 public class API {
 
-    private static Map<String,String> LoggedOnUserMap = new HashMap<String, String>();
+    //private static Map<String,String> LoggedOnUserMap = new HashMap<String, String>();
 
     /**
      * Return the ID of the last user that was logged on. Returns null if config options are set to
@@ -36,17 +36,22 @@ public class API {
             return;
         }
 
-        String UIContext = Global.GetUIContextName();
-        LoggedOnUserMap.put(UIContext, UserID);
-        Configuration.SetProperty(Plugin.PROPERTY_LAST_LOGGEDIN_USER, UserID);
-        Log.getInstance().write(Log.LOGLEVEL_TRACE, "loginUser: Set logged in user to " + UIContext + ":" + UserID);
+        User user = new User(UserID);
+        user.logOn();
+        //String UIContext = Global.GetUIContextName();
+        //LoggedOnUserMap.put(UIContext, UserID);
+        //Configuration.SetProperty(Plugin.PROPERTY_LAST_LOGGEDIN_USER, UserID);
+        //Log.getInstance().write(Log.LOGLEVEL_TRACE, "loginUser: Set logged in user to " + UserID);
     }
 
     public static void logoutCurrentUser() {
-        String UIContext = Global.GetUIContextName();
-        LoggedOnUserMap.remove(UIContext);
-        Configuration.SetProperty(Plugin.PROPERTY_LAST_LOGGEDIN_USER, null);
-        Log.getInstance().write(Log.LOGLEVEL_TRACE, "logoutUser: User has been logged out of UIContext " + UIContext);
+
+        User user = new User(getLastLoggedOnUser());
+        user.logOff();
+        //String UIContext = Global.GetUIContextName();
+        //LoggedOnUserMap.remove(UIContext);
+        //Configuration.SetProperty(Plugin.PROPERTY_LAST_LOGGEDIN_USER, null);
+        //Log.getInstance().write(Log.LOGLEVEL_TRACE, "logoutUser: User has been logged out of UIContext " + UIContext);
     }
 
     public static String getLoggedinUser() {
@@ -54,13 +59,20 @@ public class API {
     }
 
     public static boolean isMediaFileForLoggedOnUser(Object MediaFile) {
-        if (getLoggedinUser() == null) {
+        String UserID = getLoggedinUser();
+
+        if (UserID == null) {
             return false;
         }
 
-        String UIContext = Global.GetUIContextName();
-        String UserID = LoggedOnUserMap.get(UIContext);
-        Log.getInstance().write(Log.LOGLEVEL_ALL, "isMediaFileForLoggedOnUser: Checking UserID " + UIContext + ":" + UserID);
+        if (UserID.equalsIgnoreCase(Plugin.SUPER_USER))
+            return true;
+
+        // Why do this?
+        //String UIContext = Global.GetUIContextName();
+        //UserID = LoggedOnUserMap.get(UIContext);
+        //Log.getInstance().write(Log.LOGLEVEL_ALL, "isMediaFileForLoggedOnUser: Checking UserID " + UIContext + ":" + UserID);
+        
         MultiMediaFile MMF = new MultiMediaFile(UserID, MediaFile);
         return !MMF.isDeleted() && MMF.isUserAllowed(UserID);
     }
@@ -72,17 +84,26 @@ public class API {
             return null;
     }
 
-    
-    // Only invoke on MediaFile that has passed isMediaFileForLoggedOnUser filter.
+
+
+
+    // Use IN PLACE OF core API.
     public static boolean isDontLike(Object MediaFile) {
         MultiMediaFile MMF = new MultiMediaFile(getLoggedinUser(), MediaFile);
         return MMF.isDontLike();
     }
 
-    // Only invoke on MediaFile that has passed isMediaFileForLoggedOnUser filter.
-    public static void setDontLike(Object MediaFile, String value) {
+    // Use IN PLACE OF core API.
+    public static void setDontLike(Object MediaFile) {
         MultiMediaFile MMF = new MultiMediaFile(getLoggedinUser(), MediaFile);
-        MMF.setDontLike(value);
+        MMF.setDontLike("true");
+        return;
+    }
+
+    // Use IN PLACE OF core API.
+    public static void clearDontLike(Object MediaFile) {
+        MultiMediaFile MMF = new MultiMediaFile(getLoggedinUser(), MediaFile);
+        MMF.setDontLike("false");
         return;
     }
 
@@ -124,6 +145,13 @@ public class API {
         return;
     }
 
+    // Invoke IN PLACE OF core API.
+    public static void removeFavorite(Object Favorite) {
+        MultiFavorite MF = new MultiFavorite(getLoggedinUser(), Favorite);
+        MF.removeFavorite();
+        return;
+    }
+
     // Invoke this IN PLACE OF DeleteMediaFile().
     public static boolean deleteMediaFile(Object MediaFile) {
         MultiMediaFile MMF = new MultiMediaFile(getLoggedinUser(), MediaFile);
@@ -136,15 +164,67 @@ public class API {
         return MMF.delete(true);
     }
 
+    // Use IN PLACE OF core API.
+    public static void setWatched(Object MediaFile) {
+        MultiMediaFile MMF = new MultiMediaFile(getLoggedinUser(), MediaFile);
+        MMF.setWatched("true");
+        return;
+    }
+
+
+    /*
+     * User related methods.
+     */
+    public static boolean userExists(String UserID) {
+
+        if (UserID == null) {
+            Log.getInstance().write(Log.LOGLEVEL_ERROR, "userExists: null UserID.");
+            return false;
+        }
+
+        User user = new User(UserID);
+        return user.exists();
+    }
+
+    public static boolean createNewUser(String UserID, String Password) {
+        if (UserID==null || Password==null || UserID.isEmpty() || Password.isEmpty()) {
+            Log.getInstance().write(Log.LOGLEVEL_WARN, "createNewUser: Bad parameters " + UserID + ":" + Password);
+            return false;
+        }
+
+        User user = new User(UserID);
+
+        if (user.exists()) {
+            Log.getInstance().write(Log.LOGLEVEL_WARN, "createNewUser: User already exists " + UserID);
+            return false;
+        }
+
+        return user.create(Password);
+    }
+
+    public static boolean removeUser(String UserID) {
+        if (UserID==null || UserID.isEmpty()) {
+            Log.getInstance().write(Log.LOGLEVEL_WARN, "removeUser: Bad parameters " + UserID);
+            return false;
+        }
+
+        User user = new User(UserID);
+        return user.destroy();
+    }
+
+    public static String getUserPassword(String UserID) {
+        User user = new User(UserID);
+        return user.getPassword();
+    }
 
     public static void addUserToMediaFile(String UserID, Object MediaFile) {
-        MediaFileControl MFC = new MediaFileControl(MediaFile);
-        MFC.addUser(UserID);
+        User user = new User(UserID);
+        user.addToMediaFile(MediaFile);
     }
 
     public static void removeUserFromMediaFile(String UserID, Object MediaFile) {
-        MediaFileControl MFC = new MediaFileControl(MediaFile);
-        MFC.removeUser(UserID);
+        User user = new User(UserID);
+        user.removeFromMediaFile(MediaFile);
     }
 
     public static void removeAllUsersFromMediaFile(Object MediaFile) {
@@ -158,24 +238,7 @@ public class API {
     }
 
     public static List<String> getAllDefinedUsers() {
-
-        List<String> Users = new ArrayList<String>();
-
-        Object[] Records = UserRecordAPI.GetAllUserRecords("MultiUser");
-
-        if (Records==null || Records.length==0) {
-            Log.getInstance().write(Log.LOGLEVEL_WARN, "getAllDefinedUsers: null Records.");
-            return Users;
-        }
-
-        for (Object Record : Records) {
-            String User = UserRecordAPI.GetUserRecordData(Record, "UserID");
-            Log.getInstance().write(Log.LOGLEVEL_ALL, "getAllDefinedUsers: Found User " + User);
-            if (User != null && !User.isEmpty())
-                Users.add(User);
-        }
-
-        return Users;
+        return User.getAllUsers();
     }
 
     public static void removeUserFromAllMediaFiles(String UserID) {
@@ -185,16 +248,8 @@ public class API {
             return;
         }
 
-        Object[] AllMediaFiles = MediaFileAPI.GetMediaFiles();
-
-        if (AllMediaFiles==null || AllMediaFiles.length==0) {
-            Log.getInstance().write(Log.LOGLEVEL_TRACE, "removeUserFromAllMediaFiles: No MediaFiles.");
-            return;
-        }
-
-        for (Object MediaFile : AllMediaFiles)
-            removeUserFromMediaFile(UserID, MediaFile);
-
+        User user = new User(UserID);
+        user.removeFromAllMediaFiles();
         return;
     }
 
@@ -205,22 +260,15 @@ public class API {
             return;
         }
 
-        Object[] AllMediaFiles = MediaFileAPI.GetMediaFiles();
-
-        if (AllMediaFiles==null || AllMediaFiles.length==0) {
-            Log.getInstance().write(Log.LOGLEVEL_TRACE, "addUserToAllMediaFiles: No MediaFiles.");
-            return;
-        }
-
-        for (Object MediaFile : AllMediaFiles)
-            addUserToMediaFile(UserID, MediaFile);
+        User user = new User(UserID);
+        user.addToAllMediaFiles();
 
         return;
     }
 
 
     public static void clearUserDatabase() {
-        UserRecordAPI.DeleteAllUserRecords(MediaFileControl.USER_RECORD_KEY);
+        UserRecordAPI.DeleteAllUserRecords(Plugin.STORE_RECORD_KEY);
     }
 
     public static void clearMediaFileDatabase() {

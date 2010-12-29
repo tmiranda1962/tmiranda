@@ -18,6 +18,9 @@ public class Plugin implements sage.SageTVPlugin, SageTVEventListener {
 
     private static final String     VERSION = "0.01";
 
+    public static final String  STORE_RECORD_KEY = "MultiUser";
+    public static final String  SUPER_USER = "Admin";
+
     private static final String     SETTING_LOGLEVEL = "LogLevel";
 
     private static final String     SETTING_NOT_ADMIN = "NotAdmin";

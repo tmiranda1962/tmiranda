@@ -20,9 +20,9 @@ public class MultiMediaFile extends MediaFileControl {
 
     private String  userID = null;
 
-    public MultiMediaFile(String userID, Object MediaFile) {
+    public MultiMediaFile(String UserID, Object MediaFile) {
         super(MediaFile);
-        this.userID = (userID==null ? "null" : userID);
+        userID = (UserID==null ? "null" : UserID);
     }
 
     boolean isDeleted() {
@@ -41,8 +41,8 @@ public class MultiMediaFile extends MediaFileControl {
 
     boolean isDontLike() {
 
-        if (!isValid() || useSageDataBase(userID)) {
-            return AiringAPI.IsDontLike(sageMediaFile);
+        if (!isValid()) {
+            return false;
         }
 
         String DontLike = null;
@@ -52,17 +52,17 @@ public class MultiMediaFile extends MediaFileControl {
         else
             DontLike = UserRecordAPI.GetUserRecordData(userRecord, userID+DONTLIKE);
 
-        return (DontLike==null ? false : DontLike.equalsIgnoreCase("true"));
+        return (DontLike==null || DontLike.isEmpty() ? AiringAPI.IsDontLike(sageMediaFile) : DontLike.equalsIgnoreCase("true"));
     }
     
     void setDontLike(String value) {
         if (!isValid())
             return;
 
-        if (isMediaFile())
-            MediaFileAPI.SetMediaFileMetadata(sageMediaFile, userID+DONTLIKE, checkBooleanString(value));
-        else
-            UserRecordAPI.SetUserRecordData(userRecord, userID+DONTLIKE, checkBooleanString(value));
+        // Set in both Airing DB and MediaFile!
+
+        MediaFileAPI.SetMediaFileMetadata(sageMediaFile, userID+DONTLIKE, checkBooleanString(value));
+        UserRecordAPI.SetUserRecordData(userRecord, userID+DONTLIKE, checkBooleanString(value));
     }
 
     boolean isArchived() {
@@ -78,7 +78,7 @@ public class MultiMediaFile extends MediaFileControl {
         else
             Archived = UserRecordAPI.GetUserRecordData(userRecord, userID+ARCHIVED);
 
-        return (Archived==null ? false : Archived.equalsIgnoreCase("true"));
+        return (Archived==null || Archived.isEmpty() ? MediaFileAPI.IsLibraryFile(sageMediaFile) : Archived.equalsIgnoreCase("true"));
     }
 
     void setArchived(String value) {
@@ -123,6 +123,10 @@ public class MultiMediaFile extends MediaFileControl {
 
         Log.getInstance().write(Log.LOGLEVEL_TRACE, "delete: Leaving physical file intact.");
         return true;
+    }
+
+    void setWatched(String value) {
+        
     }
 
     private String checkBooleanString(String value) {

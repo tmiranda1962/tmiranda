@@ -10,21 +10,24 @@ import sagex.api.*;
 
 /**
  *
- * @author Tom Miranda
+ * @author Tom Miranda.
+ *
+ * Provides the methods to control MediaFile, Airing and Show user-level access.
  */
 public class MediaFileControl {
 
-    public static final String  SUPER_USER = "Admin";
-    public static final String  USER_RECORD_KEY = "MultiUser";
-    public static final String  KEY_PREFIX = "MUSXXX";
+    public static final String  KEY_PREFIX_AIRING = "Airing_";
+    public static final String  KEY_PREFIX_SHOW = "Airing_";        // Make them the same for now.
 
     static final String ALLOWED_USERS = "AllowedUsers";
 
     private List<String>    allowedUsers = null;
     Object                  sageMediaFile = null;
     Integer                 airingID = 0;
-    String                  airingKey = null;
+    String                  Key = null;
     private boolean         isMediaFile = false;
+    private boolean         isAiring = false;
+    private boolean         isShow = false;
     private boolean         isValid = true;
     Object                  userRecord = null;
 
@@ -67,36 +70,41 @@ public class MediaFileControl {
 
         } else if (AiringAPI.IsAiringObject(MediaFile) || ShowAPI.IsShowObject(MediaFile)) {
 
-            // If this is an Airing, use the UserRecordAPI to store a list of valid users.
-            // Show can have multiple Airings.
+            if (AiringAPI.IsAiringObject(MediaFile)) {
+                Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "MediaFileContol: Found an Airing.");
+                isAiring = true;
+                airingID = AiringAPI.GetAiringID(MediaFile);
+                Key = airingID.toString();
+            } else {
+                Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "MediaFileContol: Found a Show.");
+                isShow = true;
+                Key = ShowAPI.GetShowExternalID(MediaFile);
+            }
 
-            isMediaFile = false;
-            Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "MediaFileContol: Found an Airing or Show.");
+            // If this is an Airing or a Show, use the UserRecordAPI to store a list of valid users.
+            // Show can have multiple Airings.         
 
-            airingID = AiringAPI.GetAiringID(MediaFile);
-            airingKey = airingID.toString();
-
-            if (airingKey==null) {
+            if (Key==null) {
                 Log.getInstance().write(Log.LOGLEVEL_ERROR, "MediaFileContol: null airingKey for airingID " + airingID);
                 isValid = false;
                 return;
             }
 
-            airingKey = KEY_PREFIX + airingKey;
+            Key = (isShow ? KEY_PREFIX_SHOW : KEY_PREFIX_AIRING) + Key;
 
-            Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "MediaFileContol: airingKey is " + airingKey);
+            Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "MediaFileContol: airingKey is " + Key);
 
-            userRecord = UserRecordAPI.GetUserRecord(USER_RECORD_KEY, airingKey);
+            userRecord = UserRecordAPI.GetUserRecord(Plugin.STORE_RECORD_KEY, Key);
 
             // If there is no record, create it.
             if (userRecord==null) {
 
                 Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "MediaFileContol: Creating new userRecord.");
 
-                userRecord = UserRecordAPI.AddUserRecord(USER_RECORD_KEY, airingKey);
+                userRecord = UserRecordAPI.AddUserRecord(Plugin.STORE_RECORD_KEY, Key);
 
                 if (userRecord==null) {
-                    Log.getInstance().write(Log.LOGLEVEL_ERROR, "MediaFileContol: Error creating userRecord for airingKey " + airingKey);
+                    Log.getInstance().write(Log.LOGLEVEL_ERROR, "MediaFileContol: Error creating userRecord for airingKey " + Key);
                     isValid = false;
                 }
 
@@ -134,7 +142,11 @@ public class MediaFileControl {
     }
 
     boolean isAiring() {
-        return !isMediaFile && isValid;
+        return isAiring && isValid;
+    }
+
+    boolean isShow() {
+        return isShow && isValid;
     }
 
     /**
@@ -151,14 +163,14 @@ public class MediaFileControl {
             return false;
         }
 
-        if (UserID.equalsIgnoreCase(SUPER_USER)) {
+        if (UserID.equalsIgnoreCase(Plugin.SUPER_USER)) {
             Log.getInstance().write(Log.LOGLEVEL_ALL, "isUserAllowed: Allowing Super User.");
             return true;
         }
 
         // If the MediaFile has not been assigned to any users decide what to so.  Options are dependent
         // on config settings, could be allow all, allow none, or allow certain users.
-        if (!hasAnyUsers()) {
+        /*if (!hasAnyUsers()) {
 
             Log.getInstance().write(Log.LOGLEVEL_ALL, "isUserAllowed: MediaFile is unassigned.");
 
@@ -197,7 +209,7 @@ public class MediaFileControl {
                 Log.getInstance().write(Log.LOGLEVEL_ALL, "isUserAllowed: User not allowed.");
                 return false;
             }
-        }
+        }*/
 
         boolean allowed =  allowedUsers.contains(UserID);
         Log.getInstance().write(Log.LOGLEVEL_ALL, "isUserAllowed: Allowed " + allowed);
@@ -216,7 +228,7 @@ public class MediaFileControl {
 
     boolean useSageDataBase(String UserID) {
 
-        if (!isValid || UserID == null || UserID.equalsIgnoreCase(SUPER_USER) || !isUserExplicitlyAllowed(UserID)) {
+        if (!isValid || UserID == null || UserID.equalsIgnoreCase(Plugin.SUPER_USER) || !isUserExplicitlyAllowed(UserID)) {
             return true;
         } else {
             return false;

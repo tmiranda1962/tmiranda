@@ -102,4 +102,8 @@ public class DelimitedString {
     public String toString() {
         return TheString;
     }
+
+    public boolean isEmpty() {
+        return (TheString==null || TheString.isEmpty());
+    }
 }

@@ -26,7 +26,7 @@ public class MultiFavorite {
         allowedUsers = new ArrayList<String>();
 
         if (Favorite==null || !FavoriteAPI.IsFavoriteObject(Favorite) || User==null || User.isEmpty()) {
-            Log.getInstance().write(Log.LOGLEVEL_ERROR, "MultiFavorite: Invalid Favorite Object.");
+            Log.getInstance().write(Log.LOGLEVEL_ERROR, "MultiFavorite: Invalid Favorite Object. " + User + ":" + Favorite);
             isValid = false;
             return;
         }
@@ -61,7 +61,27 @@ public class MultiFavorite {
         Log.getInstance().write(Log.LOGLEVEL_TRACE, "addFavorite: Users for Favorite " + DS.toString());
     }
 
+    void removeFavorite() {
+
+        if (!isValid)
+            return;
+
+        DelimitedString DS = new DelimitedString(FavoriteAPI.GetFavoriteProperty(sageFavorite, FAVORITE_USERS), ",");
+        DS.removeElement(userID);
+        FavoriteAPI.SetFavoriteProperty(sageFavorite, FAVORITE_USERS, DS.toString());
+        Log.getInstance().write(Log.LOGLEVEL_TRACE, "addFavorite: Users for Favorite " + DS.toString());
+
+        if (DS.isEmpty()) {
+            Log.getInstance().write(Log.LOGLEVEL_TRACE, "addFavorite: Deleting from sage database.");
+            FavoriteAPI.RemoveFavorite(sageFavorite);
+        }
+    }
+
     boolean isFavorite() {
+
+        if (!isValid)
+            return false;
+
         List<String> users = DelimitedString.delimitedStringToList(FavoriteAPI.GetFavoriteProperty(sageFavorite, FAVORITE_USERS), ",");
         return users.contains(userID);
     }
