@@ -107,7 +107,7 @@ public class API {
         return;
     }
 
-    // Only invoke on MediaFile that has passed isMediaFileForLoggedOnUser filter.
+    // Use IN PLACE OF core API.
     public static boolean isArchived(Object MediaFile) {
         MultiMediaFile MMF = new MultiMediaFile(getLoggedinUser(), MediaFile);
         return MMF.isArchived();
@@ -123,13 +123,17 @@ public class API {
     // Invoke IN PLACE OF core API.
     public static boolean isFavorite(Object MediaFile) {
 
+        if (!AiringAPI.IsFavorite(MediaFile)) {
+            return false;
+        }
+
         Object Favorite = FavoriteAPI.GetFavoriteForAiring(MediaFile);
 
         if (Favorite==null) {
             return false;
         }
 
-        MultiFavorite MF = new MultiFavorite(getLoggedinUser(), MediaFile);
+        MultiFavorite MF = new MultiFavorite(getLoggedinUser(), Favorite);
         return MF.isFavorite();
     }
 
@@ -241,7 +245,7 @@ public class API {
         return User.getAllUsers();
     }
 
-    public static void removeUserFromAllMediaFiles(String UserID) {
+    public static void removeUserFromDatabase(String UserID) {
 
         if (UserID==null || UserID.isEmpty()) {
             Log.getInstance().write(Log.LOGLEVEL_TRACE, "removeUserFromAllMediaFiles: null UserID.");
@@ -249,11 +253,11 @@ public class API {
         }
 
         User user = new User(UserID);
-        user.removeFromAllMediaFiles();
+        user.removeFromDataBase();
         return;
     }
 
-    public static void addUserToAllMediaFiles(String UserID) {
+    public static void addUserToDatabase(String UserID) {
 
         if (UserID==null || UserID.isEmpty()) {
             Log.getInstance().write(Log.LOGLEVEL_TRACE, "addUserToAllMediaFiles: null UserID.");
@@ -261,7 +265,7 @@ public class API {
         }
 
         User user = new User(UserID);
-        user.addToAllMediaFiles();
+        user.initializeInDataBase();
 
         return;
     }

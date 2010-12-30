@@ -30,6 +30,9 @@ public class MediaFileControl {
     private boolean         isShow = false;
     private boolean         isValid = true;
     Object                  userRecord = null;
+    Object                  userRecordShow = null;
+    Object                  userRecordAiring = null;
+    Object                  userRecordMediaFile = null;
 
     public MediaFileControl(Object MediaFile) {
 
@@ -226,25 +229,7 @@ public class MediaFileControl {
         return allowedUsers.contains(UserID);
     }
 
-    boolean useSageDataBase(String UserID) {
-
-        if (!isValid || UserID == null || UserID.equalsIgnoreCase(Plugin.SUPER_USER) || !isUserExplicitlyAllowed(UserID)) {
-            return true;
-        } else {
-            return false;
-        }
-    }
-
-    /**
-     * Check if this MediaFile is associated with any users.
-     *
-     * @return
-     */
-    boolean hasAnyUsers() {
-        return (allowedUsers == null || allowedUsers.isEmpty() || !isValid ? false : true);
-    }
-
-    void addUser(String UserID) {
+    synchronized void addUser(String UserID) {
         if (!isValid)
             return;
 
@@ -260,7 +245,7 @@ public class MediaFileControl {
 
     }
 
-    void removeUser(String UserID) {
+    synchronized void removeUser(String UserID) {
         if (!isValid)
             return;
 
@@ -275,7 +260,7 @@ public class MediaFileControl {
         }
     }
 
-    void removeAllUsers() {
+    synchronized void removeAllUsers() {
         if (!isValid)
             return;
 

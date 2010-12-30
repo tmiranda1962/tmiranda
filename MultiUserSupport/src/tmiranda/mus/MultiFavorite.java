@@ -32,11 +32,12 @@ public class MultiFavorite {
         }
 
         sageFavorite = Favorite;
+        userID = User;
 
         String userString = FavoriteAPI.GetFavoriteProperty(Favorite, FAVORITE_USERS);
 
         if (userString == null || userString.isEmpty()) {
-            Log.getInstance().write(Log.LOGLEVEL_TRACE, "MultiFavorite: No AllowedUsers.");
+            Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "MultiFavorite: No AllowedUsers.");
             return;
         }
 
@@ -51,9 +52,11 @@ public class MultiFavorite {
         Log.getInstance().write(Log.LOGLEVEL_TRACE, "MultiFavorite: AllowedUsers " + allowedUsers);
     }
 
-    void addFavorite() {
-        if (!isValid)
+    synchronized void addFavorite() {
+        if (!isValid) {
+            Log.getInstance().write(Log.LOGLEVEL_WARN, "addFavories: !isValid.");
             return;
+        }
 
         DelimitedString DS = new DelimitedString(FavoriteAPI.GetFavoriteProperty(sageFavorite, FAVORITE_USERS), ",");
         DS.addUniqueElement(userID);
@@ -61,18 +64,20 @@ public class MultiFavorite {
         Log.getInstance().write(Log.LOGLEVEL_TRACE, "addFavorite: Users for Favorite " + DS.toString());
     }
 
-    void removeFavorite() {
+    synchronized void removeFavorite() {
 
-        if (!isValid)
+        if (!isValid) {
+            Log.getInstance().write(Log.LOGLEVEL_WARN, "removeFavories: !isValid.");
             return;
+        }
 
         DelimitedString DS = new DelimitedString(FavoriteAPI.GetFavoriteProperty(sageFavorite, FAVORITE_USERS), ",");
         DS.removeElement(userID);
         FavoriteAPI.SetFavoriteProperty(sageFavorite, FAVORITE_USERS, DS.toString());
-        Log.getInstance().write(Log.LOGLEVEL_TRACE, "addFavorite: Users for Favorite " + DS.toString());
+        Log.getInstance().write(Log.LOGLEVEL_TRACE, "removeFavorite: Users for Favorite " + DS.toString());
 
         if (DS.isEmpty()) {
-            Log.getInstance().write(Log.LOGLEVEL_TRACE, "addFavorite: Deleting from sage database.");
+            Log.getInstance().write(Log.LOGLEVEL_TRACE, "removeFavorite: No more users, deleting from sage database.");
             FavoriteAPI.RemoveFavorite(sageFavorite);
         }
     }
@@ -84,5 +89,9 @@ public class MultiFavorite {
 
         List<String> users = DelimitedString.delimitedStringToList(FavoriteAPI.GetFavoriteProperty(sageFavorite, FAVORITE_USERS), ",");
         return users.contains(userID);
+    }
+
+    List<String> getAllowedUsers() {
+        return allowedUsers;
     }
 }

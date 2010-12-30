@@ -29,13 +29,16 @@ public class DelimitedString {
     void addUniqueElement(String Element) {
 
         if (contains(Element)) {
+            Log.getInstance().write(Log.LOGLEVEL_ALL, "addUniqueElement: Element already exists " + Element);
             return;
         }
 
+        //Log.getInstance().write(Log.LOGLEVEL_TRACE, "addUniqueElement: TheString before " + TheString + ":" + Element);
         if (TheString == null || TheString.isEmpty())
             TheString = Element;
         else
             TheString = TheString + Delimiter + Element;
+        //Log.getInstance().write(Log.LOGLEVEL_TRACE, "addUniqueElement: TheString after " + TheString);
     }
 
     // Removes in place.

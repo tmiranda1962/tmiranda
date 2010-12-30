@@ -63,7 +63,7 @@ public class User {
         UserRecordAPI.SetUserRecordData(record, KEY_USERID, user);
         UserRecordAPI.SetUserRecordData(record, KEY_PASSWORD, Password);
 
-        Log.getInstance().write(Log.LOGLEVEL_ERROR, "create: Created user " + user);
+        Log.getInstance().write(Log.LOGLEVEL_TRACE, "create: Created user " + user);
         return true;
     }
 
@@ -93,20 +93,26 @@ public class User {
     }
     
     void initializeInDataBase() {
+
+        Log.getInstance().write(Log.LOGLEVEL_TRACE, "initializeDataBase: Add to Favorites.");
         addToAllFavorites();
+
+        Log.getInstance().write(Log.LOGLEVEL_TRACE, "initializeDataBase: Add to MediaFiles.");
         addToAllMediaFiles();
     }
     
     void removeFromDataBase() {
+        Log.getInstance().write(Log.LOGLEVEL_TRACE, "removeFromDataBase: Removing from Favorites.");
         removeFromAllFavorites();
+
+        Log.getInstance().write(Log.LOGLEVEL_TRACE, "removeFromDataBase: Removing from MediaFiles.");
         removeFromAllMediaFiles();
     }
 
 
     /*
-     * MediaFiles.
+     * MediaFiles, Airings and Shows.
      */
-
     void addToMediaFile(Object MediaFile) {
         MediaFileControl MFC = new MediaFileControl(MediaFile);
         MFC.addUser(user);
@@ -122,20 +128,29 @@ public class User {
 
         if (AllMediaFiles==null || AllMediaFiles.length==0) {
             Log.getInstance().write(Log.LOGLEVEL_TRACE, "removeFromAllMediaFiles: No MediaFiles.");
-            return;
+        } else {
+            Log.getInstance().write(Log.LOGLEVEL_TRACE, "removeFromAllMediaFiles: Removing from MediaFiles " + AllMediaFiles.length);
+            for (Object MediaFile : AllMediaFiles)
+                removeFromMediaFile(MediaFile);
         }
-
-        for (Object MediaFile : AllMediaFiles)
-            removeFromMediaFile(MediaFile);
 
         Object[] allSageAirings = MultiAiring.getAllSageAirings();
 
-        if (allSageAirings==null || allSageAirings.length==0)
+        if (allSageAirings==null || allSageAirings.length==0) {
+             Log.getInstance().write(Log.LOGLEVEL_TRACE, "removeFromAllMediaFiles: No Airings.");
             return;
+        }
 
-        for (Object Airing : allSageAirings)
+        Log.getInstance().write(Log.LOGLEVEL_TRACE, "removeFromAllMediaFiles: Removing from Airings " + allSageAirings.length);
+        for (Object Airing : allSageAirings) {
             removeFromMediaFile(Airing);
+            Object Show = AiringAPI.GetShow(Airing);
+            if (Show != null) {
+                removeFromMediaFile(Airing);    
+            }
+        }
 
+        Log.getInstance().write(Log.LOGLEVEL_TRACE, "removeUserFromAllMediaFiles: Done.");
         return;
     }
 
@@ -144,12 +159,29 @@ public class User {
 
         if (AllMediaFiles==null || AllMediaFiles.length==0) {
             Log.getInstance().write(Log.LOGLEVEL_TRACE, "addUserToAllMediaFiles: No MediaFiles.");
+        } else {
+            Log.getInstance().write(Log.LOGLEVEL_TRACE, "addUserToAllMediaFiles: Adding to MediaFiles " + AllMediaFiles.length);
+            for (Object MediaFile : AllMediaFiles)
+                addToMediaFile(MediaFile);
+        }
+
+        Object[] allSageAirings = MultiAiring.getAllSageAirings();
+
+        if (allSageAirings==null || allSageAirings.length==0) {
+            Log.getInstance().write(Log.LOGLEVEL_TRACE, "addUserToAllMediaFiles: No Airings.");
             return;
         }
 
-        for (Object MediaFile : AllMediaFiles)
-            addToMediaFile(MediaFile);
+        Log.getInstance().write(Log.LOGLEVEL_TRACE, "addUserToAllMediaFiles: Adding to Airings " + allSageAirings.length);
+        for (Object Airing : allSageAirings) {
+            addToMediaFile(Airing);
+            Object Show = AiringAPI.GetShow(Airing);
+            if (Show != null) {
+                addToMediaFile(Airing);
+            }
+        }
 
+        Log.getInstance().write(Log.LOGLEVEL_TRACE, "addUserToAllMediaFiles: Done.");
         return;
     }
 
@@ -160,10 +192,11 @@ public class User {
         Object[] Favorites = FavoriteAPI.GetFavorites();
 
         if (Favorites==null || Favorites.length==0) {
-            Log.getInstance().write(Log.LOGLEVEL_TRACE, "removeAllFavories: No Favorites.");
+            Log.getInstance().write(Log.LOGLEVEL_TRACE, "addToAllFavories: No Favorites.");
             return;
         }
 
+        Log.getInstance().write(Log.LOGLEVEL_TRACE, "addToAllFavories: Found Favorites " + Favorites.length);
         for (Object Favorite : Favorites) {
             MultiFavorite MF = new MultiFavorite(user, Favorite);
             MF.addFavorite();

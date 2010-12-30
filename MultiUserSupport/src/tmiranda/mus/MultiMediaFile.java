@@ -55,7 +55,7 @@ public class MultiMediaFile extends MediaFileControl {
         return (DontLike==null || DontLike.isEmpty() ? AiringAPI.IsDontLike(sageMediaFile) : DontLike.equalsIgnoreCase("true"));
     }
     
-    void setDontLike(String value) {
+    synchronized void setDontLike(String value) {
         if (!isValid())
             return;
 
@@ -67,7 +67,7 @@ public class MultiMediaFile extends MediaFileControl {
 
     boolean isArchived() {
 
-        if (!isValid() || useSageDataBase(userID)) {
+        if (!isValid()) {
             return MediaFileAPI.IsLibraryFile(sageMediaFile);
         }
 
@@ -81,7 +81,7 @@ public class MultiMediaFile extends MediaFileControl {
         return (Archived==null || Archived.isEmpty() ? MediaFileAPI.IsLibraryFile(sageMediaFile) : Archived.equalsIgnoreCase("true"));
     }
 
-    void setArchived(String value) {
+    synchronized void setArchived(String value) {
         if (!isValid())
             return;
 
@@ -91,7 +91,7 @@ public class MultiMediaFile extends MediaFileControl {
             UserRecordAPI.SetUserRecordData(userRecord, userID+ARCHIVED, checkBooleanString(value));
     }
 
-    boolean delete(boolean WithoutPrejudice) {
+    synchronized boolean delete(boolean WithoutPrejudice) {
 
         // If we have an invalid MMF, just return error.
         if (!isValid()) {
@@ -125,7 +125,7 @@ public class MultiMediaFile extends MediaFileControl {
         return true;
     }
 
-    void setWatched(String value) {
+    synchronized void setWatched(String value) {
         
     }
 

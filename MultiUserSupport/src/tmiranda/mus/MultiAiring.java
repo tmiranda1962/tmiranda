@@ -15,7 +15,7 @@ import sagex.api.*;
 public class MultiAiring {
 
     static Object[] getAllSageAirings() {
-        Vector V = Database.SearchSelectedFields(null, false, true, true, true, true, true, true, true, true, true);
+        Vector V = Database.SearchSelectedFields(" ", false, true, true, true, true, true, true, true, true, true);
 
         if (V==null || V.isEmpty())
             return null;

@@ -79,8 +79,7 @@ public class Plugin implements sage.SageTVPlugin, SageTVEventListener {
         Log.getInstance().write(Log.LOGLEVEL_TRACE, "PlugIn: Subscribing to events.");
         registry.eventSubscribe(listener, "RecordingStopped");
         registry.eventSubscribe(listener, "RecordingStarted");
-        registry.eventSubscribe(listener, "MediaFileRemoved");
-        registry.eventSubscribe(listener, "RecordingScheduleChanged");
+        registry.eventSubscribe(listener, "MediaFileImported");
     }
 
     // This method is called when the plugin should shutdown
@@ -94,7 +93,7 @@ public class Plugin implements sage.SageTVPlugin, SageTVEventListener {
 
         registry.eventUnsubscribe(listener, "RecordingCompleted");
         registry.eventUnsubscribe(listener, "RecordingStopped");
-        registry.eventUnsubscribe(listener, "RecordingScheduleChanged");
+        registry.eventUnsubscribe(listener, "MediaFileImported");
     }
 
     // This method is called after plugin shutdown to free any resources
@@ -102,9 +101,9 @@ public class Plugin implements sage.SageTVPlugin, SageTVEventListener {
     public void destroy() {
         if (Global.IsClient()) {
             Log.getInstance().write(Log.LOGLEVEL_WARN, "Plugin: Running in Client mode.");
-            Log.getInstance().destroy();
-            return;
         }
+
+        Log.getInstance().destroy();
     }
 
     // These methods are used to define any configuration settings for the
@@ -125,12 +124,13 @@ public class Plugin implements sage.SageTVPlugin, SageTVEventListener {
         if (!isAdmin) {
             CommandList.add(SETTING_NOT_ADMIN);
         } else {
-            CommandList.add(SETTING_UNASSIGNEDMF);
+            //CommandList.add(SETTING_UNASSIGNEDMF);
             CommandList.add(SETTING_LOGIN_LAST_USER);
             CommandList.add(SETTING_USE_PASSWORDS);
+            CommandList.add(SETTING_LOGLEVEL);
         }
 
-        CommandList.add(SETTING_LOGLEVEL);
+
 
         return (String[])CommandList.toArray(new String[CommandList.size()]);
     }
