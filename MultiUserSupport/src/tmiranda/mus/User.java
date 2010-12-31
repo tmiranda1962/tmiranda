@@ -16,6 +16,7 @@ public class User {
 
     private static String KEY_USERID    = "UserID";
     private static String KEY_PASSWORD  = "Password";
+    private static String KEY_IR        = "IntelligentRecording";
 
     private String user = null;
     private Object record = null;
@@ -62,6 +63,9 @@ public class User {
 
         UserRecordAPI.SetUserRecordData(record, KEY_USERID, user);
         UserRecordAPI.SetUserRecordData(record, KEY_PASSWORD, Password);
+        
+        Boolean Intelligent = Configuration.IsIntelligentRecordingDisabled();
+        UserRecordAPI.SetUserRecordData(record, KEY_IR, Intelligent.toString());
 
         Log.getInstance().write(Log.LOGLEVEL_TRACE, "create: Created user " + user);
         return true;
@@ -217,6 +221,19 @@ public class User {
         }
     }
 
+
+    /*
+     * Intelligent Recording.
+     */
+    boolean isIntelligentRecordingDisabled() {
+        return (UserRecordAPI.GetUserRecordData(record, KEY_IR).toString().equalsIgnoreCase("true") ? true : false);
+    }
+
+    void setIntelligentRecordingDisabled(boolean value) {
+        Boolean Value = value;
+        UserRecordAPI.SetUserRecordData(record, KEY_IR, Value.toString());
+        return;
+    }
 
     static List<String> getAllUsers() {
         List<String> Users = new ArrayList<String>();

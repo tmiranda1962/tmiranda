@@ -125,10 +125,6 @@ public class MultiMediaFile extends MediaFileControl {
         return true;
     }
 
-    synchronized void setWatched(String value) {
-        
-    }
-
     private String checkBooleanString(String value) {
 
         if (value == null) {

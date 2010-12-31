@@ -94,4 +94,22 @@ public class MultiFavorite {
     List<String> getAllowedUsers() {
         return allowedUsers;
     }
+
+    static Object[] getFavorites() {
+
+        Object[] sageFavorites = FavoriteAPI.GetFavorites();
+
+        if (sageFavorites==null || sageFavorites.length==0)
+            return sageFavorites;
+
+        List<Object> Favorites = new ArrayList<Object>();
+
+        for (Object Favorite : sageFavorites) {
+            MultiFavorite F = new MultiFavorite(API.getLoggedinUser(), Favorite);
+            if (F.isFavorite())
+                Favorites.add(Favorite);
+        }
+
+        return Favorites.toArray(new Object[Favorites.size()]);
+    }
 }

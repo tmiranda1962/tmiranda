@@ -26,12 +26,12 @@ public class Plugin implements sage.SageTVPlugin, SageTVEventListener {
     private static final String     SETTING_NOT_ADMIN = "NotAdmin";
 
     // Keep track of how to handle MediaFiles that do not have any UserID associated with them.
-    private static final String     SETTING_UNASSIGNEDMF    = "UnassignedMediaFiles";
-    public static final String      PROPERTY_UNASSIGNEDMF   = "mus/UnassignedMediaFiles";
-    public static final String          UNASSIGNEDMF_ALLOW_ALL      = "Allow All";
-    public static final String          UNASSIGNEDMF_ALLOW_NONE     = "Allow None";
-    public static final String          UNASSIGNEDMF_ALLOW_USERS    = "Allow Users";
-    public static final String          PROPERTY_UNASSIGNEDMF_USERS_TO_ALLOW  = "mus/AllowUsers";
+    //private static final String     SETTING_UNASSIGNEDMF    = "UnassignedMediaFiles";
+    //public static final String      PROPERTY_UNASSIGNEDMF   = "mus/UnassignedMediaFiles";
+    //public static final String          UNASSIGNEDMF_ALLOW_ALL      = "Allow All";
+    //public static final String          UNASSIGNEDMF_ALLOW_NONE     = "Allow None";
+    //public static final String          UNASSIGNEDMF_ALLOW_USERS    = "Allow Users";
+    //public static final String          PROPERTY_UNASSIGNEDMF_USERS_TO_ALLOW  = "mus/AllowUsers";
 
     // Keep track of if we should automatically login a user when the UI starts.
     // The property is local to each UI.
@@ -76,9 +76,9 @@ public class Plugin implements sage.SageTVPlugin, SageTVEventListener {
         }
 
         // Subscribe to what we need.
-        Log.getInstance().write(Log.LOGLEVEL_TRACE, "PlugIn: Subscribing to events.");
+        Log.getInstance().write(Log.LOGLEVEL_TRACE, "Plugin: Subscribing to events.");
         registry.eventSubscribe(listener, "RecordingStopped");
-        registry.eventSubscribe(listener, "RecordingStarted");
+        registry.eventSubscribe(listener, "RecordingCompleted");
         registry.eventSubscribe(listener, "MediaFileImported");
     }
 
@@ -99,10 +99,6 @@ public class Plugin implements sage.SageTVPlugin, SageTVEventListener {
     // This method is called after plugin shutdown to free any resources
     // used by the plugin
     public void destroy() {
-        if (Global.IsClient()) {
-            Log.getInstance().write(Log.LOGLEVEL_WARN, "Plugin: Running in Client mode.");
-        }
-
         Log.getInstance().destroy();
     }
 
@@ -130,8 +126,6 @@ public class Plugin implements sage.SageTVPlugin, SageTVEventListener {
             CommandList.add(SETTING_LOGLEVEL);
         }
 
-
-
         return (String[])CommandList.toArray(new String[CommandList.size()]);
     }
 
@@ -150,9 +144,9 @@ public class Plugin implements sage.SageTVPlugin, SageTVEventListener {
             }
         }
 
-        if (setting.startsWith(SETTING_UNASSIGNEDMF)) {
-            return Configuration.GetServerProperty(PROPERTY_UNASSIGNEDMF, UNASSIGNEDMF_ALLOW_ALL);
-        }
+        //if (setting.startsWith(SETTING_UNASSIGNEDMF)) {
+            //return Configuration.GetServerProperty(PROPERTY_UNASSIGNEDMF, UNASSIGNEDMF_ALLOW_ALL);
+        //}
 
         // Use local property.
         if (setting.startsWith(SETTING_LOGIN_LAST_USER)) {
@@ -197,8 +191,8 @@ public class Plugin implements sage.SageTVPlugin, SageTVEventListener {
         if (setting.startsWith(SETTING_LOGLEVEL))
             return CONFIG_CHOICE;
 
-        if (setting.startsWith(SETTING_UNASSIGNEDMF))
-            return CONFIG_CHOICE;
+        //if (setting.startsWith(SETTING_UNASSIGNEDMF))
+            //return CONFIG_CHOICE;
 
         if (setting.startsWith(SETTING_LOGIN_LAST_USER))
             return CONFIG_BOOL;
@@ -234,10 +228,10 @@ public class Plugin implements sage.SageTVPlugin, SageTVEventListener {
             return;
         }
 
-        if (setting.startsWith(SETTING_UNASSIGNEDMF)) {
-            Configuration.SetServerProperty(PROPERTY_UNASSIGNEDMF, value);
-            return;
-        }
+        //if (setting.startsWith(SETTING_UNASSIGNEDMF)) {
+            //Configuration.SetServerProperty(PROPERTY_UNASSIGNEDMF, value);
+            //return;
+        //}
 
         // Use local property for this setting.
         if (setting.startsWith(SETTING_LOGIN_LAST_USER)) {
@@ -272,10 +266,10 @@ public class Plugin implements sage.SageTVPlugin, SageTVEventListener {
             return values;
         }
 
-        if (setting.startsWith(SETTING_UNASSIGNEDMF)) {
-            String[] values = {UNASSIGNEDMF_ALLOW_ALL, UNASSIGNEDMF_ALLOW_NONE, UNASSIGNEDMF_ALLOW_USERS};
-            return values;
-        }
+        //if (setting.startsWith(SETTING_UNASSIGNEDMF)) {
+            //String[] values = {UNASSIGNEDMF_ALLOW_ALL, UNASSIGNEDMF_ALLOW_NONE, UNASSIGNEDMF_ALLOW_USERS};
+            //return values;
+        //}
 
         return null;
     }
@@ -286,9 +280,9 @@ public class Plugin implements sage.SageTVPlugin, SageTVEventListener {
             return "Set the Debug Logging Level.";
         }
 
-        if (setting.startsWith(SETTING_UNASSIGNEDMF)) {
-            return "Set default permission for MediaFiles.";
-        }
+        //if (setting.startsWith(SETTING_UNASSIGNEDMF)) {
+            //return "Set default permission for MediaFiles.";
+        //}
 
         if (setting.startsWith(SETTING_LOGIN_LAST_USER)) {
             return "The user that was logged in will remain logged in after Sage is rebooted.";
@@ -312,9 +306,9 @@ public class Plugin implements sage.SageTVPlugin, SageTVEventListener {
             return "Debug Logging Level";
         }
 
-        if (setting.startsWith(SETTING_UNASSIGNEDMF)) {
-            return "Default Unassigned MediaFile Permission";
-        }
+        //if (setting.startsWith(SETTING_UNASSIGNEDMF)) {
+            //return "Default Unassigned MediaFile Permission";
+        //}
 
         if (setting.startsWith(SETTING_LOGIN_LAST_USER)) {
             return "Stay Logged In After Reboot";
@@ -344,7 +338,7 @@ public class Plugin implements sage.SageTVPlugin, SageTVEventListener {
         }
 
         Log.getInstance().SetLogLevel(Log.LOGLEVEL_WARN);
-        Configuration.SetServerProperty(PROPERTY_UNASSIGNEDMF, UNASSIGNEDMF_ALLOW_ALL);
+        //Configuration.SetServerProperty(PROPERTY_UNASSIGNEDMF, UNASSIGNEDMF_ALLOW_ALL);
         Configuration.SetProperty(PROPERTY_LOGIN_LAST_USER, "false");
         Configuration.SetProperty(PROPERTY_USE_PASSWORDS, "true");
     }
@@ -423,17 +417,87 @@ public class Plugin implements sage.SageTVPlugin, SageTVEventListener {
         Log.getInstance().write(Log.LOGLEVEL_TRACE, "sageEvent: event received = " + eventName);
 
         // Check that we have the right event.
-        if (!(  eventName.startsWith("RecordingCompleted") ||
-                eventName.startsWith("RecordingStopped") ||
-                eventName.startsWith("MediaFileRemoved") ||
-                eventName.startsWith("RecordingScheduleChanged") ||
-                eventName.startsWith("RecordingStarted"))) {
+        if (!(eventName.startsWith("RecordingCompleted") || eventName.startsWith("RecordingStopped") || eventName.startsWith("MediaFileImported"))) {
             Log.getInstance().write(Log.LOGLEVEL_WARN, "sageEvent: Unexpected event received = " + eventName);
             return;
         }
 
+        Object MediaFile = eventVars.get("MediaFile");
+
+        if (MediaFile == null) {
+            Log.getInstance().write(Log.LOGLEVEL_WARN, "sageEvent: null MediaFile.");
+            return;
+        }
+
+        Log.getInstance().write(Log.LOGLEVEL_TRACE, "sageEvent: MediaFile " + MediaFileAPI.GetMediaTitle(MediaFile));
+
+        List<String> Users = User.getAllUsers();
+
+        if (Users==null || Users.isEmpty()) {
+            Log.getInstance().write(Log.LOGLEVEL_TRACE, "sageEvent: No Users.");
+            return;
+        }
+
+        // If we are importing a MediaFile add access for all users.
+        if (eventName.startsWith("MediaFileImported")) {
+
+            for (String User : Users) {
+                MediaFileControl MFC = new MediaFileControl(MediaFile);
+                MFC.addUser(User);
+            }
+
+            Log.getInstance().write(Log.LOGLEVEL_TRACE, "sageEvent: Added users to imported MediaFile " + Users);
+            return;
+        }
+
+        // We have a completed recording. It could be a Favorite, Manual or an IR.
+
+        // If it's a Favorite give access to users that have it defined as a Favorite.
+        if (AiringAPI.IsFavorite(MediaFile)) {
+
+            Object Favorite = FavoriteAPI.GetFavoriteForAiring(MediaFile);
+
+            for (String User : Users) {
+
+                MultiFavorite MF = new MultiFavorite(User, Favorite);
+
+                if (MF.isFavorite()) {
+                    MediaFileControl MFC = new MediaFileControl(MediaFile);
+                    MFC.addUser(User);
+                }
+            }
+
+            Log.getInstance().write(Log.LOGLEVEL_TRACE, "sageEvent: Added Favorite to users " + Users);
+        }
+
+        // If it's an Intelligent Recording give access to users that have IR enabled.
+        // Otherwise it's a manual so give access to all users.
+        if (!Configuration.IsIntelligentRecordingDisabled() && AiringAPI.IsNotManualOrFavorite(MediaFile)) {
+            for (String User : Users) {
+
+                User user = new User(User);
+
+                if (!user.isIntelligentRecordingDisabled()) {
+                    MediaFileControl MFC = new MediaFileControl(MediaFile);
+                    MFC.addUser(User);
+                    Log.getInstance().write(Log.LOGLEVEL_TRACE, "sageEvent: Added IR for user " + User);
+                }
+            }
+
+        } else {
+            for (String User : Users) {
+                MediaFileControl MFC = new MediaFileControl(MediaFile);
+                MFC.addUser(User);
+            }
+
+            Log.getInstance().write(Log.LOGLEVEL_TRACE, "sageEvent: Added Manual to users " + Users);
+        }
+
+        // There is a possibility of missing recordings for users that scheduled a manual recording that
+        // happens to be an IR for another user.  I don't think this will be a problem because Sage will
+        // not mark a recording as IR if it's been selected as a Manual.
+
         return;
     }
-
 
 }
