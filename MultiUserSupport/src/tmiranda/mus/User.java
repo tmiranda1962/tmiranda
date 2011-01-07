@@ -6,6 +6,7 @@
 package tmiranda.mus;
 
 import java.util.*;
+import sagex.UIContext;
 import sagex.api.*;
 
 /**
@@ -14,22 +15,27 @@ import sagex.api.*;
  */
 public class User {
 
-    private static String KEY_USERID    = "UserID";
-    private static String KEY_PASSWORD  = "Password";
-    private static String KEY_IR        = "IntelligentRecording";
+    static final String STORE      = "MultiUser.User"; // Record Key is UserID.
 
-    private String user = null;
-    private Object record = null;
+    private static final String KEY_USERID    = "UserID";
+    private static final String KEY_PASSWORD  = "Password";
+    private static final String KEY_IR        = "IntelligentRecording";
+    private static final String KEY_UICONTEXT = "UIContext";
+
+    private String  user    = null;
+    private Object  record  = null;
+    private boolean isValid = true;
 
     public User(String UserID) {
 
         if (UserID==null || UserID.isEmpty()) {
             Log.getInstance().write(Log.LOGLEVEL_ERROR, "User: null UserID.");
+            isValid = false;
             return;
         }
 
         user = UserID;
-        record = UserRecordAPI.GetUserRecord(Plugin.STORE_RECORD_KEY, user);
+        record = UserRecordAPI.GetUserRecord(STORE, user);
 
         if (record==null) {
             Log.getInstance().write(Log.LOGLEVEL_WARN, "User: null record.");
@@ -39,6 +45,7 @@ public class User {
     void logOn() {
         Log.getInstance().write(Log.LOGLEVEL_TRACE, "logOn: Logged on user " + user);
         Configuration.SetProperty(Plugin.PROPERTY_LAST_LOGGEDIN_USER, user);
+        setUIContext();
     }
 
     void logOff() {
@@ -47,14 +54,21 @@ public class User {
     }
 
     boolean exists() {
-        return record != null;
+        return isValid && record != null;
     }
 
     boolean create(String Password) {
-        if (Password==null || Password.isEmpty())
+        if (!isValid || Password==null || Password.isEmpty())
             return false;
 
-        record = UserRecordAPI.AddUserRecord(Plugin.STORE_RECORD_KEY, user);
+        // Delete the old Record if it exists.
+        Object OldRecord = UserRecordAPI.GetUserRecord(STORE, user);
+        if (OldRecord != null) {
+            Log.getInstance().write(Log.LOGLEVEL_WARN, "create: Removing existing User record.");
+            UserRecordAPI.DeleteUserRecord(OldRecord);
+        }
+
+        record = UserRecordAPI.AddUserRecord(STORE, user);
 
         if (record==null) {
             Log.getInstance().write(Log.LOGLEVEL_ERROR, "create: null Record.");
@@ -73,7 +87,7 @@ public class User {
 
     boolean destroy() {
 
-        if (record==null) {
+        if (!isValid || record==null) {
             Log.getInstance().write(Log.LOGLEVEL_WARN, "destroy: null Record.");
             return false;
         }
@@ -82,12 +96,12 @@ public class User {
     }
 
     String getPassword() {
-        return UserRecordAPI.GetUserRecordData(record, KEY_PASSWORD);
+        return isValid ? UserRecordAPI.GetUserRecordData(record, KEY_PASSWORD) : null;
     }
 
     void setPassword(String Password) {
 
-        if (Password==null || Password.isEmpty()) {
+        if (!isValid || Password==null || Password.isEmpty()) {
             Log.getInstance().write(Log.LOGLEVEL_WARN, "setPassword: null Password.");
             return;
         }
@@ -95,39 +109,97 @@ public class User {
         UserRecordAPI.SetUserRecordData(record, KEY_PASSWORD, Password);
         return;
     }
+
+    String getUIContext() {
+        return isValid ? UserRecordAPI.GetUserRecordData(record, KEY_UICONTEXT) : null;
+    }
+
+    private void setUIContext() {
+        String UIContext = Global.GetUIContextName();
+
+        if (!isValid || UIContext==null || UIContext.isEmpty()) {
+            Log.getInstance().write(Log.LOGLEVEL_WARN, "setUIContext: null Password.");
+            return;
+        }
+
+        UserRecordAPI.SetUserRecordData(record, KEY_UICONTEXT, UIContext);
+        return;
+    }
     
     void initializeInDataBase() {
 
-        Log.getInstance().write(Log.LOGLEVEL_TRACE, "initializeDataBase: Add to Favorites.");
+        if (!isValid) {
+            Log.getInstance().write(Log.LOGLEVEL_WARN, "initializeINDatabase: Can't initialize invalid User.");
+            return;
+        }
+
+        Log.getInstance().write(Log.LOGLEVEL_TRACE, "initializeInDataBase: Add to Favorites.");
         addToAllFavorites();
 
-        Log.getInstance().write(Log.LOGLEVEL_TRACE, "initializeDataBase: Add to MediaFiles.");
-        addToAllMediaFiles();
+        //Log.getInstance().write(Log.LOGLEVEL_TRACE, "initializeInDataBase: Add to MediaFiles.");
+        //addToAllMediaFiles();
+
+        //Log.getInstance().write(Log.LOGLEVEL_TRACE, "initializeInDataBase: Add to Airings.");
+        //addToAllAirings();
+        return;
     }
     
     void removeFromDataBase() {
+
+        if (!isValid) {
+            Log.getInstance().write(Log.LOGLEVEL_WARN, "removeFromDatabase: Can't remove invalid User.");
+            return;
+        }
+
         Log.getInstance().write(Log.LOGLEVEL_TRACE, "removeFromDataBase: Removing from Favorites.");
         removeFromAllFavorites();
 
         Log.getInstance().write(Log.LOGLEVEL_TRACE, "removeFromDataBase: Removing from MediaFiles.");
         removeFromAllMediaFiles();
+
+        Log.getInstance().write(Log.LOGLEVEL_TRACE, "removeFromDataBase: Removing from Airings.");
+        removeFromAllAirings();
+    }
+
+    String getUserID() {
+        return user;
     }
 
 
     /*
-     * MediaFiles, Airings and Shows.
+     * MediaFiles.
      */
     void addToMediaFile(Object MediaFile) {
-        MediaFileControl MFC = new MediaFileControl(MediaFile);
-        MFC.addUser(user);
+
+        if (!isValid) {
+            Log.getInstance().write(Log.LOGLEVEL_WARN, "addToMediaFile: Can't add invalid User.");
+            return;
+        }
+
+        MultiMediaFile MMF = new MultiMediaFile(user, MediaFile);
+        MMF.initializeUser();
+        return;
     }
 
     void removeFromMediaFile(Object MediaFile) {
-        MediaFileControl MFC = new MediaFileControl(MediaFile);
-        MFC.removeUser(user);
+
+        if (!isValid) {
+            Log.getInstance().write(Log.LOGLEVEL_WARN, "removeFromMediaFile: Can't remove invalid User.");
+            return;
+        }
+
+        MultiMediaFile MMF = new MultiMediaFile(user, MediaFile);
+        MMF.clearUserFromFlags();
+        return;
     }
 
     void removeFromAllMediaFiles() {
+
+        if (!isValid) {
+            Log.getInstance().write(Log.LOGLEVEL_WARN, "removeFromAllMediaFiles: Can't remove invalid User.");
+            return;
+        }
+
         Object[] AllMediaFiles = MediaFileAPI.GetMediaFiles();
 
         if (AllMediaFiles==null || AllMediaFiles.length==0) {
@@ -138,27 +210,17 @@ public class User {
                 removeFromMediaFile(MediaFile);
         }
 
-        Object[] allSageAirings = MultiAiring.getAllSageAirings();
-
-        if (allSageAirings==null || allSageAirings.length==0) {
-             Log.getInstance().write(Log.LOGLEVEL_TRACE, "removeFromAllMediaFiles: No Airings.");
-            return;
-        }
-
-        Log.getInstance().write(Log.LOGLEVEL_TRACE, "removeFromAllMediaFiles: Removing from Airings " + allSageAirings.length);
-        for (Object Airing : allSageAirings) {
-            removeFromMediaFile(Airing);
-            Object Show = AiringAPI.GetShow(Airing);
-            if (Show != null) {
-                removeFromMediaFile(Airing);    
-            }
-        }
-
         Log.getInstance().write(Log.LOGLEVEL_TRACE, "removeUserFromAllMediaFiles: Done.");
         return;
     }
 
     void addToAllMediaFiles() {
+
+        if (!isValid) {
+            Log.getInstance().write(Log.LOGLEVEL_WARN, "addToAllMediaFiles: Can't add invalid User.");
+            return;
+        }
+
         Object[] AllMediaFiles = MediaFileAPI.GetMediaFiles();
 
         if (AllMediaFiles==null || AllMediaFiles.length==0) {
@@ -169,30 +231,89 @@ public class User {
                 addToMediaFile(MediaFile);
         }
 
-        Object[] allSageAirings = MultiAiring.getAllSageAirings();
-
-        if (allSageAirings==null || allSageAirings.length==0) {
-            Log.getInstance().write(Log.LOGLEVEL_TRACE, "addUserToAllMediaFiles: No Airings.");
-            return;
-        }
-
-        Log.getInstance().write(Log.LOGLEVEL_TRACE, "addUserToAllMediaFiles: Adding to Airings " + allSageAirings.length);
-        for (Object Airing : allSageAirings) {
-            addToMediaFile(Airing);
-            Object Show = AiringAPI.GetShow(Airing);
-            if (Show != null) {
-                addToMediaFile(Airing);
-            }
-        }
-
         Log.getInstance().write(Log.LOGLEVEL_TRACE, "addUserToAllMediaFiles: Done.");
         return;
     }
+
+
+    /*
+     * Airings.
+     */
+    void addToAiring(Object Airing) {
+
+        if (!isValid) {
+            Log.getInstance().write(Log.LOGLEVEL_WARN, "addToAiring: Can't add invalid User.");
+            return;
+        }
+
+        MultiAiring MA = new MultiAiring(user, Airing);
+        MA.initializeUser();
+    }
+
+    void removeFromAiring(Object Airing) {
+
+        if (!isValid) {
+            Log.getInstance().write(Log.LOGLEVEL_WARN, "removeFromAiring: Can't remove invalid User.");
+            return;
+        }
+
+        MultiAiring MA = new MultiAiring(user, Airing);
+        MA.clearUserFromFlags();
+    }
+
+    void removeFromAllAirings() {
+
+        if (!isValid) {
+            Log.getInstance().write(Log.LOGLEVEL_WARN, "removeFromAllAirings: Can't remove invalid User.");
+            return;
+        }
+
+        Object[] AllAirings = MultiAiring.getAllSageAirings();
+
+        if (AllAirings==null || AllAirings.length==0) {
+            Log.getInstance().write(Log.LOGLEVEL_TRACE, "removeFromAllAirings: No Airings.");
+        } else {
+            Log.getInstance().write(Log.LOGLEVEL_TRACE, "removeFromAllAirings: Removing from Airings " + AllAirings.length);
+            for (Object Airing : AllAirings)
+                removeFromAiring(Airing);
+        }
+
+        Log.getInstance().write(Log.LOGLEVEL_TRACE, "removeUserFromAllAirings: Done.");
+        return;
+    }
+
+    void addToAllAirings() {
+
+        if (!isValid) {
+            Log.getInstance().write(Log.LOGLEVEL_WARN, "addToAllairings: Can't add invalid User.");
+            return;
+        }
+
+        Object[] AllAirings = MultiAiring.getAllSageAirings();
+
+        if (AllAirings==null || AllAirings.length==0) {
+            Log.getInstance().write(Log.LOGLEVEL_TRACE, "addUserToAllAirings: No Airings.");
+        } else {
+            Log.getInstance().write(Log.LOGLEVEL_TRACE, "addUserToAllAirings: Adding to Airings " + AllAirings.length);
+            for (Object Airing : AllAirings)
+                addToAiring(Airing);
+        }
+
+        Log.getInstance().write(Log.LOGLEVEL_TRACE, "addUserToAllAirings: Done.");
+        return;
+    }
+
 
     /*
      * Favorites.
      */
     void addToAllFavorites() {
+
+        if (!isValid) {
+            Log.getInstance().write(Log.LOGLEVEL_WARN, "addToFavorites: Can't add invalid User.");
+            return;
+        }
+
         Object[] Favorites = FavoriteAPI.GetFavorites();
 
         if (Favorites==null || Favorites.length==0) {
@@ -208,6 +329,12 @@ public class User {
     }
 
     void removeFromAllFavorites() {
+
+        if (!isValid) {
+            Log.getInstance().write(Log.LOGLEVEL_WARN, "removeFromAllFavorites: Can't remove invalid User.");
+            return;
+        }
+
         Object[] Favorites = FavoriteAPI.GetFavorites();
 
         if (Favorites==null || Favorites.length==0) {
@@ -226,19 +353,30 @@ public class User {
      * Intelligent Recording.
      */
     boolean isIntelligentRecordingDisabled() {
-        return (UserRecordAPI.GetUserRecordData(record, KEY_IR).toString().equalsIgnoreCase("true") ? true : false);
+        return (isValid && UserRecordAPI.GetUserRecordData(record, KEY_IR).toString().equalsIgnoreCase("true") ? true : false);
     }
 
     void setIntelligentRecordingDisabled(boolean value) {
+
+        if (!isValid) {
+            Log.getInstance().write(Log.LOGLEVEL_WARN, "setIntelligentRecordingDisabled: Can't set invalid User.");
+            return;
+        }
+
         Boolean Value = value;
         UserRecordAPI.SetUserRecordData(record, KEY_IR, Value.toString());
         return;
     }
 
+
+    /*
+     * Support methods
+     */
+
     static List<String> getAllUsers() {
         List<String> Users = new ArrayList<String>();
 
-        Object[] Records = UserRecordAPI.GetAllUserRecords(Plugin.STORE_RECORD_KEY);
+        Object[] Records = UserRecordAPI.GetAllUserRecords(STORE);
 
         if (Records==null || Records.length==0) {
             Log.getInstance().write(Log.LOGLEVEL_WARN, "getAllUsers: null Records.");
@@ -253,5 +391,30 @@ public class User {
         }
 
         return Users;
+    }
+
+    static void wipeDatabase() {
+
+        Object[] AllUserRecords = UserRecordAPI.GetAllUserRecords(User.STORE);
+        Log.getInstance().write(Log.LOGLEVEL_WARN, "wipeDatabase: Begin wipe of User Store " + AllUserRecords.length);
+        for (Object Record : AllUserRecords)
+            UserRecordAPI.DeleteUserRecord(Record);
+        Log.getInstance().write(Log.LOGLEVEL_WARN, "wipeDatabase: DataStore wiped.");
+    }
+
+    static String getUserForContext(String UIContext) {
+        List<String> UserIDs = getAllUsers();
+
+        for (String UserID : UserIDs) {
+            User user = new User(UserID);
+            String context = user.getUIContext();
+            if (context!=null && context.equalsIgnoreCase(UIContext)) {
+                Log.getInstance().write(Log.LOGLEVEL_TRACE, "getUserForContext: Found user " + UserID);
+                return UserID;
+            }
+        }
+
+        Log.getInstance().write(Log.LOGLEVEL_TRACE, "getUserForContext: No userID found for context " + UIContext);
+        return null;
     }
 }

@@ -18,31 +18,28 @@ public class Plugin implements sage.SageTVPlugin, SageTVEventListener {
 
     private static final String     VERSION = "0.01";
 
-    public static final String  STORE_RECORD_KEY = "MultiUser";
-    public static final String  SUPER_USER = "Admin";
+    /*
+     * Constants used throughout the Plugin.
+     */
+    public static final String  SUPER_USER          = "Admin";      // Admin gets access to everything.
+    public static final String  LIST_SEPARATOR      = ",";          // Used to separate lists of flags.
+    public static final String[] ALL_STORES = {MultiFavorite.FAVORITE_STORE, MultiAiring.AIRING_STORE, MultiMediaFile.MEDIAFILE_STORE};
 
-    private static final String     SETTING_LOGLEVEL = "LogLevel";
-
-    private static final String     SETTING_NOT_ADMIN = "NotAdmin";
-
-    // Keep track of how to handle MediaFiles that do not have any UserID associated with them.
-    //private static final String     SETTING_UNASSIGNEDMF    = "UnassignedMediaFiles";
-    //public static final String      PROPERTY_UNASSIGNEDMF   = "mus/UnassignedMediaFiles";
-    //public static final String          UNASSIGNEDMF_ALLOW_ALL      = "Allow All";
-    //public static final String          UNASSIGNEDMF_ALLOW_NONE     = "Allow None";
-    //public static final String          UNASSIGNEDMF_ALLOW_USERS    = "Allow Users";
-    //public static final String          PROPERTY_UNASSIGNEDMF_USERS_TO_ALLOW  = "mus/AllowUsers";
+    /*
+     * Settings used in Plugin Configuration.
+     */
+    private static final String     SETTING_LOGLEVEL    = "LogLevel";       // Change the loglevel.
+    private static final String     SETTING_NOT_ADMIN   = "NotAdmin";       // Used in case a non-admin tries to configure.
 
     // Keep track of if we should automatically login a user when the UI starts.
     // The property is local to each UI.
     private static final String SETTING_LOGIN_LAST_USER    = "LoginLastUser";
-    public static final String PROPERTY_LOGIN_LAST_USER   = "mus/LoginLastUser";
+    public static final String PROPERTY_LOGIN_LAST_USER   = "mus/LoginLastUser";    // LOCAL setting.
 
     private static final String SETTING_USE_PASSWORDS = "UsePasswords";
     public static final String PROPERTY_USE_PASSWORDS = "mus/UsePasswords";
 
-    // This property is local to each UI instance.
-    public static final String PROPERTY_LAST_LOGGEDIN_USER = "mus/LastLoggedinUser";
+    public static final String PROPERTY_LAST_LOGGEDIN_USER = "mus/LastLoggedinUser";    // LOCAL setting.
 
     private sage.SageTVPluginRegistry   registry;
     private sage.SageTVEventListener    listener;
@@ -80,6 +77,9 @@ public class Plugin implements sage.SageTVPlugin, SageTVEventListener {
         registry.eventSubscribe(listener, "RecordingStopped");
         registry.eventSubscribe(listener, "RecordingCompleted");
         registry.eventSubscribe(listener, "MediaFileImported");
+        registry.eventSubscribe(listener, "PlaybackStarted");
+        registry.eventSubscribe(listener, "PlaybackStopped");
+        registry.eventSubscribe(listener, "PlaybackFinished");
     }
 
     // This method is called when the plugin should shutdown
@@ -94,6 +94,9 @@ public class Plugin implements sage.SageTVPlugin, SageTVEventListener {
         registry.eventUnsubscribe(listener, "RecordingCompleted");
         registry.eventUnsubscribe(listener, "RecordingStopped");
         registry.eventUnsubscribe(listener, "MediaFileImported");
+        registry.eventUnsubscribe(listener, "PlaybackStarted");
+        registry.eventUnsubscribe(listener, "PlaybackStopped");
+        registry.eventUnsubscribe(listener, "PlaybackFinished");
     }
 
     // This method is called after plugin shutdown to free any resources
@@ -115,7 +118,7 @@ public class Plugin implements sage.SageTVPlugin, SageTVEventListener {
 
         // See if the user is logged in as "Admin".
         String User = API.getLoggedinUser();
-        boolean isAdmin = (User == null ? false : User.equalsIgnoreCase("Admin"));
+        boolean isAdmin = (User == null ? false : User.equalsIgnoreCase(SUPER_USER));
 
         if (!isAdmin) {
             CommandList.add(SETTING_NOT_ADMIN);
@@ -331,14 +334,13 @@ public class Plugin implements sage.SageTVPlugin, SageTVEventListener {
 
         String User = API.getLoggedinUser();
 
-        boolean isAdmin = (User == null ? false : User.equalsIgnoreCase("Admin"));
+        boolean isAdmin = (User == null ? false : User.equalsIgnoreCase(SUPER_USER));
 
         if (!isAdmin) {
             Log.getInstance().write(Log.LOGLEVEL_WARN, "Plugin: resetConfig denied to non-Admin user.");
         }
 
         Log.getInstance().SetLogLevel(Log.LOGLEVEL_WARN);
-        //Configuration.SetServerProperty(PROPERTY_UNASSIGNEDMF, UNASSIGNEDMF_ALLOW_ALL);
         Configuration.SetProperty(PROPERTY_LOGIN_LAST_USER, "false");
         Configuration.SetProperty(PROPERTY_USE_PASSWORDS, "true");
     }
@@ -417,7 +419,12 @@ public class Plugin implements sage.SageTVPlugin, SageTVEventListener {
         Log.getInstance().write(Log.LOGLEVEL_TRACE, "sageEvent: event received = " + eventName);
 
         // Check that we have the right event.
-        if (!(eventName.startsWith("RecordingCompleted") || eventName.startsWith("RecordingStopped") || eventName.startsWith("MediaFileImported"))) {
+        if (!(  eventName.startsWith("RecordingCompleted") ||
+                eventName.startsWith("RecordingStopped") ||
+                eventName.startsWith("MediaFileImported") ||
+                eventName.startsWith("PlaybackStarted") ||
+                eventName.startsWith("PlaybackStopped") ||
+                eventName.startsWith("PlaybackFinished"))) {
             Log.getInstance().write(Log.LOGLEVEL_WARN, "sageEvent: Unexpected event received = " + eventName);
             return;
         }
@@ -429,7 +436,7 @@ public class Plugin implements sage.SageTVPlugin, SageTVEventListener {
             return;
         }
 
-        Log.getInstance().write(Log.LOGLEVEL_TRACE, "sageEvent: MediaFile " + MediaFileAPI.GetMediaTitle(MediaFile));
+        Log.getInstance().write(Log.LOGLEVEL_TRACE, "sageEvent: MediaTitle " + MediaFileAPI.GetMediaTitle(MediaFile));
 
         List<String> Users = User.getAllUsers();
 
@@ -438,65 +445,126 @@ public class Plugin implements sage.SageTVPlugin, SageTVEventListener {
             return;
         }
 
+        Log.getInstance().write(Log.LOGLEVEL_TRACE, "sageEvent: Defined users " + Users);
+
+        // MediaTime = Time playback ended relative to the actual time the Airing was recorded.
+        // Duration = ??
+
+        if (eventName.startsWith("PlaybackStarted")) {
+            String UIContext = (String)eventVars.get("UIContext");
+            Long Duration = (Long)eventVars.get("Duration");
+            Long MediaTime = (Long)eventVars.get("MediaTime");
+            Integer ChapterNum = (Integer)eventVars.get("ChapterNum");
+            Integer TitleNum = (Integer)eventVars.get("TitleNum");
+
+            Log.getInstance().write(Log.LOGLEVEL_TRACE, "sageEvent: PlaybackStarted. UIContext=" + UIContext +", Duration="+Duration+", MediaTime="+MediaTime+", ChapterNum="+ChapterNum+", TitleNum="+TitleNum);
+            return;
+        }
+
+        if (eventName.startsWith("PlaybackStopped")) {
+            
+            String UIContext = (String)eventVars.get("UIContext");
+            Long Duration = (Long)eventVars.get("Duration");
+            Long MediaTime = (Long)eventVars.get("MediaTime");
+            Integer ChapterNum = (Integer)eventVars.get("ChapterNum");
+            Integer TitleNum = (Integer)eventVars.get("TitleNum");
+
+            Log.getInstance().write(Log.LOGLEVEL_TRACE, "sageEvent: PlaybackStopped. UIContext=" + UIContext +", Duration="+Duration+", MediaTime="+MediaTime+", ChapterNum="+ChapterNum+", TitleNum="+TitleNum);
+            Log.getInstance().write(Log.LOGLEVEL_TRACE, "Duration=" + Utility.PrintTimeFull(Duration));
+            Log.getInstance().write(Log.LOGLEVEL_TRACE, "MediaTime=" + Utility.PrintTimeFull(MediaTime));
+
+            String UserID = User.getUserForContext(UIContext);
+
+            // Check for Admin or user that is not logged in.
+            if (UserID==null) {
+                Log.getInstance().write(Log.LOGLEVEL_TRACE, "sageEvent: No user for context " + UIContext);
+                return;
+            }
+
+            Log.getInstance().write(Log.LOGLEVEL_TRACE, "sageEvent: Found user for context " + UserID);
+
+            MultiMediaFile MMF = new MultiMediaFile(UserID, MediaFile);
+            MMF.setDuration(Duration);
+            MMF.setMediaTime(MediaTime);
+            MMF.setChapterNum(ChapterNum);
+            MMF.setTitleNum(TitleNum);
+     
+            return;
+        }
+
+        if (eventName.startsWith("PlaybackFinished")) {
+
+            String UIContext = (String)eventVars.get("UIContext");
+            Long Duration = (Long)eventVars.get("Duration");
+            Long MediaTime = (Long)eventVars.get("MediaTime");
+            Integer ChapterNum = (Integer)eventVars.get("ChapterNum");
+            Integer TitleNum = (Integer)eventVars.get("TitleNum");
+
+            Log.getInstance().write(Log.LOGLEVEL_TRACE, "sageEvent: PlaybackFinished. UIContext=" + UIContext +", Duration="+Duration+", MediaTime="+MediaTime+", ChapterNum="+ChapterNum+", TitleNum="+TitleNum);
+
+            return;
+        }
+
         // If we are importing a MediaFile add access for all users.
         if (eventName.startsWith("MediaFileImported")) {
 
+            Log.getInstance().write(Log.LOGLEVEL_TRACE, "sageEvent: Importing the MediaFile.");
+
+            // Add all of the users.  No explicitly needed since the default is to allow all.
             for (String User : Users) {
-                MediaFileControl MFC = new MediaFileControl(MediaFile);
-                MFC.addUser(User);
+                User user = new User(User);
+                user.addToMediaFile(MediaFile);
             }
 
             Log.getInstance().write(Log.LOGLEVEL_TRACE, "sageEvent: Added users to imported MediaFile " + Users);
             return;
         }
 
+        // Disallow all users, then add the ones that will be allowed to see this MediaFile.
+        //for (String User : Users) {
+            //User user = new User(User);
+            //ser.removeFromMediaFile(MediaFile);
+        //}
+
         // We have a completed recording. It could be a Favorite, Manual or an IR.
 
-        // If it's a Favorite give access to users that have it defined as a Favorite.
-        if (AiringAPI.IsFavorite(MediaFile)) {
+        // At this time the MediaFile has not had its attributes (Manual, Favorite, IR) set by the Sage
+        // core so we need to search manually through the user information to figure out what users should
+        // be granted access to the MediaFile.
+        boolean AccessGranted = false;
 
-            Object Favorite = FavoriteAPI.GetFavoriteForAiring(MediaFile);
+        for (String ThisUser : Users) {
 
-            for (String User : Users) {
+            MultiAiring MA = new MultiAiring(ThisUser, MediaFile);
 
-                MultiFavorite MF = new MultiFavorite(User, Favorite);
-
-                if (MF.isFavorite()) {
-                    MediaFileControl MFC = new MediaFileControl(MediaFile);
-                    MFC.addUser(User);
-                }
+            if (MA.isManualRecord() || MA.isFavorite()) {
+                AccessGranted = true;
+                User user = new User(ThisUser);
+                user.addToMediaFile(MediaFile);
+                MA.removeFlag(MultiAiring.MANUAL_IN_PROGRESS, ThisUser);
+                Log.getInstance().write(Log.LOGLEVEL_TRACE, "sageEvent: Added Manual or Favorite to user " + ThisUser);
             }
 
-            Log.getInstance().write(Log.LOGLEVEL_TRACE, "sageEvent: Added Favorite to users " + Users);
         }
 
-        // If it's an Intelligent Recording give access to users that have IR enabled.
-        // Otherwise it's a manual so give access to all users.
-        if (!Configuration.IsIntelligentRecordingDisabled() && AiringAPI.IsNotManualOrFavorite(MediaFile)) {
-            for (String User : Users) {
+        // If we didn't assign it to any user let's assume it's an Intelligent Recording and grant access to any
+        // users that have IR enabled.
+        if (!AccessGranted && !Configuration.IsIntelligentRecordingDisabled()) {
 
-                User user = new User(User);
+            Log.getInstance().write(Log.LOGLEVEL_TRACE, "sageEvent: Found an IntelligentRecording.");
+            for (String ThisUser : Users) {
+
+                User user = new User(ThisUser);
 
                 if (!user.isIntelligentRecordingDisabled()) {
-                    MediaFileControl MFC = new MediaFileControl(MediaFile);
-                    MFC.addUser(User);
-                    Log.getInstance().write(Log.LOGLEVEL_TRACE, "sageEvent: Added IR for user " + User);
+                    user.addToMediaFile(MediaFile);
+                    Log.getInstance().write(Log.LOGLEVEL_TRACE, "sageEvent: Added IR for user " + ThisUser);
                 }
             }
 
-        } else {
-            for (String User : Users) {
-                MediaFileControl MFC = new MediaFileControl(MediaFile);
-                MFC.addUser(User);
-            }
-
-            Log.getInstance().write(Log.LOGLEVEL_TRACE, "sageEvent: Added Manual to users " + Users);
         }
 
-        // There is a possibility of missing recordings for users that scheduled a manual recording that
-        // happens to be an IR for another user.  I don't think this will be a problem because Sage will
-        // not mark a recording as IR if it's been selected as a Manual.
-
+        Log.getInstance().write(Log.LOGLEVEL_TRACE, "sageEvent: Processing complete.");
         return;
     }
 
