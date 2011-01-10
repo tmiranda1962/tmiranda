@@ -18,22 +18,21 @@ public class MultiFavorite extends MultiObject {
     static final String     FAVORITE_USERS  = "AllowedUsers";
     static final String[]   FLAGS = {FAVORITE_USERS};
 
-    private String          userID;
+
     private Object          sageFavorite = null;
     private List<String>    allowedUsers = null;
 
     public MultiFavorite(String User, Object Favorite) {
 
-        super(FAVORITE_STORE, FavoriteAPI.GetFavoriteID(Favorite));
+        super(User, FAVORITE_STORE, FavoriteAPI.GetFavoriteID(Favorite));
 
-        if (!isValid || Favorite==null || !FavoriteAPI.IsFavoriteObject(Favorite) || User==null || User.isEmpty()) {
+        if (!isValid || Favorite==null || !FavoriteAPI.IsFavoriteObject(Favorite)) {
             Log.getInstance().write(Log.LOGLEVEL_ERROR, "MultiFavorite: Invalid Favorite Object. " + User + ":" + Favorite);
             isValid = false;
             return;
         }
 
         sageFavorite = Favorite;
-        userID = User;
 
         allowedUsers = new ArrayList<String>();
 

@@ -21,6 +21,7 @@ public class User {
     private static final String KEY_PASSWORD  = "Password";
     private static final String KEY_IR        = "IntelligentRecording";
     private static final String KEY_UICONTEXT = "UIContext";
+    private static final String KEY_WATCHING  = "Watching";
 
     private String  user    = null;
     private Object  record  = null;
@@ -118,10 +119,11 @@ public class User {
         String UIContext = Global.GetUIContextName();
 
         if (!isValid || UIContext==null || UIContext.isEmpty()) {
-            Log.getInstance().write(Log.LOGLEVEL_WARN, "setUIContext: null Password.");
+            Log.getInstance().write(Log.LOGLEVEL_WARN, "setUIContext: null UIContext.");
             return;
         }
 
+        Log.getInstance().write(Log.LOGLEVEL_TRACE, "setUIContext: UIContext for user is " + UIContext);
         UserRecordAPI.SetUserRecordData(record, KEY_UICONTEXT, UIContext);
         return;
     }
@@ -135,12 +137,6 @@ public class User {
 
         Log.getInstance().write(Log.LOGLEVEL_TRACE, "initializeInDataBase: Add to Favorites.");
         addToAllFavorites();
-
-        //Log.getInstance().write(Log.LOGLEVEL_TRACE, "initializeInDataBase: Add to MediaFiles.");
-        //addToAllMediaFiles();
-
-        //Log.getInstance().write(Log.LOGLEVEL_TRACE, "initializeInDataBase: Add to Airings.");
-        //addToAllAirings();
         return;
     }
     
@@ -163,6 +159,33 @@ public class User {
 
     String getUserID() {
         return user;
+    }
+
+    void setWatching(Object MediaFile) {
+        Object MF = null;
+
+        if (AiringAPI.IsAiringObject(MediaFile)) {
+            MF = AiringAPI.GetMediaFileForAiring(MediaFile);
+        } else  {
+            MF = MediaFile;
+        }
+
+        if (MF==null) {
+            Log.getInstance().write(Log.LOGLEVEL_WARN, "setWatching: null MediaFile.");
+            return;
+        }
+
+        Integer ID = MediaFileAPI.GetMediaFileID(MF);
+        UserRecordAPI.SetUserRecordData(record, KEY_WATCHING, ID.toString());
+        return;
+    }
+
+    void clearWatching() {
+        UserRecordAPI.SetUserRecordData(record, KEY_WATCHING, null);
+    }
+
+    String getWatching() {
+        return UserRecordAPI.GetUserRecordData(record, KEY_WATCHING);
     }
 
 
@@ -415,6 +438,27 @@ public class User {
         }
 
         Log.getInstance().write(Log.LOGLEVEL_TRACE, "getUserForContext: No userID found for context " + UIContext);
+        return null;
+    }
+
+    static String getUserWatchingID(Integer ID) {
+        return getUserWatchingID(ID.toString());
+    }
+
+    static String getUserWatchingID(String ID) {
+
+        List<String> UserIDs = getAllUsers();
+
+        for (String UserID : UserIDs) {
+            User user = new User(UserID);
+            String ThisID = user.getWatching();
+            if (ThisID!=null && ThisID.equalsIgnoreCase(ID)) {
+                Log.getInstance().write(Log.LOGLEVEL_TRACE, "getUserWatchingID: Found user " + UserID);
+                return UserID;
+            }
+        }
+
+        Log.getInstance().write(Log.LOGLEVEL_TRACE, "getUserForContext: No userID found for ID " + ID);
         return null;
     }
 }

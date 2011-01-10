@@ -75,7 +75,7 @@ public class Plugin implements sage.SageTVPlugin, SageTVEventListener {
         // Subscribe to what we need.
         Log.getInstance().write(Log.LOGLEVEL_TRACE, "Plugin: Subscribing to events.");
         registry.eventSubscribe(listener, "RecordingStopped");
-        registry.eventSubscribe(listener, "RecordingCompleted");
+        //registry.eventSubscribe(listener, "RecordingCompleted");
         registry.eventSubscribe(listener, "MediaFileImported");
         registry.eventSubscribe(listener, "PlaybackStarted");
         registry.eventSubscribe(listener, "PlaybackStopped");
@@ -438,6 +438,8 @@ public class Plugin implements sage.SageTVPlugin, SageTVEventListener {
 
         Log.getInstance().write(Log.LOGLEVEL_TRACE, "sageEvent: MediaTitle " + MediaFileAPI.GetMediaTitle(MediaFile));
 
+        Integer MediaFileID = MediaFileAPI.GetMediaFileID(MediaFile);
+
         List<String> Users = User.getAllUsers();
 
         if (Users==null || Users.isEmpty()) {
@@ -447,62 +449,85 @@ public class Plugin implements sage.SageTVPlugin, SageTVEventListener {
 
         Log.getInstance().write(Log.LOGLEVEL_TRACE, "sageEvent: Defined users " + Users);
 
-        // MediaTime = Time playback ended relative to the actual time the Airing was recorded.
-        // Duration = ??
 
-        if (eventName.startsWith("PlaybackStarted")) {
-            String UIContext = (String)eventVars.get("UIContext");
-            Long Duration = (Long)eventVars.get("Duration");
-            Long MediaTime = (Long)eventVars.get("MediaTime");
-            Integer ChapterNum = (Integer)eventVars.get("ChapterNum");
-            Integer TitleNum = (Integer)eventVars.get("TitleNum");
+        if (eventName.startsWith("PlaybackStarted") || eventName.startsWith("PlaybackStopped") || eventName.startsWith("PlaybackFinished")) {
 
-            Log.getInstance().write(Log.LOGLEVEL_TRACE, "sageEvent: PlaybackStarted. UIContext=" + UIContext +", Duration="+Duration+", MediaTime="+MediaTime+", ChapterNum="+ChapterNum+", TitleNum="+TitleNum);
-            return;
-        }
+            String UserID = User.getUserWatchingID(MediaFileID);
 
-        if (eventName.startsWith("PlaybackStopped")) {
-            
-            String UIContext = (String)eventVars.get("UIContext");
-            Long Duration = (Long)eventVars.get("Duration");
-            Long MediaTime = (Long)eventVars.get("MediaTime");
-            Integer ChapterNum = (Integer)eventVars.get("ChapterNum");
-            Integer TitleNum = (Integer)eventVars.get("TitleNum");
-
-            Log.getInstance().write(Log.LOGLEVEL_TRACE, "sageEvent: PlaybackStopped. UIContext=" + UIContext +", Duration="+Duration+", MediaTime="+MediaTime+", ChapterNum="+ChapterNum+", TitleNum="+TitleNum);
-            Log.getInstance().write(Log.LOGLEVEL_TRACE, "Duration=" + Utility.PrintTimeFull(Duration));
-            Log.getInstance().write(Log.LOGLEVEL_TRACE, "MediaTime=" + Utility.PrintTimeFull(MediaTime));
-
-            String UserID = User.getUserForContext(UIContext);
-
-            // Check for Admin or user that is not logged in.
+            // Check for Admin or user that is not logged in. If either one of these users are doing the watching
+            // we do not have to mess with any of the data.
             if (UserID==null) {
-                Log.getInstance().write(Log.LOGLEVEL_TRACE, "sageEvent: No user for context " + UIContext);
+                Log.getInstance().write(Log.LOGLEVEL_TRACE, "sageEvent: No user for MediaFileID " + MediaFileID);
                 return;
             }
 
-            Log.getInstance().write(Log.LOGLEVEL_TRACE, "sageEvent: Found user for context " + UserID);
+            Log.getInstance().write(Log.LOGLEVEL_TRACE, "sageEvent: User watching this Airing " + UserID);
 
-            MultiMediaFile MMF = new MultiMediaFile(UserID, MediaFile);
-            MMF.setDuration(Duration);
-            MMF.setMediaTime(MediaTime);
-            MMF.setChapterNum(ChapterNum);
-            MMF.setTitleNum(TitleNum);
-     
-            return;
-        }
-
-        if (eventName.startsWith("PlaybackFinished")) {
-
+            // Fetch the data from the Map.
+            // MediaTime = Time playback ended relative to the actual time the Airing was recorded.
+            // Duration = Remaining playback length of Airing in milliseconds.
             String UIContext = (String)eventVars.get("UIContext");
             Long Duration = (Long)eventVars.get("Duration");
             Long MediaTime = (Long)eventVars.get("MediaTime");
             Integer ChapterNum = (Integer)eventVars.get("ChapterNum");
             Integer TitleNum = (Integer)eventVars.get("TitleNum");
 
-            Log.getInstance().write(Log.LOGLEVEL_TRACE, "sageEvent: PlaybackFinished. UIContext=" + UIContext +", Duration="+Duration+", MediaTime="+MediaTime+", ChapterNum="+ChapterNum+", TitleNum="+TitleNum);
+            // Get the MMF.
+            MultiMediaFile MMF = new MultiMediaFile(UserID, MediaFile);
 
-            return;
+            // Get the Airing that goes with this MediaFile, if there is one.
+            Object Airing = MediaFileAPI.GetMediaFileAiring(MediaFile);
+
+            MultiAiring MA = null;
+
+            if (Airing!=null)
+                MA = new MultiAiring(UserID, Airing);
+            else
+                Log.getInstance().write(Log.LOGLEVEL_TRACE, "sageEvent: null Airing.");
+
+
+
+            if (eventName.startsWith("PlaybackStarted")) {
+
+                Log.getInstance().write(Log.LOGLEVEL_TRACE, "sageEvent: PlaybackStarted. UIContext=" + UIContext +", Duration="+Duration+", MediaTime="+MediaTime+", ChapterNum="+ChapterNum+", TitleNum="+TitleNum);
+                return;
+            }
+
+            if (eventName.startsWith("PlaybackStopped") || eventName.startsWith("PlaybackFinished")) {
+
+                Log.getInstance().write(Log.LOGLEVEL_TRACE, "sageEvent: PlaybackStopped. UIContext=" + UIContext +", Duration="+Duration+", MediaTime="+MediaTime+", ChapterNum="+ChapterNum+", TitleNum="+TitleNum);
+                Log.getInstance().write(Log.LOGLEVEL_TRACE, "Duration=" + Utility.PrintDurationWithSeconds(Duration));
+                Log.getInstance().write(Log.LOGLEVEL_TRACE, "MediaTime=" + PrintDateAndTime(MediaTime));
+
+                MMF.setMediaTime(MediaTime);
+                MMF.setDuration(Duration);
+                MMF.setChapterNum(ChapterNum);
+                MMF.setTitleNum(TitleNum);
+                MMF.setRealWatchedEndTime(Utility.Time());
+                MMF.setWatchedEndTime(MediaTime);
+
+                if (MA!=null) {
+
+                    MA.setRealWatchedEndTime(Utility.Time());
+                    MA.setWatchedEndTime(MediaTime);
+
+                    if (eventName.startsWith("PlaybackFinished")) {
+                        MA.setWatched();
+                    }
+                }
+
+                return;
+            }
+        }  // End of playback event.
+
+
+        // It's not a playback event, so it's either an Import event or a Recording event.
+
+
+        Object Airing = MediaFileAPI.GetMediaFileAiring(MediaFile);
+
+        if (Airing==null) {
+            Log.getInstance().write(Log.LOGLEVEL_WARN, "sageEvent: null Airing.");
         }
 
         // If we are importing a MediaFile add access for all users.
@@ -514,17 +539,13 @@ public class Plugin implements sage.SageTVPlugin, SageTVEventListener {
             for (String User : Users) {
                 User user = new User(User);
                 user.addToMediaFile(MediaFile);
+                if (Airing!=null)
+                    user.addToAiring(Airing);
             }
 
             Log.getInstance().write(Log.LOGLEVEL_TRACE, "sageEvent: Added users to imported MediaFile " + Users);
             return;
         }
-
-        // Disallow all users, then add the ones that will be allowed to see this MediaFile.
-        //for (String User : Users) {
-            //User user = new User(User);
-            //ser.removeFromMediaFile(MediaFile);
-        //}
 
         // We have a completed recording. It could be a Favorite, Manual or an IR.
 
@@ -533,39 +554,56 @@ public class Plugin implements sage.SageTVPlugin, SageTVEventListener {
         // be granted access to the MediaFile.
         boolean AccessGranted = false;
 
+        if (Airing==null) {
+            Log.getInstance().write(Log.LOGLEVEL_WARN, "sageEvent: Can't process Recording because there is no Airing.");
+            return;
+        }
+
         for (String ThisUser : Users) {
 
-            MultiAiring MA = new MultiAiring(ThisUser, MediaFile);
+            MultiAiring MA = new MultiAiring(ThisUser, Airing);
 
             if (MA.isManualRecord() || MA.isFavorite()) {
                 AccessGranted = true;
                 User user = new User(ThisUser);
                 user.addToMediaFile(MediaFile);
+                user.addToAiring(Airing);
                 MA.removeFlag(MultiAiring.MANUAL_IN_PROGRESS, ThisUser);
                 Log.getInstance().write(Log.LOGLEVEL_TRACE, "sageEvent: Added Manual or Favorite to user " + ThisUser);
             }
 
         }
 
+        if (!AccessGranted) {
+            Log.getInstance().write(Log.LOGLEVEL_TRACE, "sageEvent: This is not a Manual or a Favorite.");
+        }
+
         // If we didn't assign it to any user let's assume it's an Intelligent Recording and grant access to any
         // users that have IR enabled.
         if (!AccessGranted && !Configuration.IsIntelligentRecordingDisabled()) {
 
-            Log.getInstance().write(Log.LOGLEVEL_TRACE, "sageEvent: Found an IntelligentRecording.");
+            Log.getInstance().write(Log.LOGLEVEL_TRACE, "sageEvent: Found an IntelligentRecording. Updaing all Users.");
             for (String ThisUser : Users) {
 
                 User user = new User(ThisUser);
 
                 if (!user.isIntelligentRecordingDisabled()) {
                     user.addToMediaFile(MediaFile);
+                    user.addToAiring(Airing);
                     Log.getInstance().write(Log.LOGLEVEL_TRACE, "sageEvent: Added IR for user " + ThisUser);
                 }
             }
 
+        } else {
+            Log.getInstance().write(Log.LOGLEVEL_TRACE, "sageEvent: It's a Manual or Favorite, or IR is disabled.");
         }
 
         Log.getInstance().write(Log.LOGLEVEL_TRACE, "sageEvent: Processing complete.");
         return;
+    }
+
+    static String PrintDateAndTime(long time) {
+        return Utility.PrintDateLong(time) + " - " + Utility.PrintTimeFull(time);
     }
 
 }

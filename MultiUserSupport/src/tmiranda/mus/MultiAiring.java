@@ -19,17 +19,17 @@ public class MultiAiring extends MultiObject {
     static final String MANUAL              = "Manual";
     static final String WATCHEDTIME         = "WatchedTime";
     static final String DONTLIKE            = "DontLike";
+    static final String WATCHED             = "Watched";
 
-    static final String[]   FLAGS = {DONTLIKE, MANUAL, MANUAL_IN_PROGRESS, INITIALIZED};
-    
-    String  userID      = null;
+    static final String[]   FLAGS = {WATCHED, DONTLIKE, MANUAL, MANUAL_IN_PROGRESS, INITIALIZED};
+ 
     Object  sageAiring  = null;
 
     public MultiAiring(String UserID, Object Airing) {
         
-        super(AIRING_STORE, AiringAPI.GetAiringID(Airing));
+        super(UserID, AIRING_STORE, AiringAPI.GetAiringID(Airing));
 
-        if (!isValid || UserID==null || UserID.isEmpty() || Airing==null) {
+        if (!isValid || Airing==null) {
             isValid = false;
             Log.getInstance().write(Log.LOGLEVEL_WARN, "MultiAiring: null parameter " + UserID);
             return;
@@ -41,11 +41,10 @@ public class MultiAiring extends MultiObject {
             return;
         }
 
-        userID = UserID;
         sageAiring = Airing;
 
         if (!isInitialized) {
-            Log.getInstance().write(Log.LOGLEVEL_TRACE, "MultiAiring: Initializing user " + userID);
+            Log.getInstance().write(Log.LOGLEVEL_TRACE, "MultiAiring: Initializing user " + userID + ":" + AiringAPI.GetAiringTitle(Airing));
             initializeUser();
         }
     }
@@ -113,6 +112,25 @@ public class MultiAiring extends MultiObject {
             removeFlag(DONTLIKE, userID);
     }
 
+    boolean isWatched() {
+        return (isValid ? containsFlag(WATCHED, userID) : AiringAPI.IsWatched(sageAiring));
+    }
+
+    void setWatched() {
+        if (!isValid)
+            AiringAPI.SetWatched(sageAiring);
+        else
+            addFlag(WATCHED, userID);
+        return;
+    }
+
+    void clearWatched() {
+        if (!isValid)
+            AiringAPI.ClearWatched(sageAiring);
+        else
+            removeFlag(WATCHED, userID);
+    }
+
     boolean isFavorite() {
         Object Favorite = FavoriteAPI.GetFavoriteForAiring(sageAiring);
 
@@ -160,7 +178,13 @@ public class MultiAiring extends MultiObject {
 
         removeFlag(MANUAL_IN_PROGRESS, userID);
 
-        addFlag(INITIALIZED, "true");
+        setRealWatchedStartTime(AiringAPI.GetRealWatchedStartTime(sageAiring));
+        setRealWatchedEndTime(AiringAPI.GetRealWatchedEndTime(sageAiring));
+
+        setWatchedStartTime(AiringAPI.GetWatchedStartTime(sageAiring));
+        setWatchedEndTime(AiringAPI.GetWatchedEndTime(sageAiring));
+
+        setRecordData(INITIALIZED, "true");
         isInitialized = true;
         return;
     }

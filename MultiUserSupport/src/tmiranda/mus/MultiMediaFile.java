@@ -33,13 +33,12 @@ public class MultiMediaFile extends MultiObject {
     static final String CHAPTERNUM_PREFIX   = "ChapterNum_";
     static final String TITLENUM_PREFIX     = "TitleNum_";
 
-    private String userID           = null;
     private Object sageMediaFile    = null;
 
     public MultiMediaFile(String UserID, Object MediaFile) {
-        super(MEDIAFILE_STORE, MediaFileAPI.GetMediaFileID(MediaFile));
+        super(UserID, MEDIAFILE_STORE, MediaFileAPI.GetMediaFileID(MediaFile));
 
-        if (!isValid || UserID==null || UserID.isEmpty() || MediaFile==null) {
+        if (!isValid || MediaFile==null) {
             isValid = false;
             Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "MultiMediaFile: null parameter " + UserID);
             return;
@@ -51,11 +50,10 @@ public class MultiMediaFile extends MultiObject {
             return;
         }
 
-        userID = UserID;
         sageMediaFile = MediaFile;
 
         if (!isInitialized) {
-            Log.getInstance().write(Log.LOGLEVEL_TRACE, "MultiMediaFile: Initializing user " + userID);
+            Log.getInstance().write(Log.LOGLEVEL_TRACE, "MultiMediaFile: Initializing user " + userID + ":" + MediaFileAPI.GetMediaTitle(MediaFile));
             initializeUser();
         }
     }
@@ -86,6 +84,7 @@ System.out.println("DELETE: AFTER ADDFLAG " + getRecordData(DELETED));
         return true;
     }
 
+
     void setArchived() {
         if (!isValid)
             MediaFileAPI.MoveFileToLibrary(sageMediaFile);
@@ -108,6 +107,7 @@ System.out.println("DELETE: AFTER ADDFLAG " + getRecordData(DELETED));
             return containsFlag(ARCHIVED, userID);
     }
 
+
     long getDuration() {
         String D = getRecordData(DURATION_PREFIX + userID);
 
@@ -115,8 +115,8 @@ System.out.println("DELETE: AFTER ADDFLAG " + getRecordData(DELETED));
             long duration = Long.parseLong(D);
             return duration;
         } catch (NumberFormatException e) {
-            Log.getInstance().write(Log.LOGLEVEL_ERROR, "getDuration: Bad number " + D);
-            return 0;
+            Log.getInstance().write(Log.LOGLEVEL_TRACE, "getDuration: Bad number " + D);
+            return -1;
         }
     }
 
@@ -129,6 +129,7 @@ System.out.println("DELETE: AFTER ADDFLAG " + getRecordData(DELETED));
         setDuration(D.toString());
     }
 
+
     long getMediaTime() {
         String D = getRecordData(MEDIATIME_PREFIX + userID);
 
@@ -136,8 +137,8 @@ System.out.println("DELETE: AFTER ADDFLAG " + getRecordData(DELETED));
             long duration = Long.parseLong(D);
             return duration;
         } catch (NumberFormatException e) {
-            Log.getInstance().write(Log.LOGLEVEL_ERROR, "getMediaTime: Bad number " + D);
-            return 0;
+            Log.getInstance().write(Log.LOGLEVEL_TRACE, "getMediaTime: Bad number " + D);
+            return -1;
         }
     }
 
@@ -150,6 +151,7 @@ System.out.println("DELETE: AFTER ADDFLAG " + getRecordData(DELETED));
         setMediaTime(D.toString());
     }
 
+
     int getChapterNum() {
         String D = getRecordData(CHAPTERNUM_PREFIX + userID);
 
@@ -157,8 +159,8 @@ System.out.println("DELETE: AFTER ADDFLAG " + getRecordData(DELETED));
             int duration = Integer.parseInt(D);
             return duration;
         } catch (NumberFormatException e) {
-            Log.getInstance().write(Log.LOGLEVEL_ERROR, "getChapterNum: Bad number " + D);
-            return 0;
+            Log.getInstance().write(Log.LOGLEVEL_WARN, "getChapterNum: Bad number " + D);
+            return -1;
         }
     }
 
@@ -171,6 +173,7 @@ System.out.println("DELETE: AFTER ADDFLAG " + getRecordData(DELETED));
         setChapterNum(N.toString());
     }
 
+
     int getTitleNum() {
         String D = getRecordData(TITLENUM_PREFIX + userID);
 
@@ -178,8 +181,8 @@ System.out.println("DELETE: AFTER ADDFLAG " + getRecordData(DELETED));
             int duration = Integer.parseInt(D);
             return duration;
         } catch (NumberFormatException e) {
-            Log.getInstance().write(Log.LOGLEVEL_ERROR, "getTitleNum: Bad number " + D);
-            return 0;
+            Log.getInstance().write(Log.LOGLEVEL_WARN, "getTitleNum: Bad number " + D);
+            return -1;
         }
     }
 
@@ -192,6 +195,7 @@ System.out.println("DELETE: AFTER ADDFLAG " + getRecordData(DELETED));
         setTitleNum(N.toString());
     }
 
+
     // Initialize MediaFile for this user.
     void initializeUser() {
 
@@ -201,12 +205,19 @@ System.out.println("DELETE: AFTER ADDFLAG " + getRecordData(DELETED));
             removeFlag(ARCHIVED, userID);
 
         removeFlag(DELETED, userID);
-        addFlag(INITIALIZED, "true");
+
         setDuration(null);
         setMediaTime(null);
         setChapterNum(null);
         setTitleNum(null);
 
+        setRealWatchedStartTime(AiringAPI.GetRealWatchedStartTime(sageMediaFile));
+        setRealWatchedEndTime(AiringAPI.GetRealWatchedEndTime(sageMediaFile));
+        
+        setWatchedStartTime(AiringAPI.GetWatchedStartTime(sageMediaFile));
+        setWatchedEndTime(AiringAPI.GetWatchedEndTime(sageMediaFile));
+
+        setRecordData(INITIALIZED, "true");
         isInitialized = true;
         return;
     }
@@ -231,13 +242,17 @@ System.out.println("DELETE: AFTER ADDFLAG " + getRecordData(DELETED));
             return TheList;
         }
 
+        Log.getInstance().write(Log.LOGLEVEL_TRACE, "GetFlagsStartingWith: Found records " + AllRecords.length);
+
         for (Object record : AllRecords) {
 
             String[] names = UserRecordAPI.GetUserRecordNames(record);
 
             for (String name : names)
-                if (name.startsWith(Prefix))
-                    TheList.add(name);
+                if (name.startsWith(Prefix)) {
+                    String Data = UserRecordAPI.GetUserRecordData(record, name);
+                    TheList.add(name + "=" + Data);
+                }
         }
 
         return TheList;
