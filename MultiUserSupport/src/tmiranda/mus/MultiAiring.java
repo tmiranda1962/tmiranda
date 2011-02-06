@@ -18,16 +18,15 @@ public class MultiAiring extends MultiObject {
     static final String MANUAL_IN_PROGRESS  = "ManualInProgress";
     static final String MANUAL              = "Manual";
     static final String WATCHEDTIME         = "WatchedTime";
-    static final String DONTLIKE            = "DontLike";
-    static final String WATCHED             = "Watched";
 
-    static final String[]   FLAGS = {WATCHED, DONTLIKE, MANUAL, MANUAL_IN_PROGRESS, INITIALIZED};
+    static final String[]   FLAGS = {MANUAL, MANUAL_IN_PROGRESS, INITIALIZED};
  
-    Object  sageAiring  = null;
+    private Object sageAiring       = null;
+
 
     public MultiAiring(String UserID, Object Airing) {
         
-        super(UserID, AIRING_STORE, AiringAPI.GetAiringID(Airing));
+        super(UserID, AIRING_STORE, AiringAPI.GetAiringID(Airing), MediaFileAPI.GetMediaFileID(AiringAPI.GetMediaFileForAiring(Airing)), MultiMediaFile.MEDIAFILE_STORE);
 
         if (!isValid || Airing==null) {
             isValid = false;
@@ -48,6 +47,9 @@ public class MultiAiring extends MultiObject {
             initializeUser();
         }
     }
+
+    // Record related methods must be resolved to an Airing in the API because only
+    // Airings can be recorded.
 
     boolean isManualRecord() {
 
@@ -93,43 +95,9 @@ public class MultiAiring extends MultiObject {
         }
     }
 
-    boolean isDontLike() {
-        return (isValid ? containsFlag(DONTLIKE, userID) : AiringAPI.IsDontLike(sageAiring));
-    }
 
-    void setDontLike() {
-        if (!isValid)
-            AiringAPI.SetDontLike(sageAiring);
-        else
-            addFlag(DONTLIKE, userID);
-        return;
-    }
-
-    void clearDontLike() {
-        if (!isValid)
-            AiringAPI.ClearDontLike(sageAiring);
-        else
-            removeFlag(DONTLIKE, userID);
-    }
-
-    boolean isWatched() {
-        return (isValid ? containsFlag(WATCHED, userID) : AiringAPI.IsWatched(sageAiring));
-    }
-
-    void setWatched() {
-        if (!isValid)
-            AiringAPI.SetWatched(sageAiring);
-        else
-            addFlag(WATCHED, userID);
-        return;
-    }
-
-    void clearWatched() {
-        if (!isValid)
-            AiringAPI.ClearWatched(sageAiring);
-        else
-            removeFlag(WATCHED, userID);
-    }
+    // Favories methods must be resolved to an Airing in the API because only
+    // Airings can have Favorite status.
 
     boolean isFavorite() {
         Object Favorite = FavoriteAPI.GetFavoriteForAiring(sageAiring);
@@ -164,7 +132,7 @@ public class MultiAiring extends MultiObject {
 
 
     // Initialize this user for the Airing.
-    void initializeUser() {
+    final void initializeUser() {
 
         if (AiringAPI.IsDontLike(sageAiring))
             addFlag(DONTLIKE, userID);
@@ -178,18 +146,18 @@ public class MultiAiring extends MultiObject {
 
         removeFlag(MANUAL_IN_PROGRESS, userID);
 
-        setRealWatchedStartTime(AiringAPI.GetRealWatchedStartTime(sageAiring));
-        setRealWatchedEndTime(AiringAPI.GetRealWatchedEndTime(sageAiring));
+        //setRealWatchedStartTime(AiringAPI.GetRealWatchedStartTime(sageAiring));
+        //setRealWatchedEndTime(AiringAPI.GetRealWatchedEndTime(sageAiring));
 
-        setWatchedStartTime(AiringAPI.GetWatchedStartTime(sageAiring));
-        setWatchedEndTime(AiringAPI.GetWatchedEndTime(sageAiring));
+        //setWatchedStartTime(AiringAPI.GetWatchedStartTime(sageAiring));
+        //setWatchedEndTime(AiringAPI.GetWatchedEndTime(sageAiring));
 
         setRecordData(INITIALIZED, "true");
         isInitialized = true;
         return;
     }
 
-    // Remove this use from the Airing.
+    // Remove this user from the Airing.
     void clearUserFromFlags() {
         clearUser(userID, FLAGS);
     }
@@ -198,4 +166,18 @@ public class MultiAiring extends MultiObject {
     static void WipeDatabase() {
         UserRecordAPI.DeleteAllUserRecords(AIRING_STORE);
     }
+
+    // Gets the flags for the current user.
+    List<String> getFlagsForUser() {
+
+       List<String> theList = getObjectFlagsForUser();
+
+       for (String flag : FLAGS)
+           if (containsFlag(flag, userID))
+               theList.add("Contains " + flag);
+           else
+               theList.add("!Contains " + flag);
+
+       return theList;
+   }
 }

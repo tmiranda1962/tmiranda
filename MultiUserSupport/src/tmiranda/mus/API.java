@@ -25,6 +25,7 @@ public class API {
      *   own but that will be hard.  Allow user to control all recordings will be easier.
      */
     public static void loginUser(String UserID) {
+        
         if (UserID == null) {
             Log.getInstance().write(Log.LOGLEVEL_ERROR, "loginUser: null UserID.");
             return;
@@ -74,12 +75,39 @@ public class API {
             return MediaPlayerAPI.Watch(Content);
         }
 
-        // Set flag showing that this user is watching this content.
+        // Set flag showing that this user is watching this content. We will need this later
+        // when the RecordingStopped Event is received so we can set RealWatchedEndTime and
+        // WatchedEndTime for the appropriate user.
         User user = new User(User);
         user.setWatching(Content);
 
-        Object MediaFile = null;
-        Object Airing = null;
+        long WatchedEndTime = 0;
+        long RealStartTime = 0;
+
+        if (AiringAPI.IsAiringObject(Content)) {
+            MultiAiring MA = new MultiAiring(User, Content);
+            MA.setRealWatchedStartTime(Utility.Time());
+            WatchedEndTime = MA.getWatchedEndTime();
+            RealStartTime = MA.getRealWatchedStartTime();
+        } else if (MediaFileAPI.IsMediaFileObject(Content)) {
+            MultiMediaFile MMF = new MultiMediaFile(User, Content);
+            MMF.setRealWatchedStartTime(Utility.Time());
+            WatchedEndTime = MMF.getWatchedEndTime();
+            RealStartTime = MMF.getRealWatchedStartTime();
+        } else {
+            return MediaPlayerAPI.Watch(Content);
+        }
+
+        Log.getInstance().write(Log.LOGLEVEL_TRACE, "watch: Setting WatchedEndTime and RealStartTime " + Plugin.PrintDateAndTime(WatchedEndTime) + ":" + Plugin.PrintDateAndTime(RealStartTime));
+        
+        // Reset the values.
+        AiringAPI.ClearWatched(Content);
+        AiringAPI.SetWatchedTimes(Content, WatchedEndTime, RealStartTime);
+
+        // Let the core do its thing.
+        return MediaPlayerAPI.Watch(Content);
+
+        /************
 
         long WatchedStartTime = AiringAPI.GetWatchedStartTime(Content);
 
@@ -111,8 +139,7 @@ public class API {
             }
         }
 
-        // Let the core do its thing.
-        return MediaPlayerAPI.Watch(Content);
+        *******************/
     }
 
     /*
@@ -549,18 +576,13 @@ public class API {
 
         long Duration = 0;
 
-        Object MediaFile = AiringAPI.GetMediaFileForAiring(Airing);
-
-        if (MediaFile==null) {
-            Log.getInstance().write(Log.LOGLEVEL_TRACE, "getWatchedDuration: null MediaFile");
-            return AiringAPI.GetWatchedDuration(Airing);
+        if (MediaFileAPI.IsMediaFileObject(Airing)) {
+            MultiMediaFile MMF = new MultiMediaFile(User, Airing);
+            Duration = MMF.getWatchedDuration();
         } else {
-            MediaFile = Airing;
+            MultiAiring MA = new MultiAiring(User, Airing);
+            Duration = MA.getWatchedDuration();
         }
-
-
-        MultiMediaFile MMF = new MultiMediaFile(User, Airing);
-        Duration = MMF.getMediaTime();
 
         Log.getInstance().write(Log.LOGLEVEL_TRACE, "getWatchedDuration: Duration " + MediaFileAPI.GetMediaTitle(Airing) + ":" + Plugin.PrintDateAndTime(Duration));
         return (Duration == -1 ? AiringAPI.GetWatchedDuration(Airing) : Duration);
@@ -596,6 +618,10 @@ public class API {
             return AiringAPI.GetWatchedEndTime(Airing);
         }
 
+        // Special case.  If the Airing isWatched we must return 0 for WatchedEndTime.
+        //if (isWatched(Airing))
+            //return 0;
+
         long EndTime = 0;
 
         if (MediaFileAPI.IsMediaFileObject(Airing)) {
@@ -612,23 +638,7 @@ public class API {
 
     // Use IN PLACE OF core API.
     public static long getAiringDuration(Object Airing) {
-        String User = getLoggedinUser();
-
-        if (User==null || User.equalsIgnoreCase(Plugin.SUPER_USER)) {
-            return AiringAPI.GetAiringDuration(Airing);
-        }
-
-        Object MediaFile = AiringAPI.IsAiringObject(Airing) ? AiringAPI.GetMediaFileForAiring(Airing) : Airing;
-
-        if (MediaFile==null) {
-            return AiringAPI.GetAiringDuration(Airing);
-        }
-
-        MultiMediaFile MMF = new MultiMediaFile(User, MediaFile);
-        long Duration = MMF.getDuration();
-
-        Log.getInstance().write(Log.LOGLEVEL_TRACE, "getAiringDuration: EndTime " + MediaFileAPI.GetMediaTitle(Airing) + ":" + Utility.PrintDurationWithSeconds(Duration));
-        return (Duration == -1 ? AiringAPI.GetAiringDuration(Airing) : Duration);
+        return AiringAPI.GetAiringDuration(Airing);
     }
 
     /*
@@ -952,7 +962,7 @@ public class API {
         }
 
         TheList.addAll(MultiMediaFile.GetFlagsStartingWith(MultiMediaFile.DURATION_PREFIX));
-        TheList.addAll(MultiMediaFile.GetFlagsStartingWith(MultiMediaFile.MEDIATIME_PREFIX));
+        //TheList.addAll(MultiMediaFile.GetFlagsStartingWith(MultiMediaFile.MEDIATIME_PREFIX));
         TheList.addAll(MultiMediaFile.GetFlagsStartingWith(MultiMediaFile.CHAPTERNUM_PREFIX));
         TheList.addAll(MultiMediaFile.GetFlagsStartingWith(MultiMediaFile.TITLENUM_PREFIX));
 
@@ -963,5 +973,22 @@ public class API {
         TheList.add("Core: Archived=" + IsArchived.toString() + " DontLike=" + DontLike.toString() + " Manual=" + Manual.toString() + " Favorite=" + IsFavorite.toString());
 
         return TheList;
+    }
+
+    public static List<String> getFlagsForUser(Object MediaFile) {
+
+        List<String> TheList = new ArrayList<String>();
+
+        if (MediaFile==null) {
+            return TheList;
+        }
+
+        if (MediaFileAPI.IsMediaFileObject(MediaFile)) {
+            MultiMediaFile MMF = new MultiMediaFile(getLoggedinUser(), MediaFile);
+            return MMF.getFlagsForUser();
+        } else {
+            MultiAiring MA = new MultiAiring(getLoggedinUser(), MediaFile);
+            return MA.getFlagsForUser();
+        }
     }
 }

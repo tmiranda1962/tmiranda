@@ -24,7 +24,7 @@ public class MultiFavorite extends MultiObject {
 
     public MultiFavorite(String User, Object Favorite) {
 
-        super(User, FAVORITE_STORE, FavoriteAPI.GetFavoriteID(Favorite));
+        super(User, FAVORITE_STORE, FavoriteAPI.GetFavoriteID(Favorite), 0, null);
 
         if (!isValid || Favorite==null || !FavoriteAPI.IsFavoriteObject(Favorite)) {
             Log.getInstance().write(Log.LOGLEVEL_ERROR, "MultiFavorite: Invalid Favorite Object. " + User + ":" + Favorite);
@@ -71,7 +71,7 @@ public class MultiFavorite extends MultiObject {
         Log.getInstance().write(Log.LOGLEVEL_TRACE, "removeFavorite: Users for Favorite " + FavoriteAPI.GetFavoriteDescription(sageFavorite) + ":" + allowedUsers);
 
         if (DS==null || DS.isEmpty()) {
-            Log.getInstance().write(Log.LOGLEVEL_TRACE, "removeFavorite: No more users, deleting from sage database " + FavoriteAPI.GetFavoriteDescription(sageFavorite));
+            Log.getInstance().write(Log.LOGLEVEL_TRACE, "removeFavorite: No more users, deleting Favorite from sage database " + FavoriteAPI.GetFavoriteDescription(sageFavorite));
             FavoriteAPI.RemoveFavorite(sageFavorite);
         }
     }

@@ -28,15 +28,16 @@ public class MultiMediaFile extends MultiObject {
     static final String[]   FLAGS = {ARCHIVED, DELETED, INITIALIZED};
 
     // These Flags+userId will contain the user watched times for the MediaFile.
-    static final String DURATION_PREFIX     = "Duration_";
-    static final String MEDIATIME_PREFIX    = "MediaTime_";
+    //static final String MEDIATIME_PREFIX    = "MediaTime_";
     static final String CHAPTERNUM_PREFIX   = "ChapterNum_";
     static final String TITLENUM_PREFIX     = "TitleNum_";
+
+    static final String[] FLAG_PREFIXES = {CHAPTERNUM_PREFIX, TITLENUM_PREFIX};
 
     private Object sageMediaFile    = null;
 
     public MultiMediaFile(String UserID, Object MediaFile) {
-        super(UserID, MEDIAFILE_STORE, MediaFileAPI.GetMediaFileID(MediaFile));
+        super(UserID, MEDIAFILE_STORE, MediaFileAPI.GetMediaFileID(MediaFile), AiringAPI.GetAiringID(MediaFileAPI.GetMediaFileAiring(MediaFile)), MultiAiring.AIRING_STORE);
 
         if (!isValid || MediaFile==null) {
             isValid = false;
@@ -57,6 +58,9 @@ public class MultiMediaFile extends MultiObject {
             initializeUser();
         }
     }
+
+    // Delete and Archive must be resolved to a MediaFile in the API because the methods
+    // only pertain to physical files.
 
     boolean isDeleted() {
         return (isValid ? containsFlag(DELETED, userID) : false);
@@ -107,29 +111,7 @@ System.out.println("DELETE: AFTER ADDFLAG " + getRecordData(DELETED));
             return containsFlag(ARCHIVED, userID);
     }
 
-
-    long getDuration() {
-        String D = getRecordData(DURATION_PREFIX + userID);
-
-        try {
-            long duration = Long.parseLong(D);
-            return duration;
-        } catch (NumberFormatException e) {
-            Log.getInstance().write(Log.LOGLEVEL_TRACE, "getDuration: Bad number " + D);
-            return -1;
-        }
-    }
-
-    void setDuration(String Duration) {
-        setRecordData(DURATION_PREFIX + userID, Duration);
-    }
-
-    void setDuration(long Duration) {
-        Long D = Duration;
-        setDuration(D.toString());
-    }
-
-
+/*
     long getMediaTime() {
         String D = getRecordData(MEDIATIME_PREFIX + userID);
 
@@ -150,6 +132,8 @@ System.out.println("DELETE: AFTER ADDFLAG " + getRecordData(DELETED));
         Long D = Duration;
         setMediaTime(D.toString());
     }
+ 
+ */
 
 
     int getChapterNum() {
@@ -197,7 +181,7 @@ System.out.println("DELETE: AFTER ADDFLAG " + getRecordData(DELETED));
 
 
     // Initialize MediaFile for this user.
-    void initializeUser() {
+    final void initializeUser() {
 
         if (MediaFileAPI.IsLibraryFile(sageMediaFile))
             addFlag(ARCHIVED, userID);
@@ -206,16 +190,16 @@ System.out.println("DELETE: AFTER ADDFLAG " + getRecordData(DELETED));
 
         removeFlag(DELETED, userID);
 
-        setDuration(null);
-        setMediaTime(null);
+        setWatchedDuration(null);
+        //setMediaTime(null);
         setChapterNum(null);
         setTitleNum(null);
 
-        setRealWatchedStartTime(AiringAPI.GetRealWatchedStartTime(sageMediaFile));
-        setRealWatchedEndTime(AiringAPI.GetRealWatchedEndTime(sageMediaFile));
+        //setRealWatchedStartTime(AiringAPI.GetRealWatchedStartTime(sageMediaFile));
+        //setRealWatchedEndTime(AiringAPI.GetRealWatchedEndTime(sageMediaFile));
         
-        setWatchedStartTime(AiringAPI.GetWatchedStartTime(sageMediaFile));
-        setWatchedEndTime(AiringAPI.GetWatchedEndTime(sageMediaFile));
+        //setWatchedStartTime(AiringAPI.GetWatchedStartTime(sageMediaFile));
+        //setWatchedEndTime(AiringAPI.GetWatchedEndTime(sageMediaFile));
 
         setRecordData(INITIALIZED, "true");
         isInitialized = true;
@@ -257,4 +241,20 @@ System.out.println("DELETE: AFTER ADDFLAG " + getRecordData(DELETED));
 
         return TheList;
     }
+
+    List<String> getFlagsForUser() {
+
+       List<String> theList = getObjectFlagsForUser();
+
+       for (String flag : FLAGS)
+           if (containsFlag(flag, userID))
+               theList.add("Contains " + flag);
+           else
+               theList.add("!Contains " + flag);
+
+        for (String prefix : FLAG_PREFIXES)
+            theList.add(prefix + "=" + getRecordData(prefix+userID));
+
+       return theList;
+   }
 }

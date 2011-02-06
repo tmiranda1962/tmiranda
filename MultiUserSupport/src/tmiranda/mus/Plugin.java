@@ -62,7 +62,8 @@ public class Plugin implements sage.SageTVPlugin, SageTVEventListener {
             resetConfig();
     }
 
-    // This method is called when the plugin should startup
+    // This method is called when the plugin should startup.
+    @Override
     public void start() {
         System.out.println("MUS: Plugin starting. Version = " + VERSION);
 
@@ -82,7 +83,8 @@ public class Plugin implements sage.SageTVPlugin, SageTVEventListener {
         registry.eventSubscribe(listener, "PlaybackFinished");
     }
 
-    // This method is called when the plugin should shutdown
+    // This method is called when the plugin should shutdown.
+    @Override
     public void stop() {
         Log.getInstance().write(Log.LOGLEVEL_TRACE, "Plugin: Stop received from Plugin Manager.");
 
@@ -101,6 +103,7 @@ public class Plugin implements sage.SageTVPlugin, SageTVEventListener {
 
     // This method is called after plugin shutdown to free any resources
     // used by the plugin
+    @Override
     public void destroy() {
         Log.getInstance().destroy();
     }
@@ -111,6 +114,7 @@ public class Plugin implements sage.SageTVPlugin, SageTVEventListener {
     // these methods.
 
     // Returns the names of the settings for this plugin
+    @Override
     public String[] getConfigSettings() {
         Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "Plugin: getConfigSetting received from Plugin Manager.");
 
@@ -133,6 +137,7 @@ public class Plugin implements sage.SageTVPlugin, SageTVEventListener {
     }
 
     // Returns the current value of the specified setting for this plugin
+    @Override
     public String getConfigValue(String setting) {
         Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "Plugin: setConfigValue received from Plugin Manager. Setting = " + setting);
         if (setting.startsWith(SETTING_LOGLEVEL)) {
@@ -170,6 +175,7 @@ public class Plugin implements sage.SageTVPlugin, SageTVEventListener {
 
     // Returns the current value of the specified multichoice setting for
     // this plugin
+    @Override
     public String[] getConfigValues(String setting) {
         return null;
     }
@@ -188,6 +194,7 @@ public class Plugin implements sage.SageTVPlugin, SageTVEventListener {
 
     // Returns one of the constants above that indicates what type of value
     // is used for a specific settings
+    @Override
     public int getConfigType(String setting) {
         Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "Plugin: getConfigType received from Plugin Manager. Setting = " + setting);
 
@@ -210,6 +217,7 @@ public class Plugin implements sage.SageTVPlugin, SageTVEventListener {
     }
 
     // Sets a configuration value for this plugin
+    @Override
     public void setConfigValue(String setting, String value) {
         Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "Plugin: setConfigValue received from Plugin Manager. Setting = " + setting + ":" + value);
 
@@ -255,12 +263,14 @@ public class Plugin implements sage.SageTVPlugin, SageTVEventListener {
     }
 
     // Sets a configuration values for this plugin for a multiselect choice
+    @Override
     public void setConfigValues(String setting, String[] values) {
         Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "Plugin: setConfigValues received from Plugin Manager. Setting = " + setting);
         return;
     }
 
     // For CONFIG_CHOICE settings; this returns the list of choices
+    @Override
     public String[] getConfigOptions(String setting) {
         Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "PlugIn: getConfigOptions received from Plugin Manager. Setting = " + setting);
 
@@ -278,6 +288,7 @@ public class Plugin implements sage.SageTVPlugin, SageTVEventListener {
     }
 
     // Returns the help text for a configuration setting
+    @Override
     public String getConfigHelpText(String setting) {
         if (setting.startsWith(SETTING_LOGLEVEL)) {
             return "Set the Debug Logging Level.";
@@ -303,6 +314,7 @@ public class Plugin implements sage.SageTVPlugin, SageTVEventListener {
     }
 
     // Returns the label used to present this setting to the user
+    @Override
     public String getConfigLabel(String setting) {
 
         if (setting.startsWith(SETTING_LOGLEVEL)) {
@@ -329,6 +341,7 @@ public class Plugin implements sage.SageTVPlugin, SageTVEventListener {
     }
 
     // Resets the configuration of this plugin
+    @Override
     public void resetConfig() {
         Log.getInstance().write(Log.LOGLEVEL_TRACE, "Plugin: resetConfig received from Plugin Manager.");
 
@@ -414,6 +427,7 @@ public class Plugin implements sage.SageTVPlugin, SageTVEventListener {
  * are not required to follow that rule.
  */
 
+    @Override
     public synchronized void sageEvent(String eventName, java.util.Map eventVars) {
 
         Log.getInstance().write(Log.LOGLEVEL_TRACE, "sageEvent: event received = " + eventName);
@@ -428,6 +442,8 @@ public class Plugin implements sage.SageTVPlugin, SageTVEventListener {
             Log.getInstance().write(Log.LOGLEVEL_WARN, "sageEvent: Unexpected event received = " + eventName);
             return;
         }
+
+        Log.getInstance().write(Log.LOGLEVEL_TRACE, "sageEvent: Received event = " + eventName);
 
         Object MediaFile = eventVars.get("MediaFile");
 
@@ -449,7 +465,6 @@ public class Plugin implements sage.SageTVPlugin, SageTVEventListener {
 
         Log.getInstance().write(Log.LOGLEVEL_TRACE, "sageEvent: Defined users " + Users);
 
-
         if (eventName.startsWith("PlaybackStarted") || eventName.startsWith("PlaybackStopped") || eventName.startsWith("PlaybackFinished")) {
 
             String UserID = User.getUserWatchingID(MediaFileID);
@@ -464,60 +479,44 @@ public class Plugin implements sage.SageTVPlugin, SageTVEventListener {
             Log.getInstance().write(Log.LOGLEVEL_TRACE, "sageEvent: User watching this Airing " + UserID);
 
             // Fetch the data from the Map.
-            // MediaTime = Time playback ended relative to the actual time the Airing was recorded.
-            // Duration = Remaining playback length of Airing in milliseconds.
-            String UIContext = (String)eventVars.get("UIContext");
-            Long Duration = (Long)eventVars.get("Duration");
-            Long MediaTime = (Long)eventVars.get("MediaTime");
-            Integer ChapterNum = (Integer)eventVars.get("ChapterNum");
-            Integer TitleNum = (Integer)eventVars.get("TitleNum");
+            //   MediaTime = Time playback ended relative to the actual time the Airing was recorded.
+            //   Duration = Total playback duration in milliseconds.
+            String UIContext    = (String)eventVars.get("UIContext");
+            Long Duration       = (Long)eventVars.get("Duration");
+            Long MediaTime      = (Long)eventVars.get("MediaTime");
+            Integer ChapterNum  = (Integer)eventVars.get("ChapterNum");
+            Integer TitleNum    = (Integer)eventVars.get("TitleNum");
 
-            // Get the MMF.
-            MultiMediaFile MMF = new MultiMediaFile(UserID, MediaFile);
+            Log.getInstance().write(Log.LOGLEVEL_TRACE, "sageEvent: UIContext=" + UIContext +", Duration="+Duration+", MediaTime="+MediaTime+", ChapterNum="+ChapterNum+", TitleNum="+TitleNum);
+            Log.getInstance().write(Log.LOGLEVEL_TRACE, "sageEvent: Duration=" + Utility.PrintDurationWithSeconds(Duration));
+            Log.getInstance().write(Log.LOGLEVEL_TRACE, "sageEvent: MediaTime=" + PrintDateAndTime(MediaTime));
 
-            // Get the Airing that goes with this MediaFile, if there is one.
-            Object Airing = MediaFileAPI.GetMediaFileAiring(MediaFile);
-
-            MultiAiring MA = null;
-
-            if (Airing!=null)
-                MA = new MultiAiring(UserID, Airing);
-            else
-                Log.getInstance().write(Log.LOGLEVEL_TRACE, "sageEvent: null Airing.");
-
-
-
+            // Nothing to do if PlaybackStarted. RealWatchedStartTime() is set in the API call.
             if (eventName.startsWith("PlaybackStarted")) {
-
                 Log.getInstance().write(Log.LOGLEVEL_TRACE, "sageEvent: PlaybackStarted. UIContext=" + UIContext +", Duration="+Duration+", MediaTime="+MediaTime+", ChapterNum="+ChapterNum+", TitleNum="+TitleNum);
                 return;
             }
+                                   
+            // Playback has stopped, maybe because the user manually stopped it or maybe
+            // because the end of file has been reached.
+            MultiMediaFile MMF = new MultiMediaFile(UserID, MediaFile);
+            //MMF.setMediaTime(MediaTime);
+            MMF.setWatchedDuration(MediaTime - AiringAPI.GetAiringStartTime(MediaFile));
+            MMF.setChapterNum(ChapterNum);
+            MMF.setTitleNum(TitleNum);
+            MMF.setRealWatchedEndTime(Utility.Time());
+            MMF.setWatchedEndTime(MediaTime);
 
-            if (eventName.startsWith("PlaybackStopped") || eventName.startsWith("PlaybackFinished")) {
-
-                Log.getInstance().write(Log.LOGLEVEL_TRACE, "sageEvent: PlaybackStopped. UIContext=" + UIContext +", Duration="+Duration+", MediaTime="+MediaTime+", ChapterNum="+ChapterNum+", TitleNum="+TitleNum);
-                Log.getInstance().write(Log.LOGLEVEL_TRACE, "Duration=" + Utility.PrintDurationWithSeconds(Duration));
-                Log.getInstance().write(Log.LOGLEVEL_TRACE, "MediaTime=" + PrintDateAndTime(MediaTime));
-
-                MMF.setMediaTime(MediaTime);
-                MMF.setDuration(Duration);
-                MMF.setChapterNum(ChapterNum);
-                MMF.setTitleNum(TitleNum);
-                MMF.setRealWatchedEndTime(Utility.Time());
-                MMF.setWatchedEndTime(MediaTime);
-
-                if (MA!=null) {
-
-                    MA.setRealWatchedEndTime(Utility.Time());
-                    MA.setWatchedEndTime(MediaTime);
-
-                    if (eventName.startsWith("PlaybackFinished")) {
-                        MA.setWatched();
-                    }
-                }
-
-                return;
+            if (eventName.startsWith("PlaybackFinished")) {
+                MMF.setWatched();
             }
+
+            // The user is no longer watching this MediaFile.
+            User user = new User(UserID);
+            user.clearWatching();
+
+            return;
+
         }  // End of playback event.
 
 
