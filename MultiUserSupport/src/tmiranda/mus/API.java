@@ -46,10 +46,6 @@ public class API {
 
         User user = new User(getLoggedinUser());
         user.logOff();
-        //String UIContext = Global.GetUIContextName();
-        //LoggedOnUserMap.remove(UIContext);
-        //Configuration.SetProperty(Plugin.PROPERTY_LAST_LOGGEDIN_USER, null);
-        //Log.getInstance().write(Log.LOGLEVEL_TRACE, "logoutUser: User has been logged out of UIContext " + UIContext);
     }
 
     public static String getLoggedinUser() {

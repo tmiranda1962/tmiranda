@@ -105,7 +105,7 @@ public class DelimitedString {
             return TheList;
         }
 
-        return Arrays.asList(StringArray);
+        return new ArrayList<String>(Arrays.asList(StringArray));
     }
 
     static String setToDelimitedString(Set<String> TheSet, String D) {

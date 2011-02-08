@@ -44,7 +44,7 @@ public class MultiFavorite extends MultiObject {
         }
 
         allowedUsers = DelimitedString.delimitedStringToList(userString, Plugin.LIST_SEPARATOR);
-        Log.getInstance().write(Log.LOGLEVEL_TRACE, "MultiFavorite: AllowedUsers " + allowedUsers);
+        Log.getInstance().write(Log.LOGLEVEL_TRACE, "MultiFavorite: AllowedUsers " + FavoriteAPI.GetFavoriteDescription(sageFavorite) + ":" + allowedUsers);
         return;
     }
 
@@ -66,7 +66,9 @@ public class MultiFavorite extends MultiObject {
             return;
         }
 
-        allowedUsers.remove(userID);
+        if (allowedUsers.contains(userID))
+            allowedUsers.remove(userID);
+
         DelimitedString DS = removeFlag(FAVORITE_USERS, userID);
         Log.getInstance().write(Log.LOGLEVEL_TRACE, "removeFavorite: Users for Favorite " + FavoriteAPI.GetFavoriteDescription(sageFavorite) + ":" + allowedUsers);
 
@@ -91,6 +93,7 @@ public class MultiFavorite extends MultiObject {
 
     static Object[] getFavorites() {
 
+        // Get all of the Sage Favorites.
         Object[] sageFavorites = FavoriteAPI.GetFavorites();
 
         if (sageFavorites==null || sageFavorites.length==0)
@@ -98,6 +101,7 @@ public class MultiFavorite extends MultiObject {
 
         List<Object> Favorites = new ArrayList<Object>();
 
+        // Check each sage Favorite to see if the current user can access it.
         for (Object Favorite : sageFavorites) {
             MultiFavorite F = new MultiFavorite(API.getLoggedinUser(), Favorite);
             if (F.isFavorite())

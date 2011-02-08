@@ -117,8 +117,14 @@ public class MultiObject {
 
     boolean containsFlagAllUsers(String Flag) {
         List<String> allUsers = User.getAllUsers();
+
         DelimitedString DS = new DelimitedString(getRecordData(Flag), Plugin.LIST_SEPARATOR);
-        allUsers.remove(Plugin.SUPER_USER);
+
+        // Remove the Admin user.
+        if (allUsers.contains(Plugin.SUPER_USER)) {
+            allUsers.remove(Plugin.SUPER_USER);
+        }
+
         return (DS.containsAll(allUsers));
     }
 
