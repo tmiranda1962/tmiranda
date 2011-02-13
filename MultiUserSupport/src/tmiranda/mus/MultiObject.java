@@ -19,14 +19,16 @@ public class MultiObject {
     private String      store           = null;
     boolean             isInitialized   = false;
     String              userID          = null;
+    private Integer     keyInt          = 0;
     private Integer     altKey          = 0;
     private String      altStore        = null;
 
     static final String INITIALIZED = "IsInitialized";
     static final String WATCHED     = "Watched";
     static final String DONTLIKE    = "DontLike";
+    static final String DELETED     = "Deleted";
 
-    static final String[]   OBJECT_FLAGS = {DONTLIKE, WATCHED, INITIALIZED};
+    static final String[]   OBJECT_FLAGS = {DELETED, DONTLIKE, WATCHED, INITIALIZED};
 
     static final String REALWATCHEDSTARTTIME_PREFIX = "RealWatchedStartTime_";
     static final String REALWATCHEDENDTIME_PREFIX   = "RealWatchedEndTime_";
@@ -51,6 +53,7 @@ public class MultiObject {
         this.store = Store;
         this.altKey = altKeyInt;
         this.altStore = altStore;
+        this.keyInt = keyInt;
 
         String key = keyInt.toString();
         Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "MultiObject: Key is " + key);
@@ -170,7 +173,7 @@ public class MultiObject {
     }
 
     void setRealWatchedStartTime(String Time) {
-        Log.getInstance().write(Log.LOGLEVEL_TRACE, "setRealWatchedStartTime: Setting to " + Time);
+        Log.getInstance().write(Log.LOGLEVEL_TRACE, "setRealWatchedStartTime: Setting to " + Plugin.PrintDateAndTime(Time) + " for " + userID);
         setRecordData(REALWATCHEDSTARTTIME_PREFIX + userID, Time);
 
         if (altKey != null && altKey != 0 && altKey != null) {
@@ -212,7 +215,7 @@ public class MultiObject {
     }
 
     void setRealWatchedEndTime(String Time) {
-        Log.getInstance().write(Log.LOGLEVEL_TRACE, "setRealWatchedEndTime: Setting to " + Time);
+        Log.getInstance().write(Log.LOGLEVEL_TRACE, "setRealWatchedEndTime: Setting to " + Plugin.PrintDateAndTime(Time) + " for " + userID);
         setRecordData(REALWATCHEDENDTIME_PREFIX + userID, Time);
 
         if (altKey != null && altKey != 0 && altKey != null) {
@@ -254,7 +257,7 @@ public class MultiObject {
     }
 
     void setWatchedStartTime(String Time) {
-        Log.getInstance().write(Log.LOGLEVEL_TRACE, "setWatchedStartTime: Setting to " + Time);
+        Log.getInstance().write(Log.LOGLEVEL_TRACE, "setWatchedStartTime: Setting to " + Plugin.PrintDateAndTime(Time) + " for " + userID);
         setRecordData(WATCHEDSTARTTIME_PREFIX + userID, Time);
 
         if (altKey != null && altKey != 0 && altKey != null) {
@@ -281,7 +284,6 @@ public class MultiObject {
 
     long getWatchedEndTime() {
         String D = getRecordData(WATCHEDENDTIME_PREFIX + userID);
-System.out.println("GET WATCHED END TIME:: " + D);
 
         // If it's null it hasn't been watched so return 0.
         if (D==null || D.isEmpty())
@@ -291,15 +293,13 @@ System.out.println("GET WATCHED END TIME:: " + D);
             long duration = Long.parseLong(D);
             return duration;
         } catch (NumberFormatException e) {
-System.out.println("GET WATCHED END TIME:: UNINITIALIZED");
             Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "getWatchedEndTime: Bad number " + D);
             return -1;
         }
     }
 
     void setWatchedEndTime(String Time) {
-System.out.println("SET WATCHED END TIME:: " + Time);
-        Log.getInstance().write(Log.LOGLEVEL_TRACE, "setWatchedEndTime: Setting to " + Time + " for " + userID);
+        Log.getInstance().write(Log.LOGLEVEL_TRACE, "setWatchedEndTime: Setting to " + Plugin.PrintDateAndTime(Time) + " for " + userID);
         setRecordData(WATCHEDENDTIME_PREFIX + userID, Time);
 
         if (altKey != null && altKey != 0 && altKey != null) {
@@ -341,6 +341,7 @@ System.out.println("SET WATCHED END TIME:: " + Time);
     }
 
     void setWatchedDuration(String Duration) {
+        Log.getInstance().write(Log.LOGLEVEL_TRACE, "setWatchedDuration: Setting to " + Plugin.PrintDateAndTime(Duration) + " for " + userID);
         setRecordData(DURATION_PREFIX + userID, Duration);
 
         if (altKey != null && altKey != 0 && altKey != null) {
@@ -429,6 +430,73 @@ System.out.println("SET WATCHED END TIME:: " + Time);
         }
     }
 
+    boolean isDeleted() {
+        return (isValid ? containsFlag(DELETED, userID) : false);
+    }
+
+    boolean delete(boolean WithoutPrejudice) {
+
+        // If we have an invalid MMF, just return error.
+        if (!isValid) {
+            return false;
+        }
+
+        // Mark the MediaFile as deleted.
+        addFlag(DELETED, userID);
+
+        if (altKey != null && altKey != 0 && altKey != null) {
+            MultiObject MO = new MultiObject(userID, altStore, altKey, 0, null);
+            return MO.delete(WithoutPrejudice);
+        }
+
+        // If all users have it marked as deleted, delete it for real.
+        if (containsFlagAllUsers(DELETED)) {
+            Log.getInstance().write(Log.LOGLEVEL_TRACE, "delete: Deleting physical file for user " + userID);
+            Object sageObject = MediaFileAPI.GetMediaFileForID(keyInt);
+
+            if (sageObject!=null) {
+                Log.getInstance().write(Log.LOGLEVEL_TRACE, "delete: Found MediaFile.");
+            } else {
+                sageObject = AiringAPI.GetAiringForID(keyInt);
+                if (sageObject!=null) {
+                    Log.getInstance().write(Log.LOGLEVEL_TRACE, "delete: Found Airing.");
+                } else {
+                    Log.getInstance().write(Log.LOGLEVEL_ERROR, "delete: Failed to find MediaFile or Airing.");
+                    return false;
+                }
+            }
+
+            return (WithoutPrejudice ? MediaFileAPI.DeleteFileWithoutPrejudice(sageObject) : MediaFileAPI.DeleteFile(sageObject));
+        }
+
+        Log.getInstance().write(Log.LOGLEVEL_TRACE, "delete: Leaving physical file intact.");
+        return true;
+    }
+
+    // Just sets the DELETE Flag.
+    void hide() {
+        if (!isValid)
+            return;
+
+        addFlag(DELETED, userID);
+
+        if (altKey != null && altKey != 0 && altKey != null) {
+            MultiObject MO = new MultiObject(userID, altStore, altKey, 0, null);
+            MO.hide();
+        }
+    }
+
+    void unhide() {
+        if (!isValid)
+            return;
+
+        removeFlag(DELETED, userID);
+
+        if (altKey != null && altKey != 0 && altKey != null) {
+            MultiObject MO = new MultiObject(userID, altStore, altKey, 0, null);
+            MO.unhide();
+        }
+    }
 
     // Used for debugging.
     String getFlagString(String Flag) {
@@ -441,10 +509,15 @@ System.out.println("SET WATCHED END TIME:: " + Time);
         List<String> theList = new ArrayList<String>();
 
        for (String flag : OBJECT_FLAGS)
-           if (containsFlag(flag, userID))
-               theList.add("Contains " + flag);
-           else
-               theList.add("!Contains " + flag);
+
+            if (userID.equalsIgnoreCase(Plugin.SUPER_USER)) {
+               theList.add(flag + getRecordData(flag));
+            } else {
+               if (containsFlag(flag, userID))
+                   theList.add("Contains " + flag);
+               else
+                   theList.add("!Contains " + flag);
+           }
 
         for (String prefix : OBJECT_FLAG_PREFIXES)
             theList.add(prefix + "=" + getRecordData(prefix+userID));

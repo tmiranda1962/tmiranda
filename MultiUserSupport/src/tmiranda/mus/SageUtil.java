@@ -5,7 +5,6 @@
 
 package tmiranda.mus;
 
-import java.io.*;
 import java.util.*;
 import sagex.api.*;
 /**
@@ -182,7 +181,7 @@ public class SageUtil {
     }
 
     /*
-     * Useful becasue GetAvailablePluginForID does not work for plugins in test mode.
+     * Useful because GetAvailablePluginForID does not work for plugins in test mode.
      */
     public static Object GetPluginForID(String ID) {
         List<Object> AllPluginsList = new ArrayList<Object>();
@@ -202,4 +201,5 @@ public class SageUtil {
         }
         return null;
     }
+
 }

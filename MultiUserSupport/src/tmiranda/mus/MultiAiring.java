@@ -79,7 +79,7 @@ public class MultiAiring extends MultiObject {
         }
     }
 
-    // Cancels the recording in progress.
+    // Cancels a manual recording for the logged on user.
     void cancelManualRecord() {
 
         if (!isValid) {
@@ -87,12 +87,30 @@ public class MultiAiring extends MultiObject {
             return;
         }
 
+        removeFlag(MANUAL, userID);
         removeFlag(MANUAL_IN_PROGRESS, userID);
 
         if (!containsFlagAnyData(MANUAL_IN_PROGRESS)) {
             Log.getInstance().write(Log.LOGLEVEL_TRACE, "cancelManualRecord: No users need this manual, removing.");
             AiringAPI.CancelRecord(sageAiring);
         }
+    }
+
+    // Cancels the manual record for all users.  Should be used to clear the flags after the
+    // super user or null user cancels a manual recording.
+    void cancelManualRecordForAllUsers() {
+
+        if (!isValid) {
+            return;
+        }
+
+        List<String> users = User.getAllUsers();
+
+        for (String user : users) {
+            removeFlag(MANUAL, user);
+            removeFlag(MANUAL_IN_PROGRESS, user);
+        }
+
     }
 
 
@@ -173,10 +191,14 @@ public class MultiAiring extends MultiObject {
        List<String> theList = getObjectFlagsForUser();
 
        for (String flag : FLAGS)
-           if (containsFlag(flag, userID))
-               theList.add("Contains " + flag);
-           else
-               theList.add("!Contains " + flag);
+            if (userID.equalsIgnoreCase(Plugin.SUPER_USER)) {
+               theList.add(flag + getRecordData(flag));
+            } else {   
+               if (containsFlag(flag, userID))
+                   theList.add("Contains " + flag);
+               else
+                   theList.add("!Contains " + flag);
+           }
 
        return theList;
    }

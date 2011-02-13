@@ -12,10 +12,6 @@ import sagex.api.*;
  */
 
 
-// Thoughts:
-// - Do I really need "AllowedUsers"?
-// - Split  MultiAiring and MultiMediaFile.
-// - In API check to make sure Object are correct Airing/MediaFile and do conversion as necessary.
 public class MultiMediaFile extends MultiObject {
 
     // The DataStore for MediaFiles.
@@ -23,9 +19,8 @@ public class MultiMediaFile extends MultiObject {
 
     // These Flags will contain a comma delimited string of userIDs.
     static final String ARCHIVED        = "Archived";
-    static final String DELETED         = "Deleted";
 
-    static final String[]   FLAGS = {ARCHIVED, DELETED, INITIALIZED};
+    static final String[]   FLAGS = {ARCHIVED, INITIALIZED};
 
     // These Flags+userId will contain the user watched times for the MediaFile.
     //static final String MEDIATIME_PREFIX    = "MediaTime_";
@@ -59,35 +54,6 @@ public class MultiMediaFile extends MultiObject {
         }
     }
 
-    // Delete and Archive must be resolved to a MediaFile in the API because the methods
-    // only pertain to physical files.
-
-    boolean isDeleted() {
-        return (isValid ? containsFlag(DELETED, userID) : false);
-    }
-
-    boolean delete(boolean WithoutPrejudice) {
-
-        // If we have an invalid MMF, just return error.
-        if (!isValid) {
-System.out.println("DELETE: IS NOT VALID");
-            return false;
-        }
-
-        // Mark the MediaFile as deleted.
-        addFlag(DELETED, userID);
-System.out.println("DELETE: AFTER ADDFLAG " + getRecordData(DELETED));
-
-        // If all users have it marked as deleted, delete it for real.
-        if (containsFlagAllUsers(DELETED)) {
-            Log.getInstance().write(Log.LOGLEVEL_TRACE, "delete: Deleting physical file for user " + userID);
-            return (WithoutPrejudice ? MediaFileAPI.DeleteFileWithoutPrejudice(sageMediaFile) : MediaFileAPI.DeleteFile(sageMediaFile));
-        }
-
-        Log.getInstance().write(Log.LOGLEVEL_TRACE, "delete: Leaving physical file intact.");
-        return true;
-    }
-
 
     void setArchived() {
         if (!isValid)
@@ -100,7 +66,7 @@ System.out.println("DELETE: AFTER ADDFLAG " + getRecordData(DELETED));
         if (!isValid)
             MediaFileAPI.MoveTVFileOutOfLibrary(sageMediaFile);
         else
-            addFlag(ARCHIVED, userID);
+            removeFlag(ARCHIVED, userID);
     }
 
     boolean isArchived() {
@@ -110,30 +76,6 @@ System.out.println("DELETE: AFTER ADDFLAG " + getRecordData(DELETED));
         else
             return containsFlag(ARCHIVED, userID);
     }
-
-/*
-    long getMediaTime() {
-        String D = getRecordData(MEDIATIME_PREFIX + userID);
-
-        try {
-            long duration = Long.parseLong(D);
-            return duration;
-        } catch (NumberFormatException e) {
-            Log.getInstance().write(Log.LOGLEVEL_TRACE, "getMediaTime: Bad number " + D);
-            return -1;
-        }
-    }
-
-    void setMediaTime(String Duration) {
-        setRecordData(MEDIATIME_PREFIX + userID, Duration);
-    }
-
-    void setMediaTime(long Duration) {
-        Long D = Duration;
-        setMediaTime(D.toString());
-    }
- 
- */
 
 
     int getChapterNum() {
@@ -247,10 +189,14 @@ System.out.println("DELETE: AFTER ADDFLAG " + getRecordData(DELETED));
        List<String> theList = getObjectFlagsForUser();
 
        for (String flag : FLAGS)
-           if (containsFlag(flag, userID))
-               theList.add("Contains " + flag);
-           else
-               theList.add("!Contains " + flag);
+            if (userID.equalsIgnoreCase(Plugin.SUPER_USER)) {
+               theList.add(flag + getRecordData(flag));
+            } else {
+               if (containsFlag(flag, userID))
+                   theList.add("Contains " + flag);
+               else
+                   theList.add("!Contains " + flag);
+            }
 
         for (String prefix : FLAG_PREFIXES)
             theList.add(prefix + "=" + getRecordData(prefix+userID));

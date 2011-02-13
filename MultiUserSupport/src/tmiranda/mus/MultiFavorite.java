@@ -44,7 +44,7 @@ public class MultiFavorite extends MultiObject {
         }
 
         allowedUsers = DelimitedString.delimitedStringToList(userString, Plugin.LIST_SEPARATOR);
-        Log.getInstance().write(Log.LOGLEVEL_TRACE, "MultiFavorite: AllowedUsers " + FavoriteAPI.GetFavoriteDescription(sageFavorite) + ":" + allowedUsers);
+        Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "MultiFavorite: AllowedUsers " + FavoriteAPI.GetFavoriteDescription(sageFavorite) + ":" + allowedUsers);
         return;
     }
 

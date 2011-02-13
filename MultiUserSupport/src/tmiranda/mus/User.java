@@ -72,7 +72,7 @@ public class User {
         record = UserRecordAPI.AddUserRecord(STORE, user);
 
         if (record==null) {
-            Log.getInstance().write(Log.LOGLEVEL_ERROR, "create: null Record.");
+            Log.getInstance().write(Log.LOGLEVEL_ERROR, "create: null Record." + user);
             return false;
         }
 
@@ -97,7 +97,9 @@ public class User {
     }
 
     String getPassword() {
-        return isValid ? UserRecordAPI.GetUserRecordData(record, KEY_PASSWORD) : null;
+        String password = isValid ? UserRecordAPI.GetUserRecordData(record, KEY_PASSWORD) : null;
+        Log.getInstance().write(Log.LOGLEVEL_TRACE, "getPassword: Password " + password);
+        return password;
     }
 
     void setPassword(String Password) {
@@ -107,6 +109,7 @@ public class User {
             return;
         }
 
+        Log.getInstance().write(Log.LOGLEVEL_TRACE, "setPassword: Password " + Password);
         UserRecordAPI.SetUserRecordData(record, KEY_PASSWORD, Password);
         return;
     }
@@ -135,6 +138,7 @@ public class User {
             return;
         }
 
+        setIntelligentRecordingDisabled(Configuration.IsIntelligentRecordingDisabled());
         Log.getInstance().write(Log.LOGLEVEL_TRACE, "initializeInDataBase: Add to Favorites.");
         addToAllFavorites();
         return;
@@ -147,13 +151,13 @@ public class User {
             return;
         }
 
-        Log.getInstance().write(Log.LOGLEVEL_TRACE, "removeFromDataBase: Removing from Favorites.");
+        Log.getInstance().write(Log.LOGLEVEL_WARN, "removeFromDataBase: Removing from Favorites.");
         removeFromAllFavorites();
 
-        Log.getInstance().write(Log.LOGLEVEL_TRACE, "removeFromDataBase: Removing from MediaFiles.");
+        Log.getInstance().write(Log.LOGLEVEL_WARN, "removeFromDataBase: Removing from MediaFiles.");
         removeFromAllMediaFiles();
 
-        Log.getInstance().write(Log.LOGLEVEL_TRACE, "removeFromDataBase: Removing from Airings.");
+        Log.getInstance().write(Log.LOGLEVEL_WARN, "removeFromDataBase: Removing from Airings.");
         removeFromAllAirings();
     }
 
@@ -373,10 +377,16 @@ public class User {
 
 
     /*
-     * Intelligent Recording.
+     * Configuration.
      */
     boolean isIntelligentRecordingDisabled() {
-        return (isValid && UserRecordAPI.GetUserRecordData(record, KEY_IR).toString().equalsIgnoreCase("true") ? true : false);
+
+        if (!isValid) {
+            Log.getInstance().write(Log.LOGLEVEL_WARN, "isIntelligentRecordingDisabled: Invalid User.");
+            return Configuration.IsIntelligentRecordingDisabled();
+        }
+
+        return (UserRecordAPI.GetUserRecordData(record, KEY_IR).toString().equalsIgnoreCase("true") ? true : false);
     }
 
     void setIntelligentRecordingDisabled(boolean value) {
@@ -396,7 +406,7 @@ public class User {
      * Support methods
      */
 
-    static List<String> getAllUsers() {
+    public static List<String> getAllUsers() {
         List<String> Users = new ArrayList<String>();
 
         Object[] Records = UserRecordAPI.GetAllUserRecords(STORE);

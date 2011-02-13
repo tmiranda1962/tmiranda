@@ -5,6 +5,7 @@
 
 package tmiranda.mus;
 
+//import com.sun.org.apache.xpath.internal.operations.Equals;
 import java.util.*;
 import java.io.*;
 import sagex.api.*;
@@ -21,8 +22,6 @@ public class API {
      * General behavour:
      * - Admin user accesses underlying Sage core.
      * - null user access underlying Sage core, but can't do admin functions.
-     * - How to handle recording conflicts? Should probably allow user to control only the recordings they
-     *   own but that will be hard.  Allow user to control all recordings will be easier.
      */
     public static void loginUser(String UserID) {
         
@@ -49,7 +48,10 @@ public class API {
     }
 
     public static String getLoggedinUser() {
-        return Configuration.GetProperty(Plugin.PROPERTY_LAST_LOGGEDIN_USER, null);
+        if (Global.IsClient() && Global.IsServerUI())
+            return Configuration.GetServerProperty(Plugin.PROPERTY_LAST_LOGGEDIN_USER, null);
+        else
+            return Configuration.GetProperty(Plugin.PROPERTY_LAST_LOGGEDIN_USER, null);
     }
 
     public static String getUserAfterReboot() {
@@ -61,8 +63,156 @@ public class API {
 
 
     /*
-     * MediaPlayer API.
+     * Admin methods.
      */
+
+    public static void OLDgiveToUser(Object MediaFile, String User) {
+        if (User==null || User.isEmpty() || MediaFile==null) {
+            Log.getInstance().write(Log.LOGLEVEL_WARN, "giveToUser: null parameter " + User);
+            return;
+        }
+
+        Log.getInstance().write(Log.LOGLEVEL_WARN, "giveToUser: Giving access to " + User + ":" + MediaFileAPI.GetMediaTitle(MediaFile));
+        User user = new User(User);
+        user.addToMediaFile(MediaFile);
+        return;
+    }
+
+    public static boolean isPluginEnabled() {
+        Object thisPlugin = PluginAPI.GetAvailablePluginForID(Plugin.PLUGIN_ID);
+
+        if (thisPlugin==null) {
+            Log.getInstance().write(Log.LOGLEVEL_ERROR, "isPluginEnabled: Error. null Plugin for ID " + Plugin.PLUGIN_ID);
+            return false;
+        }
+
+        Object[] installedPlugins = PluginAPI.GetInstalledPlugins();
+
+        if (installedPlugins==null || installedPlugins.length==0) {
+            Log.getInstance().write(Log.LOGLEVEL_TRACE, "isPluginEnabled: No Plugins are installed on the server.");
+            return false;
+        }
+
+        for (Object plugin : installedPlugins)
+            if (PluginAPI.GetPluginIdentifier(plugin).equalsIgnoreCase(Plugin.PLUGIN_ID))
+                return true;
+
+        Log.getInstance().write(Log.LOGLEVEL_TRACE, "isPluginEnabled: Plugin is not installed on the server.");
+        return false;
+    }
+
+    public static boolean isUpcomingRecordingForMe(Object Airing) {
+        if (Airing==null || !willBeRecordedByCore(Airing))
+            return false;
+
+        String User = getLoggedinUser();
+
+        if (User==null || User.equalsIgnoreCase(Plugin.SUPER_USER)) {
+            Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "isUpcomingRecordingForMe: null user or Admin " + User);
+            return true;
+        }
+
+        return (isFavorite(Airing) || isManualRecord(Airing) || !isIntelligentRecordingDisabled());
+    }
+
+    public static boolean willBeRecordedByCore(Object Airing) {
+
+        if (Airing==null)
+            return false;
+
+        int AiringID = AiringAPI.GetAiringID(Airing);
+        Object[] scheduledAirings = Global.GetScheduledRecordings();
+
+        for (Object airing : scheduledAirings)
+            if (MediaFileAPI.IsFileCurrentlyRecording(airing) || (AiringID == AiringAPI.GetAiringID(airing)))
+                return true;
+
+        return false;
+    }
+
+    public static boolean isUpcomingRecordingForUser(String User, Object Airing) {
+        if (!willBeRecordedByCore(Airing)) {
+            Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "isUpcomingRecordingForUser: Core will not record the Airing.");
+            return false;
+        }
+
+        if (User==null || User.equalsIgnoreCase(Plugin.SUPER_USER)) {
+            Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "isUpcomingRecordingForUser: null user or Admin " + User);
+            return true;
+        }
+
+        MultiAiring MA = new MultiAiring(User, Airing);
+        User U = new User(User);
+
+        return (MA.isFavorite() || MA.isManualRecord() || !U.isIntelligentRecordingDisabled());
+    }
+
+    public static List<String> getUsersThatWillRecord(Object Airing) {
+        List<String> theList = new ArrayList<String>();
+
+        if (Airing == null)
+            return theList;
+
+        List<String> allUsers = User.getAllUsers();
+
+        for (String user : allUsers)
+            if (isUpcomingRecordingForUser(user, Airing))
+                theList.add(user);
+
+        return theList;
+    }
+
+    /*
+     * MediaPlayer API.
+     *
+     * WatchLive() is only used in the setup menus so there is no need to implement that.
+     */
+
+    public static void preWatch(Object Content) {
+
+        String User = getLoggedinUser();
+
+        if (User==null || User.equalsIgnoreCase(Plugin.SUPER_USER)) {
+            Log.getInstance().write(Log.LOGLEVEL_TRACE, "preWatch: null user or Admin " + User);
+            return;
+        }
+
+        // Set flag showing that this user is watching this content. We will need this later
+        // when the RecordingStopped Event is received so we can set RealWatchedEndTime and
+        // WatchedEndTime for the appropriate user.
+        User user = new User(User);
+        user.setWatching(Content);
+
+        long WatchedEndTime = 0;
+        long RealStartTime = 0;
+
+        if (AiringAPI.IsAiringObject(Content)) {
+            MultiAiring MA = new MultiAiring(User, Content);
+            MA.setRealWatchedStartTime(Utility.Time());
+            WatchedEndTime = MA.getWatchedEndTime();
+            RealStartTime = MA.getRealWatchedStartTime();
+        } else if (MediaFileAPI.IsMediaFileObject(Content)) {
+            MultiMediaFile MMF = new MultiMediaFile(User, Content);
+            MMF.setRealWatchedStartTime(Utility.Time());
+            WatchedEndTime = MMF.getWatchedEndTime();
+            RealStartTime = MMF.getRealWatchedStartTime();
+        } else {
+            Log.getInstance().write(Log.LOGLEVEL_TRACE, "preWatch: Not an Airing or MediaFile.");
+            return;
+        }
+
+        WatchedEndTime = (WatchedEndTime==-1 ? AiringAPI.GetWatchedEndTime(Content):WatchedEndTime);
+        RealStartTime = (RealStartTime==-1 ? AiringAPI.GetRealWatchedStartTime(Content):RealStartTime);
+        Log.getInstance().write(Log.LOGLEVEL_TRACE, "watch: Setting WatchedEndTime and RealStartTime " + Plugin.PrintDateAndTime(WatchedEndTime) + ":" + Plugin.PrintDateAndTime(RealStartTime));
+
+        // Reset the values.
+        AiringAPI.ClearWatched(Content);
+        AiringAPI.SetWatchedTimes(Content, WatchedEndTime, RealStartTime);
+
+        // Let the core do its thing.
+        return;
+    }
+
     public static Object watch(Object Content) {
 
         String User = getLoggedinUser();
@@ -94,6 +244,8 @@ public class API {
             return MediaPlayerAPI.Watch(Content);
         }
 
+        WatchedEndTime = (WatchedEndTime==-1 ? AiringAPI.GetWatchedEndTime(Content):WatchedEndTime);
+        RealStartTime = (RealStartTime==-1 ? AiringAPI.GetRealWatchedStartTime(Content):RealStartTime);
         Log.getInstance().write(Log.LOGLEVEL_TRACE, "watch: Setting WatchedEndTime and RealStartTime " + Plugin.PrintDateAndTime(WatchedEndTime) + ":" + Plugin.PrintDateAndTime(RealStartTime));
         
         // Reset the values.
@@ -102,40 +254,6 @@ public class API {
 
         // Let the core do its thing.
         return MediaPlayerAPI.Watch(Content);
-
-        /************
-
-        long WatchedStartTime = AiringAPI.GetWatchedStartTime(Content);
-
-        if (AiringAPI.IsAiringObject(Content)) {
-            Airing = Content;
-            MediaFile = AiringAPI.GetMediaFileForAiring(Airing);
-        } else {
-            MediaFile = Content;
-            Airing = MediaFileAPI.GetMediaFileAiring(MediaFile);
-        }
-
-        if (Airing!=null) {
-            MultiAiring MA = new MultiAiring(User,Airing);
-            MA.setRealWatchedStartTime(Utility.Time());
-            MA.setWatchedStartTime(WatchedStartTime);
-        }
-
-        if (MediaFile!=null) {
-            MultiMediaFile MMF = new MultiMediaFile(User, MediaFile);
-            MMF.setRealWatchedStartTime(Utility.Time());
-            MMF.setWatchedStartTime(WatchedStartTime);
-
-            long MediaTime = MMF.getMediaTime();
-            long RealStartTime = MMF.getRealWatchedStartTime();
-
-            if (MediaTime!=-1 && RealStartTime!=-1) {
-                Log.getInstance().write(Log.LOGLEVEL_TRACE, "watch: Setting MediaTime and RealStartTime " + MediaTime + ":" + RealStartTime);
-                AiringAPI.SetWatchedTimes(Content, MediaTime, RealStartTime);
-            }
-        }
-
-        *******************/
     }
 
     /*
@@ -305,6 +423,18 @@ public class API {
         return AiringAPI.Record(Airing);
     }
 
+    // Lets the current logged in user mark an upcoming recording as a manual for another user.
+    public static void markAsManualRecord(String User, Object Airing) {
+
+        // Nothing to do for null user or Admin.
+        if (User==null || User.equalsIgnoreCase(Plugin.SUPER_USER)) {
+            return;
+        }
+
+        MultiAiring MA = new MultiAiring(User, ensureIsAiring(Airing));
+        MA.setManualRecord();
+    }
+
     // Invoke IN PLACE OF core API.
     public static Object setRecordingTimes(Object Airing, long StartTime, long StopTime) {
 
@@ -337,13 +467,15 @@ public class API {
 
         String User = getLoggedinUser();
 
+        MultiAiring MA = new MultiAiring(User, ensureIsAiring(Airing));
+
         if (User==null || User.equalsIgnoreCase(Plugin.SUPER_USER)) {
             AiringAPI.CancelRecord(Airing);
-            return;
+            MA.cancelManualRecordForAllUsers();
+        } else {
+            MA.cancelManualRecord();
         }
-
-        MultiAiring MA = new MultiAiring(User, ensureIsAiring(Airing));
-        MA.cancelManualRecord();
+        
         return;
     }
 
@@ -628,7 +760,7 @@ public class API {
             EndTime = MA.getWatchedEndTime();
         }
 
-        Log.getInstance().write(Log.LOGLEVEL_TRACE, "getWatchedEndTime: EndTime " + MediaFileAPI.GetMediaTitle(Airing) + ":" + Plugin.PrintDateAndTime(EndTime));
+        Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "getWatchedEndTime: EndTime " + MediaFileAPI.GetMediaTitle(Airing) + ":" + Plugin.PrintDateAndTime(EndTime));
         return (EndTime == -1 ? AiringAPI.GetAiringStartTime(Airing) : EndTime);
     }
 
@@ -864,9 +996,17 @@ public class API {
     // Wipe the DataStore cmpletely.
     public static void clearAll() {
         Log.getInstance().write(Log.LOGLEVEL_WARN, "clearAll: Wiping the entire database.");
+
+        Log.getInstance().write(Log.LOGLEVEL_WARN, "clearAll: Wiping the Favorites database.");
         MultiFavorite.WipeDatabase();
+
+        Log.getInstance().write(Log.LOGLEVEL_WARN, "clearAll: Wiping the MediaFile database.");
         MultiMediaFile.WipeDatabase();
+
+        Log.getInstance().write(Log.LOGLEVEL_WARN, "clearAll: Wiping the Airing database.");
         MultiAiring.WipeDatabase();
+
+        Log.getInstance().write(Log.LOGLEVEL_WARN, "clearAll: Wiping the User database.");
         User.wipeDatabase();
         Log.getInstance().write(Log.LOGLEVEL_WARN, "clearAll: Wiping complete.");
     }
@@ -906,7 +1046,7 @@ public class API {
             if (ShowAPI.IsShowObject(SageObject))
                 Log.getInstance().write(Log.LOGLEVEL_WARN, "ensureIsAiring: Found a Show.");
             else
-                Log.getInstance().write(Log.LOGLEVEL_WARN, "ensureIsAiring: Found unknown Object.");
+                Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "ensureIsAiring: Found unknown Object " + AiringAPI.PrintAiringShort(SageObject));
             return SageObject;
         }
     }
@@ -920,7 +1060,7 @@ public class API {
             if (ShowAPI.IsShowObject(SageObject))
                 Log.getInstance().write(Log.LOGLEVEL_WARN, "ensureIsMediaFile: Found a Show.");
             else
-                Log.getInstance().write(Log.LOGLEVEL_WARN, "ensureIsMediaFile: Found unknown Object.");
+                Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "ensureIsMediaFile: Found unknown Object " + AiringAPI.PrintAiringShort(SageObject));
             return SageObject;
         }
     }
