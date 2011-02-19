@@ -42,7 +42,7 @@ public class MultiMediaFile extends MultiObject {
 
         if (!MediaFileAPI.IsMediaFileObject(MediaFile)) {
             isValid = false;
-            Log.getInstance().write(Log.LOGLEVEL_ERROR, "MultiMediaFile: Object is not a MediaFile.");
+            Log.getInstance().write(Log.LOGLEVEL_TRACE, "MultiMediaFile: Object is not a MediaFile " + MediaFileAPI.GetMediaTitle(MediaFile));
             return;
         }
 
@@ -51,6 +51,7 @@ public class MultiMediaFile extends MultiObject {
         if (!isInitialized) {
             Log.getInstance().write(Log.LOGLEVEL_TRACE, "MultiMediaFile: Initializing user " + userID + ":" + MediaFileAPI.GetMediaTitle(MediaFile));
             initializeUser();
+            addFlag(INITIALIZED, userID);
         }
     }
 
@@ -143,13 +144,14 @@ public class MultiMediaFile extends MultiObject {
         //setWatchedStartTime(AiringAPI.GetWatchedStartTime(sageMediaFile));
         //setWatchedEndTime(AiringAPI.GetWatchedEndTime(sageMediaFile));
 
-        setRecordData(INITIALIZED, "true");
+        addFlag(INITIALIZED, userID);
         isInitialized = true;
         return;
     }
 
     // Remove this user from the MediaFile.
     void clearUserFromFlags() {
+        clearUserFromFlagPrefix(FLAG_PREFIXES);
         clearUser(userID, FLAGS);
     }
 

@@ -36,7 +36,7 @@ public class MultiAiring extends MultiObject {
 
         if (!AiringAPI.IsAiringObject(Airing)) {
             isValid = false;
-            Log.getInstance().write(Log.LOGLEVEL_ERROR, "MultiAiring: Object is not an Airing.");
+            Log.getInstance().write(Log.LOGLEVEL_TRACE, "MultiAiring: Object is not an Airing " + MediaFileAPI.GetMediaTitle(Airing));
             return;
         }
 
@@ -45,6 +45,7 @@ public class MultiAiring extends MultiObject {
         if (!isInitialized) {
             Log.getInstance().write(Log.LOGLEVEL_TRACE, "MultiAiring: Initializing user " + userID + ":" + AiringAPI.GetAiringTitle(Airing));
             initializeUser();
+            addFlag(INITIALIZED, userID);
         }
     }
 
@@ -163,6 +164,7 @@ public class MultiAiring extends MultiObject {
             removeFlag(MANUAL, userID);
 
         removeFlag(MANUAL_IN_PROGRESS, userID);
+        removeFlag(DELETED, userID);
 
         //setRealWatchedStartTime(AiringAPI.GetRealWatchedStartTime(sageAiring));
         //setRealWatchedEndTime(AiringAPI.GetRealWatchedEndTime(sageAiring));
@@ -170,7 +172,7 @@ public class MultiAiring extends MultiObject {
         //setWatchedStartTime(AiringAPI.GetWatchedStartTime(sageAiring));
         //setWatchedEndTime(AiringAPI.GetWatchedEndTime(sageAiring));
 
-        setRecordData(INITIALIZED, "true");
+        addFlag(INITIALIZED, userID);
         isInitialized = true;
         return;
     }

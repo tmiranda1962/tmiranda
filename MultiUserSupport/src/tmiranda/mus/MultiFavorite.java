@@ -1,7 +1,3 @@
-/*
- * To change this template, choose Tools | Templates
- * and open the template in the editor.
- */
 
 package tmiranda.mus;
 
@@ -10,7 +6,7 @@ import sagex.api.*;
 
 /**
  *
- * @author Default
+ * @author Tom Miranda
  */
 public class MultiFavorite extends MultiObject {
 
@@ -22,6 +18,11 @@ public class MultiFavorite extends MultiObject {
     private Object          sageFavorite = null;
     private List<String>    allowedUsers = null;
 
+    /**
+     * Constructor.  Creates a MultiFavorite Object for the specified User.
+     * @param User
+     * @param Favorite Must be a valid Favorite from the Sage core.
+     */
     public MultiFavorite(String User, Object Favorite) {
 
         super(User, FAVORITE_STORE, FavoriteAPI.GetFavoriteID(Favorite), 0, null);
@@ -48,6 +49,9 @@ public class MultiFavorite extends MultiObject {
         return;
     }
 
+    /**
+     * Adds the current User to the Favorite.
+     */
     synchronized void addFavorite() {
         if (!isValid) {
             Log.getInstance().write(Log.LOGLEVEL_WARN, "addFavories: !isValid.");
@@ -59,6 +63,10 @@ public class MultiFavorite extends MultiObject {
         Log.getInstance().write(Log.LOGLEVEL_TRACE, "addFavorite: Users for Favorite " +  FavoriteAPI.GetFavoriteDescription(sageFavorite) + ":" + allowedUsers);
     }
 
+    /**
+     * Removes the current User from the Favorite.  IF no more Users are defined for the
+     * Favorite it is removed from the Sage core.
+     */
     synchronized void removeFavorite() {
 
         if (!isValid) {
@@ -74,10 +82,15 @@ public class MultiFavorite extends MultiObject {
 
         if (DS==null || DS.isEmpty()) {
             Log.getInstance().write(Log.LOGLEVEL_TRACE, "removeFavorite: No more users, deleting Favorite from sage database " + FavoriteAPI.GetFavoriteDescription(sageFavorite));
+            removeRecord();
             FavoriteAPI.RemoveFavorite(sageFavorite);
         }
     }
 
+    /**
+     * Returns true if the current User has this Sage Favorite defined as a Favorite.
+     * @return
+     */
     boolean isFavorite() {
 
         if (!isValid)
@@ -87,10 +100,18 @@ public class MultiFavorite extends MultiObject {
         return users.contains(userID);
     }
 
+    /**
+     * Return a list of Users that have the current Sage Favorite defined as  Favorite for them.
+     * @return
+     */
     List<String> getAllowedUsers() {
         return allowedUsers;
     }
 
+    /**
+     * Returns the Favorites for the current User.
+     * @return The returned array is not mutable.
+     */
     static Object[] getFavorites() {
 
         // Get all of the Sage Favorites.
@@ -112,16 +133,28 @@ public class MultiFavorite extends MultiObject {
     }
 
 
-    // Initialize this user for the Favorite.
+    /**
+     * Adds the current User to the Favorite database. This method is depreciated, addFavorite
+     * should be used instead.
+     */
+    @Deprecated
     void initializeUser() {
         addFlag(FAVORITE_USERS, userID);
     }
 
+    /**
+     * Removes the current User from the Favorites database.  Does NOT change remove the
+     * underlying Sage Favorite even if the User being removed is the last User. This method is
+     * depreciated, removeFavorite should be used instead.
+     */
+    @Deprecated
     void clearUserFromFlags() {
         clearUser(userID, FLAGS);
     }
 
-    // Wipes the entire database.
+    /**
+     * Removes all Favorite related data.
+     */
     static void WipeDatabase() {
         UserRecordAPI.DeleteAllUserRecords(FAVORITE_STORE);
     }

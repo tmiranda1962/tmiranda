@@ -1,7 +1,3 @@
-/*
- * To change this template, choose Tools | Templates
- * and open the template in the editor.
- */
 
 package tmiranda.mus;
 
@@ -10,7 +6,9 @@ import sagex.api.*;
 
 /**
  *
- * @author Default
+ * @author Tom Miranda
+ * DelimitedString is a class that allows manipulation of Strings containing data separated
+ * by a delimiter.
  */
 public class DelimitedString {
 

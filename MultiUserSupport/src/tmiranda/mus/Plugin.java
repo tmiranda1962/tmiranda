@@ -16,7 +16,7 @@ import java.util.*;
  */
 public class Plugin implements sage.SageTVPlugin, SageTVEventListener {
 
-    private static final String     VERSION = "0.03 02.13.2011";
+    public static final String  VERSION = "0.04 02.18.2011";
 
     /*
      * Constants used throughout the Plugin.
@@ -85,6 +85,7 @@ public class Plugin implements sage.SageTVPlugin, SageTVEventListener {
         registry.eventSubscribe(listener, "PlaybackStarted");
         registry.eventSubscribe(listener, "PlaybackStopped");
         registry.eventSubscribe(listener, "PlaybackFinished");
+        registry.eventSubscribe(listener, "MediaFileRemoved");
     }
 
     // This method is called when the plugin should shutdown.
@@ -103,6 +104,7 @@ public class Plugin implements sage.SageTVPlugin, SageTVEventListener {
         registry.eventUnsubscribe(listener, "PlaybackStarted");
         registry.eventUnsubscribe(listener, "PlaybackStopped");
         registry.eventUnsubscribe(listener, "PlaybackFinished");
+        registry.eventUnsubscribe(listener, "MediaFileRemoved");
     }
 
     // This method is called after plugin shutdown to free any resources used by the plugin.
@@ -439,6 +441,7 @@ public class Plugin implements sage.SageTVPlugin, SageTVEventListener {
                 eventName.startsWith("MediaFileImported") ||
                 eventName.startsWith("PlaybackStarted") ||
                 eventName.startsWith("PlaybackStopped") ||
+                eventName.startsWith("MediaFileRemoved") ||
                 eventName.startsWith("PlaybackFinished"))) {
             Log.getInstance().write(Log.LOGLEVEL_WARN, "sageEvent: Unexpected event received = " + eventName);
             return;
@@ -457,6 +460,15 @@ public class Plugin implements sage.SageTVPlugin, SageTVEventListener {
 
         Integer MediaFileID = MediaFileAPI.GetMediaFileID(MediaFile);
 
+        // If the core just removed the MediaFile make sure the record is also deleted.
+        // It's possible that the API did not remove the MediaFile so we need to catch it here.
+        if (eventName.startsWith("MediaFileRemoved")) {
+            MultiMediaFile MMF = new MultiMediaFile(SUPER_USER, MediaFile);
+            MMF.removeRecord();
+            Log.getInstance().write(Log.LOGLEVEL_TRACE, "sageEvent: Finished with MediaFileRemoved.");
+            return;
+        }
+
         List<String> Users = User.getAllUsers();
 
         if (Users==null || Users.isEmpty()) {
@@ -466,7 +478,6 @@ public class Plugin implements sage.SageTVPlugin, SageTVEventListener {
 
         Log.getInstance().write(Log.LOGLEVEL_TRACE, "sageEvent: Defined users " + Users);
         
-
         Object Airing = MediaFileAPI.GetMediaFileAiring(MediaFile);
 
         if (Airing==null) {
@@ -607,7 +618,7 @@ public class Plugin implements sage.SageTVPlugin, SageTVEventListener {
         }
 
         if (!AccessGranted) {
-            Log.getInstance().write(Log.LOGLEVEL_TRACE, "sageEvent: This is not a Manual or a Favorite.");
+            Log.getInstance().write(Log.LOGLEVEL_TRACE, "sageEvent: This is not a Manual or a Favorite for any user.");
         }
 
         // If we didn't assign it to any user let's assume it's an Intelligent Recording and grant access to any
@@ -632,7 +643,7 @@ public class Plugin implements sage.SageTVPlugin, SageTVEventListener {
             }
 
         } else {
-            Log.getInstance().write(Log.LOGLEVEL_TRACE, "sageEvent: It's a Manual or Favorite, or IR is disabled.");
+            Log.getInstance().write(Log.LOGLEVEL_TRACE, "sageEvent: It's not a Manual or Favorite, and IR is disabled.");
         }
 
         Log.getInstance().write(Log.LOGLEVEL_TRACE, "sageEvent: Processing complete.");
@@ -649,6 +660,10 @@ public class Plugin implements sage.SageTVPlugin, SageTVEventListener {
     }
 
     static String PrintDateAndTime(String time) {
+
+        if (time==null)
+            return "0";
+
         long t;
 
         try {

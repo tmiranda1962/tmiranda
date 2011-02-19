@@ -24,11 +24,14 @@ public class MultiObject {
     private String      altStore        = null;
 
     static final String INITIALIZED = "IsInitialized";
+    static final String KEY         = "Key";
+    static final String KEEPER      = "Keep";
+
     static final String WATCHED     = "Watched";
     static final String DONTLIKE    = "DontLike";
     static final String DELETED     = "Deleted";
 
-    static final String[]   OBJECT_FLAGS = {DELETED, DONTLIKE, WATCHED, INITIALIZED};
+    static final String[]   OBJECT_FLAGS = {DELETED, DONTLIKE, WATCHED, KEEPER, KEY, INITIALIZED};
 
     static final String REALWATCHEDSTARTTIME_PREFIX = "RealWatchedStartTime_";
     static final String REALWATCHEDENDTIME_PREFIX   = "RealWatchedEndTime_";
@@ -71,25 +74,39 @@ public class MultiObject {
                 isValid = false;
                 return;
             }
+
+            setRecordData(KEY, key);
         }
 
-        String init = getRecordData(INITIALIZED);
-        isInitialized = (init != null && init.equalsIgnoreCase("true"));
+        isInitialized = containsFlag(INITIALIZED, userID);
         return;
     }
 
-    // Returns the specified user record data.
+    /**
+     * Returns the raw record data.
+     * @param Flag
+     * @return
+     */
     final String getRecordData(String Flag) {
         return UserRecordAPI.GetUserRecordData(record, Flag);
     }
     
-    // Sets the specified user record data.
-    void setRecordData(String Flag, String Data) {       
+    /**
+     * Sets the raw record data.
+     * @param Flag
+     * @param Data
+     */
+    final void setRecordData(String Flag, String Data) {
         UserRecordAPI.SetUserRecordData(record, Flag, Data);
         return;
     }
 
-    // Adds Data to the Flag.
+    /**
+     * Adds Data to the delimited String contained in Flag.
+     * @param Flag
+     * @param Data
+     * @return
+     */
     DelimitedString addFlag(String Flag, String Data) {
         Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "addFlag: Adding " + Data + " to " + Flag);
         DelimitedString DS = new DelimitedString(getRecordData(Flag), Plugin.LIST_SEPARATOR);
@@ -119,14 +136,14 @@ public class MultiObject {
     }
 
     boolean containsFlagAllUsers(String Flag) {
-        List<String> allUsers = User.getAllUsers();
+        List<String> allUsers = User.getAllUsers(false);
 
         DelimitedString DS = new DelimitedString(getRecordData(Flag), Plugin.LIST_SEPARATOR);
 
         // Remove the Admin user.
-        if (allUsers.contains(Plugin.SUPER_USER)) {
-            allUsers.remove(Plugin.SUPER_USER);
-        }
+        //if (allUsers.contains(Plugin.SUPER_USER)) {
+            //allUsers.remove(Plugin.SUPER_USER);
+        //}
 
         return (DS.containsAll(allUsers));
     }
@@ -148,10 +165,25 @@ public class MultiObject {
             removeFlag(Flag, User);
         }
 
-        addFlag(INITIALIZED, "false");
+        clearUserFromFlagPrefix(OBJECT_FLAG_PREFIXES);
+
+        removeFlag(INITIALIZED, userID);
         return;
     }
 
+    void clearUserFromFlagPrefix(String[] Prefixes) {
+
+        if (Prefixes==null || Prefixes.length==0)
+            return;
+
+        for (String prefix : Prefixes)
+            setRecordData(prefix+userID, null);
+    }
+
+    // Completely removes the UserRecord.
+    boolean removeRecord() {
+        return UserRecordAPI.DeleteUserRecord(record);
+    }
 
     /*
      * Methods that must be reflected in both MediaFiles and Airings.
@@ -436,7 +468,7 @@ public class MultiObject {
 
     boolean delete(boolean WithoutPrejudice) {
 
-        // If we have an invalid MMF, just return error.
+        // If we have an invalid MultiObject, just return error.
         if (!isValid) {
             return false;
         }
@@ -446,7 +478,7 @@ public class MultiObject {
 
         if (altKey != null && altKey != 0 && altKey != null) {
             MultiObject MO = new MultiObject(userID, altStore, altKey, 0, null);
-            return MO.delete(WithoutPrejudice);
+            MO.delete(WithoutPrejudice);
         }
 
         // If all users have it marked as deleted, delete it for real.
@@ -461,12 +493,16 @@ public class MultiObject {
                 if (sageObject!=null) {
                     Log.getInstance().write(Log.LOGLEVEL_TRACE, "delete: Found Airing.");
                 } else {
-                    Log.getInstance().write(Log.LOGLEVEL_ERROR, "delete: Failed to find MediaFile or Airing.");
-                    return false;
+                    Log.getInstance().write(Log.LOGLEVEL_TRACE, "delete: MediaFile or Airing already deleted.");
                 }
             }
 
-            return (WithoutPrejudice ? MediaFileAPI.DeleteFileWithoutPrejudice(sageObject) : MediaFileAPI.DeleteFile(sageObject));
+            removeRecord();
+
+            if (sageObject==null)
+                return true;
+            else
+                return(WithoutPrejudice ? MediaFileAPI.DeleteFileWithoutPrejudice(sageObject) : MediaFileAPI.DeleteFile(sageObject));
         }
 
         Log.getInstance().write(Log.LOGLEVEL_TRACE, "delete: Leaving physical file intact.");
@@ -498,6 +534,41 @@ public class MultiObject {
         }
     }
 
+
+    static void clearKeeperFlag(Object[] allRecords) {
+
+        if (allRecords==null || allRecords.length==0)
+            return;
+
+        for (Object record : allRecords)
+            UserRecordAPI.SetUserRecordData(record, KEEPER, "false");
+    }
+
+    static void setKeeperFlag(Object record) {
+        UserRecordAPI.SetUserRecordData(record, KEEPER, "true");
+    }
+
+    static int deleteNonKeepers(Object[] allRecords, boolean countOnly) {
+        Log.getInstance().write(Log.LOGLEVEL_WARN, "deleteNonKeepers: countOnly " + countOnly);
+
+        int count = 0;
+
+        for (Object record : allRecords) {
+            String keep = UserRecordAPI.GetUserRecordData(record, KEEPER);
+            if (keep.equalsIgnoreCase("false")) {
+                Log.getInstance().write(Log.LOGLEVEL_WARN, "deleteNonKeepers: Found unused record.");
+                count++;
+
+                if (!countOnly) {
+                    Log.getInstance().write(Log.LOGLEVEL_WARN, "deleteNonKeepers: Deleting unused record.");
+                    UserRecordAPI.DeleteUserRecord(record);
+                }
+            }
+        }
+
+        return count;
+    }
+
     // Used for debugging.
     String getFlagString(String Flag) {
         return getRecordData(Flag);
@@ -524,4 +595,5 @@ public class MultiObject {
 
         return theList;
     }
+
 }

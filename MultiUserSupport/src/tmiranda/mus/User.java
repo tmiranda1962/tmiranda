@@ -35,6 +35,12 @@ public class User {
             return;
         }
 
+        if (UserID.equalsIgnoreCase("true") || UserID.equalsIgnoreCase("false")) {
+            Log.getInstance().write(Log.LOGLEVEL_ERROR, "User: Invalid UserID " + UserID);
+            isValid = false;
+            return;
+        }
+
         user = UserID;
         record = UserRecordAPI.GetUserRecord(STORE, user);
 
@@ -143,12 +149,15 @@ public class User {
         addToAllFavorites();
         return;
     }
-    
-    void removeFromDataBase() {
+
+    /**
+     *
+     */
+    boolean removeFromDataBase() {
 
         if (!isValid) {
             Log.getInstance().write(Log.LOGLEVEL_WARN, "removeFromDatabase: Can't remove invalid User.");
-            return;
+            return false;
         }
 
         Log.getInstance().write(Log.LOGLEVEL_WARN, "removeFromDataBase: Removing from Favorites.");
@@ -159,6 +168,8 @@ public class User {
 
         Log.getInstance().write(Log.LOGLEVEL_WARN, "removeFromDataBase: Removing from Airings.");
         removeFromAllAirings();
+
+        return destroy();
     }
 
     String getUserID() {
@@ -424,6 +435,54 @@ public class User {
         }
 
         return Users;
+    }
+
+    public static List<String> getAllUsers(boolean includeAdmin) {
+        List<String> Users = new ArrayList<String>();
+
+        Object[] Records = UserRecordAPI.GetAllUserRecords(STORE);
+
+        if (Records==null || Records.length==0) {
+            Log.getInstance().write(Log.LOGLEVEL_WARN, "getAllUsers: null Records.");
+            return Users;
+        }
+
+        for (Object Record : Records) {
+            String User = UserRecordAPI.GetUserRecordData(Record, KEY_USERID);
+            Log.getInstance().write(Log.LOGLEVEL_ALL, "getAllUsers: Found User " + User);
+            if (User != null && !User.isEmpty())
+                if (!(!includeAdmin && User.equalsIgnoreCase(Plugin.SUPER_USER)))
+                    Users.add(User);
+        }
+
+        return Users;
+    }
+
+    static boolean isIntelligentRecordingEnabledForAnyUsers() {
+        List<String> allUsers = getAllUsers();
+
+        if (allUsers==null || allUsers.isEmpty())
+            return false;
+
+        for (String user : allUsers) {
+            User U = new User(user);
+            if (!U.isIntelligentRecordingDisabled())
+                return true;
+        }
+
+        return false;
+    }
+
+    static void disableIntelligentRecordingForAllUsers() {
+        List<String> allUsers = getAllUsers();
+
+        if (allUsers==null || allUsers.isEmpty())
+            return;
+
+        for (String user : allUsers) {
+            User U = new User(user);
+            U.setIntelligentRecordingDisabled(true);
+        }
     }
 
     static void wipeDatabase() {
