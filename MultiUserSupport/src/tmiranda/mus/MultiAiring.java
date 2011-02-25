@@ -9,6 +9,8 @@ import java.util.*;
 import sagex.api.*;
 
 /**
+ * Class that implements the SageTV AiringAPI for multiple users.
+ * Unless noted otherwise the methods behave in the same way as the Sage core APIs.
  *
  * @author Tom Miranda.
  */

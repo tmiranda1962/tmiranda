@@ -1,46 +1,82 @@
-/*
- * To change this template, choose Tools | Templates
- * and open the template in the editor.
- */
 
 package tmiranda.mus;
 
 import sage.*;
 import sagex.api.*;
-import java.io.*;
+import sagex.UIContext;
 import java.util.*;
 
 /**
- *
- * @author Default
+ * This is the Plugin Implementation Class for a SageTV Plugin.
+ * @author Tom Miranda
  */
 public class Plugin implements sage.SageTVPlugin, SageTVEventListener {
 
-    public static final String  VERSION = "0.04 02.18.2011";
+    /**
+     * The current PLugin version.
+     */
+    public static final String  VERSION = "0.05 02.23.2011";
 
     /*
      * Constants used throughout the Plugin.
      */
+
+    /**
+     * Admin. The user who can do anything.
+     */
     public static final String  SUPER_USER          = "Admin";      // Admin gets access to everything.
+
+    /**
+     * Separates data in delimited Strings.
+     */
     public static final String  LIST_SEPARATOR      = ",";          // Used to separate lists of flags.
+
+    /**
+     * The SageTV Plugin ID
+     */
     public static final String  PLUGIN_ID           = "multiusersupport";
-    
+
+    /**
+     * All of the stores (as defined in the UserRecordAPI) used in the Plugin.
+     */
     public static final String[] ALL_STORES = {MultiFavorite.FAVORITE_STORE, MultiAiring.AIRING_STORE, MultiMediaFile.MEDIAFILE_STORE, User.STORE};
 
     /*
      * Settings used in Plugin Configuration.
      */
+
+    /**
+     * Setting used to store the current log level.
+     */
     private static final String     SETTING_LOGLEVEL    = "LogLevel";       // Change the loglevel.
+
+    @Deprecated
     private static final String     SETTING_NOT_ADMIN   = "NotAdmin";       // Used in case a non-admin tries to configure.
 
     // Keep track of if we should automatically login a user when the UI starts.
     // The property is local to each UI.
     private static final String SETTING_LOGIN_LAST_USER    = "LoginLastUser";
+
+    /**
+     * Property used to determine if the last logged in user should be logged back in after the system is rebooted.
+     */
     public static final String PROPERTY_LOGIN_LAST_USER   = "mus/LoginLastUser";    // LOCAL setting.
 
-    private static final String SETTING_USE_PASSWORDS = "UsePasswords";
+     
+    /**
+     * Property used to store if passwords are in use.
+     */
     public static final String PROPERTY_USE_PASSWORDS = "mus/UsePasswords";
+    private static final String SETTING_USE_PASSWORDS = "UsePasswords";
 
+    /**
+     * Property used to store if users that have IR enabled should update the core with their actions.
+     */
+    public static final String PROPERTY_UPDATE_IR = "mus/UpdateIR";
+
+    /**
+     * Property used to store the name of the user that was last logged on.
+     */
     public static final String PROPERTY_LAST_LOGGEDIN_USER = "mus/LastLoggedinUser";    // LOCAL setting.
 
     private sage.SageTVPluginRegistry   registry;
@@ -50,7 +86,7 @@ public class Plugin implements sage.SageTVPlugin, SageTVEventListener {
     /**
      * Constructor.
      * <p>
-     * @param registry
+     * @param Registry
      */
     public Plugin(sage.SageTVPluginRegistry Registry) {
         registry = Registry;
@@ -114,11 +150,6 @@ public class Plugin implements sage.SageTVPlugin, SageTVEventListener {
         Log.destroy();
     }
 
-    // These methods are used to define any configuration settings for the
-    // plugin that should be presented in the UI. If your plugin does not
-    // need configuration settings; you may simply return null or zero from
-    // these methods.
-
     // Returns the names of the settings for this plugin
     @Override
     public String[] getConfigSettings() {
@@ -150,6 +181,8 @@ public class Plugin implements sage.SageTVPlugin, SageTVEventListener {
     // Returns the current value of the specified setting for this plugin
     @Override
     public String getConfigValue(String setting) {
+        return null;
+        /*
         Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "Plugin: setConfigValue received from Plugin Manager. Setting = " + setting);
         if (setting.startsWith(SETTING_LOGLEVEL)) {
             switch (Log.getInstance().GetLogLevel()) {
@@ -169,12 +202,12 @@ public class Plugin implements sage.SageTVPlugin, SageTVEventListener {
 
         // Use local property.
         if (setting.startsWith(SETTING_LOGIN_LAST_USER)) {
-            return Configuration.GetProperty(PROPERTY_LOGIN_LAST_USER, "false");
+            return Configuration.GetProperty(UIContext.getCurrentContext(), PROPERTY_LOGIN_LAST_USER, "false");
         }
 
         // Use local property.
         if (setting.startsWith(SETTING_USE_PASSWORDS)) {
-            return Configuration.GetProperty(PROPERTY_USE_PASSWORDS, "true");
+            return Configuration.GetProperty(UIContext.getCurrentContext(), PROPERTY_USE_PASSWORDS, "true");
         }
 
         if (setting.startsWith(SETTING_NOT_ADMIN)) {
@@ -182,6 +215,8 @@ public class Plugin implements sage.SageTVPlugin, SageTVEventListener {
         }
 
         return null;
+         *
+         */
     }
 
     // Returns the current value of the specified multichoice setting for
@@ -191,7 +226,7 @@ public class Plugin implements sage.SageTVPlugin, SageTVEventListener {
         return null;
     }
 
-    /**
+    /*
     //public static final int CONFIG_BOOL = 1;
     //public static final int CONFIG_INTEGER = 2;
     //public static final int CONFIG_TEXT = 3;
@@ -209,6 +244,9 @@ public class Plugin implements sage.SageTVPlugin, SageTVEventListener {
     public int getConfigType(String setting) {
         Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "Plugin: getConfigType received from Plugin Manager. Setting = " + setting);
 
+        return 0;
+
+        /*
         if (setting.startsWith(SETTING_LOGLEVEL))
             return CONFIG_CHOICE;
 
@@ -225,6 +263,8 @@ public class Plugin implements sage.SageTVPlugin, SageTVEventListener {
             return CONFIG_BUTTON;
 
         return CONFIG_TEXT;
+         *
+         */
     }
 
     // Sets a configuration value for this plugin
@@ -232,6 +272,8 @@ public class Plugin implements sage.SageTVPlugin, SageTVEventListener {
     public void setConfigValue(String setting, String value) {
         Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "Plugin: setConfigValue received from Plugin Manager. Setting = " + setting + ":" + value);
 
+        return;
+        /*
         if (setting.startsWith(SETTING_LOGLEVEL)) {
             if (value.startsWith("None"))
                 Log.getInstance().SetLogLevel(Log.LOGLEVEL_NONE);
@@ -257,13 +299,13 @@ public class Plugin implements sage.SageTVPlugin, SageTVEventListener {
 
         // Use local property for this setting.
         if (setting.startsWith(SETTING_LOGIN_LAST_USER)) {
-            Configuration.SetProperty(PROPERTY_LOGIN_LAST_USER, value);
+            Configuration.SetProperty(UIContext.getCurrentContext(), PROPERTY_LOGIN_LAST_USER, value);
             return;
         }
 
         // Use local property.
         if (setting.startsWith(SETTING_USE_PASSWORDS)) {
-            Configuration.SetProperty(PROPERTY_USE_PASSWORDS, value);
+            Configuration.SetProperty(UIContext.getCurrentContext(), PROPERTY_USE_PASSWORDS, value);
             return;
         }
 
@@ -271,6 +313,8 @@ public class Plugin implements sage.SageTVPlugin, SageTVEventListener {
         if (setting.startsWith(SETTING_NOT_ADMIN)) {
             return;
         }
+         *
+         */
     }
 
     // Sets a configuration values for this plugin for a multiselect choice
@@ -285,6 +329,9 @@ public class Plugin implements sage.SageTVPlugin, SageTVEventListener {
     public String[] getConfigOptions(String setting) {
         Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "PlugIn: getConfigOptions received from Plugin Manager. Setting = " + setting);
 
+        return null;
+
+        /*
         if (setting.startsWith(SETTING_LOGLEVEL)) {
             String[] values = {"None", "Error", "Warn", "Trace", "Verbose", "Maximum"};
             return values;
@@ -296,11 +343,15 @@ public class Plugin implements sage.SageTVPlugin, SageTVEventListener {
         //}
 
         return null;
+         *
+         */
     }
 
     // Returns the help text for a configuration setting
     @Override
     public String getConfigHelpText(String setting) {
+        return null;
+        /*
         if (setting.startsWith(SETTING_LOGLEVEL)) {
             return "Set the Debug Logging Level.";
         }
@@ -322,12 +373,16 @@ public class Plugin implements sage.SageTVPlugin, SageTVEventListener {
         }
 
         return null;
+         *
+         */
     }
 
     // Returns the label used to present this setting to the user
     @Override
     public String getConfigLabel(String setting) {
 
+        return null;
+        /*
         if (setting.startsWith(SETTING_LOGLEVEL)) {
             return "Debug Logging Level";
         }
@@ -349,20 +404,24 @@ public class Plugin implements sage.SageTVPlugin, SageTVEventListener {
         }
 
         return null;
+         *
+         */
     }
 
     // Resets the configuration of this plugin
     @Override
     public void resetConfig() {
+        return;
+        /*
         Log.getInstance().write(Log.LOGLEVEL_WARN, "Plugin: resetConfig received from Plugin Manager.");
         Log.getInstance().SetLogLevel(Log.LOGLEVEL_WARN);
-        Configuration.SetProperty(PROPERTY_LOGIN_LAST_USER, "false");
-        Configuration.SetProperty(PROPERTY_USE_PASSWORDS, "true");
+        Configuration.SetProperty(UIContext.getCurrentContext(), PROPERTY_LOGIN_LAST_USER, "false");
+        Configuration.SetProperty(UIContext.getCurrentContext(), PROPERTY_USE_PASSWORDS, "true");
+         *
+         */
     }
 
-
-
-/**
+/*
  * Interface definition for implementation classes that listen for events
  * from the SageTV core
  *
@@ -650,7 +709,12 @@ public class Plugin implements sage.SageTVPlugin, SageTVEventListener {
         return;
     }
 
-    static String PrintDateAndTime(long time) {
+    /**
+     * Prints the Date and Time in a user friendly format.
+     * @param time The time.
+     * @return A formatted String.
+     */
+    public static String PrintDateAndTime(long time) {
         if (time == 0) {
             return "0";
         } else if (time == -1) {
@@ -659,7 +723,12 @@ public class Plugin implements sage.SageTVPlugin, SageTVEventListener {
             return Utility.PrintDateFull(time) + " - " + Utility.PrintTimeFull(time);
     }
 
-    static String PrintDateAndTime(String time) {
+    /**
+     *
+     * @param time The time.
+     * @return A formatted String.
+     */
+    public static String PrintDateAndTime(String time) {
 
         if (time==null)
             return "0";
@@ -675,4 +744,5 @@ public class Plugin implements sage.SageTVPlugin, SageTVEventListener {
 
         return PrintDateAndTime(t);
     }
+
 }

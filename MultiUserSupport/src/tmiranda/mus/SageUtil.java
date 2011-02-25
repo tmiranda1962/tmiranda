@@ -7,9 +7,11 @@ package tmiranda.mus;
 
 import java.util.*;
 import sagex.api.*;
+import sagex.UIContext;
+
 /**
  *
- * @author Default
+ * @author Tom Miranda
  */
 public class SageUtil {
 
@@ -61,8 +63,8 @@ public class SageUtil {
     * @return           A boolean indicating the status of the property.  If the Property is anything other
     *                   than "true", false is returned.
     */
-    static boolean GetLocalBoolProperty(String Property, String Value) {
-        String prop = Configuration.GetProperty(Property, Value);
+    static boolean GetLocalBoolProperty(String UIContextName, String Property, String Value) {
+        String prop = Configuration.GetProperty(new UIContext(UIContextName), Property, Value);
         return prop.equalsIgnoreCase("true");
     }
 
@@ -74,8 +76,8 @@ public class SageUtil {
     * @return           A boolean indicating the status of the property.  If the Property is anything other
     *                   than "true", false is returned.
     */
-    static boolean GetLocalBoolProperty(String Property, Boolean Value) {
-        String prop = Configuration.GetProperty(Property, Value.toString());
+    static boolean GetLocalBoolProperty(String UIContextName, String Property, Boolean Value) {
+        String prop = Configuration.GetProperty(new UIContext(UIContextName), Property, Value.toString());
         return prop.equalsIgnoreCase("true");
     }
 
@@ -89,7 +91,7 @@ public class SageUtil {
     */
     static boolean GetLocalBoolProperty(String Property, boolean Value) {
         Boolean DefaultValue = Value;
-        String prop = Configuration.GetProperty(Property, DefaultValue.toString());
+        String prop = Configuration.GetProperty(UIContext.getCurrentContext(), Property, DefaultValue.toString());
         return prop.equalsIgnoreCase("true");
     }
 

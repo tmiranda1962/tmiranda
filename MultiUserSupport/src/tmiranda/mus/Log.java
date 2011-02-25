@@ -1,15 +1,11 @@
-/*
- * To change this template, choose Tools | Templates
- * and open the template in the editor.
- */
 
 package tmiranda.mus;
 
 import sagex.api.*;
 
 /**
- *
- * @author Default
+ * Logging methods. Singleton class.
+ * @author Tom Miranda
  */
 public class Log {
 
@@ -17,7 +13,11 @@ public class Log {
      * Possible values for the LogLevel.
      */
 
+    /**
+     * Property used to store the current log level.
+     */
     public static final String  PROPERTY_LOGLEVEL = "mus/loglevel";
+
     public static final int     LOGLEVEL_NONE       = 100;
     public static final int     LOGLEVEL_ERROR      = 75;
     public static final int     LOGLEVEL_WARN       = 50;
@@ -49,30 +49,33 @@ public class Log {
     /**
      * Gets the one and only instance for the Log class.
      * <p>
-     * @return  The instance for hte Logger.
+     * @return  The instance for the Logger.
      */
-    static Log getInstance() {
+    public static Log getInstance() {
         return instance;
     }
 
     /**
-     * Destroy the Log class.
+     * Destroy the logger.
      */
-    static void destroy() {
+    public static void destroy() {
         instance = null;
     }
 
-    static void start() {
+    /**
+     * Restart the logger.
+     */
+    public static void start() {
         instance = new Log();
     }
 
     /**
      * Writes a string to the logfile if the level indicated is at least at the current LogLevel.
      * <p>
-     * @param level The LogLevel at wich this message should be written.
+     * @param level The LogLevel at which this message should be written.
      * @param s     The String to write.
      */
-    void write(int level, String s) {
+    public void write(int level, String s) {
         if (level >= CurrentLogLevel)
             System.out.println("MUS: " + s);
 
@@ -87,7 +90,7 @@ public class Log {
      * <p>
      * @param NewLevel  The new Loglevel.
      */
-    void SetLogLevel(Integer NewLevel) {
+    public void SetLogLevel(Integer NewLevel) {
         CurrentLogLevel = NewLevel;
         Configuration.SetServerProperty(PROPERTY_LOGLEVEL, NewLevel.toString());
     }
@@ -97,7 +100,7 @@ public class Log {
      * <p>
      * @return  The current LogLevel.
      */
-    int GetLogLevel() {
+    public int GetLogLevel() {
         return CurrentLogLevel;
     }
 }

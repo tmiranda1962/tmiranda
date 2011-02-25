@@ -1,20 +1,23 @@
-/**
- * Presents a set of APIs that can be used in a SageTV STV to implement Multi-User functionality.
- *
- * @author Tom Miranda.
- */
 
 package tmiranda.mus;
 
 import java.util.*;
 import java.io.*;
 import sagex.api.*;
+import sagex.UIContext;
 
 /**
- *
- * @author Default
+ * This class presents methods that can be invoked from within the Sage STV to perform all
+ * of the task necessary to implement the Multi-User Plugin.
+ * Unless noted otherwise the methods behave in the same way as the Sage core APIs.
+ * @author Tom Miranda
  */
 public class API {
+
+    /**
+     * All methods in this class are static.
+     */
+    private API() {}
 
     /*
      * User login and logout.
@@ -29,7 +32,7 @@ public class API {
      * Logs on the specified user.
      * @param UserID
      */
-    public static void loginUser(String UserID) {
+    public static void loginUser(String UIContextName, String UserID) {
         
         if (UserID == null) {
             Log.getInstance().write(Log.LOGLEVEL_ERROR, "loginUser: null UserID.");
@@ -37,40 +40,41 @@ public class API {
         }
 
         User user = new User(UserID);
-        user.logOn();
+        user.logOn(UIContextName);
     }
 
     /**
      * Logs out the current user.
      */
-    public static void logoutCurrentUser() {
+    public static void logoutCurrentUser(String UIContextName) {
 
-        if (getLoggedinUser()==null)
+        if (getLoggedinUser(UIContextName)==null)
             return;
 
-        User user = new User(getLoggedinUser());
-        user.logOff();
+        User user = new User(getLoggedinUser(UIContextName));
+        user.logOff(UIContextName);
     }
 
     /**
      * Returns the currently logged on user.
-     * @return
+     * @return The currently logged on user.
      */
-    public static String getLoggedinUser() {
-        if (Global.IsClient() && Global.IsServerUI())
-            return Configuration.GetServerProperty(Plugin.PROPERTY_LAST_LOGGEDIN_USER, null);
-        else
-            return Configuration.GetProperty(Plugin.PROPERTY_LAST_LOGGEDIN_USER, null);
+    public static String getLoggedinUser(String UIContextName) {
+        //if (Global.IsClient() && Global.IsServerUI())
+            //return Configuration.GetServerProperty(Plugin.PROPERTY_LAST_LOGGEDIN_USER, null);
+        //else
+System.out.println("LOGGED IN USER " + Configuration.GetProperty(new UIContext(UIContextName), Plugin.PROPERTY_LAST_LOGGEDIN_USER, null));
+            return Configuration.GetProperty(new UIContext(UIContextName), Plugin.PROPERTY_LAST_LOGGEDIN_USER, null);
     }
 
     /**
      * Returns the user that should be logged on after Sage is rebooted.  It may be null
      * indicating that no user should be logged on.
-     * @return
+     * @return The user that should be logged in after the UI is reloaded.
      */
-    public static String getUserAfterReboot() {
-        if (SageUtil.GetLocalBoolProperty(Plugin.PROPERTY_LOGIN_LAST_USER, "false"))
-            return getLoggedinUser();
+    public static String getUserAfterReboot(String UIContextName) {
+        if (SageUtil.GetLocalBoolProperty(UIContextName, Plugin.PROPERTY_LOGIN_LAST_USER, "false"))
+            return getLoggedinUser(UIContextName);
         else
             return null;
     }
@@ -82,8 +86,8 @@ public class API {
 
     /**
      * Checks to see if the multiusersupport General Plugin in installed.  The method name is
-     * a bit misleading because it doe NOT check to see if the Plugin is actually enabled or not.
-     * @return
+     * a bit misleading because it does NOT check to see if the Plugin is actually enabled or not.
+     * @return true if the General Plugin is installed on the server, false otherwise.
      */
     public static boolean isPluginEnabled() {
         Object thisPlugin = PluginAPI.GetAvailablePluginForID(Plugin.PLUGIN_ID);
@@ -110,7 +114,7 @@ public class API {
 
     /**
      * Returns a String containing the Plugin version number.
-     * @return
+     * @return The Plugin version.
      */
     public static String getPluginVersion() {
         return Plugin.VERSION;
@@ -120,24 +124,25 @@ public class API {
      * Checks to see if the Airing will be recorded for the current user.  It may be a
      * Favorite, Manual Record or an Intelligent Recording choice.
      * @param Airing
-     * @return
+     * @return true if the currently logged on user has requested the Airing be recorded,
+     * false otherwise.
      */
-    public static boolean isUpcomingRecordingForMe(Object Airing) {
+    public static boolean isUpcomingRecordingForMe(String UIContextName, Object Airing) {
 
         // Null Airing or an Airing that won't be recorded is certainly not for the current user.
         if (Airing==null || !willBeRecordedByCore(ensureIsAiring(Airing)))
             return false;
 
-        String User = getLoggedinUser();
+        String User = getLoggedinUser(UIContextName);
 
         // It's for current user if it's a Favorite or a Manual.
-        if (User==null || User.equalsIgnoreCase(Plugin.SUPER_USER) || isFavorite(ensureIsAiring(Airing)) || isManualRecord(ensureIsAiring(Airing))) {
+        if (User==null || User.equalsIgnoreCase(Plugin.SUPER_USER) || isFavorite(UIContextName, ensureIsAiring(Airing)) || isManualRecord(UIContextName, ensureIsAiring(Airing))) {
             //Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "isUpcomingRecordingForMe: null user or Admin " + User);
             return true;
         }
 
         // If IR is disabled it can't be for the current user.
-        if (isIntelligentRecordingDisabled())
+        if (isIntelligentRecordingDisabled(UIContextName))
             return false;
 
         // If it's an IR it must be for this user.
@@ -147,7 +152,7 @@ public class API {
     /**
      * Checks if the specified Airing will be recorded by the SageTV core.
      * @param Airing
-     * @return
+     * @return true if the Airing will be recorded by the Sage core, false otherwise.
      */
     public static boolean willBeRecordedByCore(Object Airing) {
 
@@ -191,7 +196,7 @@ public class API {
      * Returns a List of users that have the Airing defined as a Favorite or a Manual Record.
      * Does NOT include the Super-User (Admin).
      * @param Airing
-     * @return
+     * @return A List of users that have requested the Airing be recorded.
      */
     public static List<String> getUsersThatWillRecord(Object Airing) {
         List<String> theList = new ArrayList<String>();
@@ -235,9 +240,9 @@ public class API {
      * "this" set appropriately.
      * @param Content
      */
-    public static void preWatch(Object Content) {
+    public static void preWatch(String UIContextName, Object Content) {
 
-        String User = getLoggedinUser();
+        String User = getLoggedinUser(UIContextName);
 
         if (User==null || User.equalsIgnoreCase(Plugin.SUPER_USER)) {
             Log.getInstance().write(Log.LOGLEVEL_TRACE, "preWatch: null user or Admin " + User);
@@ -284,15 +289,82 @@ public class API {
      * MediaFile API.
      */
 
+    public static Object getMediaFilesWithImportPrefix(String UIContextName, Object Mask, String Prefix, boolean b1, boolean b2, boolean b3) {
+        String user = getLoggedinUser(UIContextName);
+
+        if (user==null || user.equalsIgnoreCase(Plugin.SUPER_USER)) {
+            return Database.GetMediaFilesWithImportPrefix(Mask, Prefix, b1, b2, b3);
+        }
+
+        List<Object> userMediaFiles = new ArrayList<Object>();
+
+        Object mediaFiles = Database.GetMediaFilesWithImportPrefix(Mask, Prefix, b1, b2, b3);
+
+        if (mediaFiles==null)
+            return null;
+
+        for (Object mediaFile : (Object[]) mediaFiles) {
+            if (isMediaFileForLoggedOnUser(UIContextName, mediaFile))
+                userMediaFiles.add(mediaFile);
+        }
+
+        return userMediaFiles.toArray();
+    }
+
+    public static Object[] getMediaFiles(String UIContextName, String Mask) {
+        String user = getLoggedinUser(UIContextName);
+
+        if (user==null || user.equalsIgnoreCase(Plugin.SUPER_USER)) {
+            return MediaFileAPI.GetMediaFiles(Mask);
+        }
+
+        List<Object> userMediaFiles = new ArrayList<Object>();
+
+        Object[] mediaFiles = MediaFileAPI.GetMediaFiles(Mask);
+
+        if (mediaFiles==null)
+            return null;
+
+        for (Object mediaFile : mediaFiles) {
+            if (isMediaFileForLoggedOnUser(UIContextName, mediaFile))
+                userMediaFiles.add(mediaFile);
+        }
+
+        return userMediaFiles.toArray();
+    }
+
+    public static Object[] getMediaFiles(String UIContextName) {
+        String user = getLoggedinUser(UIContextName);
+
+        if (user==null || user.equalsIgnoreCase(Plugin.SUPER_USER)) {
+            return MediaFileAPI.GetMediaFiles();
+        }
+
+        List<Object> userMediaFiles = new ArrayList<Object>();
+
+        Object[] mediaFiles = MediaFileAPI.GetMediaFiles();
+
+        if (mediaFiles==null)
+            return null;
+
+        for (Object mediaFile : mediaFiles) {
+            if (isMediaFileForLoggedOnUser(UIContextName, mediaFile))
+                userMediaFiles.add(mediaFile);
+        }
+
+        return userMediaFiles.toArray();
+    }
+
     /**
      * Checks to see if the specified MediaFile or Airing should be displayed for the currently logged
      * on user.  This method should be used in conjunction with the FilterByBoolMethod()
      * method to filter out those MediaFiles and Airings that should not be displayed.
      * @param MediaFile
-     * @return
+     * @return true if the MediaFile or Airing should be displayed for the currently logged on
+     * user, false otherwise.
      */
-    public static boolean isMediaFileForLoggedOnUser(Object MediaFile) {
-        String UserID = getLoggedinUser();
+    public static boolean isMediaFileForLoggedOnUser(String UIContextName, Object MediaFile) {
+        String UserID = getLoggedinUser(UIContextName);
 
         if (UserID == null || UserID.equalsIgnoreCase(Plugin.SUPER_USER) || MediaFile==null)
             return true;
@@ -301,15 +373,32 @@ public class API {
         return !MMF.isDeleted();
     }
 
+    public static Object[] filterMediaFilesNotForLoggedOnUser(String UIContextName, Object[] MediaFiles) {
+        List<Object> theList = new ArrayList<Object>();
+
+        if (MediaFiles == null)
+            return null;
+
+        for (Object MediaFile : MediaFiles)
+            if (isMediaFileForLoggedOnUser(UIContextName, MediaFile))
+                theList.add(MediaFile);
+
+        return theList.toArray();
+    }
+
+    public static Object[] filterMediaFilesNotForLoggedOnUser(String UIContextName, List<Object> MediaFiles) {
+        return filterMediaFilesNotForLoggedOnUser(UIContextName, MediaFiles.toArray());
+    }
+
     /**
      * Replaces the core API.
      * @param file
      * @param Prefix
-     * @return
+     * @return The added MediaFile.
      */
-    public static Object addMediaFile(File file, String Prefix) {
+    public static Object addMediaFile(String UIContextName, File file, String Prefix) {
 
-        String User = getLoggedinUser();
+        String User = getLoggedinUser(UIContextName);
 
         Object MediaFile = MediaFileAPI.AddMediaFile(file, Prefix);
 
@@ -324,11 +413,11 @@ public class API {
     /**
      * Replaces the core API IsLibraryFile().  (isArchived is a more intuitive name.)
      * @param MediaFile
-     * @return
+     * @return true if archived, false otherwise.
      */
-    public static boolean isArchived(Object MediaFile) {
+    public static boolean isArchived(String UIContextName, Object MediaFile) {
 
-        String User = getLoggedinUser();
+        String User = getLoggedinUser(UIContextName);
 
         if (User==null || User.equalsIgnoreCase(Plugin.SUPER_USER)) {
             return MediaFileAPI.IsLibraryFile(MediaFile);
@@ -342,9 +431,9 @@ public class API {
      * Replaces the core API MoveTVFileOutOfLibrary().  (clearArchived is a more intuitive name.)
      * @param MediaFile
      */
-    public static void clearArchived(Object MediaFile) {
+    public static void clearArchived(String UIContextName, Object MediaFile) {
 
-        String User = getLoggedinUser();
+        String User = getLoggedinUser(UIContextName);
 
         if (User==null || User.equalsIgnoreCase(Plugin.SUPER_USER)) {
             MediaFileAPI.MoveTVFileOutOfLibrary(MediaFile);
@@ -360,9 +449,9 @@ public class API {
      * Replaces the core API MoveFileToLibrary().  (setArchived is a more intuitive name.)
      * @param MediaFile
      */
-    public static void setArchived(Object MediaFile) {
+    public static void setArchived(String UIContextName, Object MediaFile) {
 
-        String User = getLoggedinUser();
+        String User = getLoggedinUser(UIContextName);
 
         if (User==null || User.equalsIgnoreCase(Plugin.SUPER_USER)) {
             MediaFileAPI.MoveFileToLibrary(MediaFile);
@@ -377,11 +466,11 @@ public class API {
     /**
      * Replaces the core API.
      * @param MediaFile
-     * @return
+     * @return true if the MediaFile was deleted, false otherwise.
      */
-    public static boolean deleteMediaFile(Object MediaFile) {
+    public static boolean deleteMediaFile(String UIContextName, Object MediaFile) {
 
-        String User = getLoggedinUser();
+        String User = getLoggedinUser(UIContextName);
 
         // If the MediaFile is removed make sure we remove the corresponding record.
         if (User==null || User.equalsIgnoreCase(Plugin.SUPER_USER)) {
@@ -390,14 +479,13 @@ public class API {
             return MediaFileAPI.DeleteFile(MediaFile);
         }
 
-        MultiMediaFile MMF = new MultiMediaFile(getLoggedinUser(), ensureIsMediaFile(MediaFile));
+        MultiMediaFile MMF = new MultiMediaFile(getLoggedinUser(UIContextName), ensureIsMediaFile(MediaFile));
         return MMF.delete(false);
     }
 
     /**
      * Undeletes the MediaFile for the specified user.
      * @param MediaFile
-     * @return
      */
     public static void undeleteMediaFile(String User, Object MediaFile) {
 
@@ -417,11 +505,11 @@ public class API {
     /**
      * Replaces the core API.
      * @param MediaFile
-     * @return
+     * @return true if the MediaFile was deleted, false otherwise.
      */
-    public static boolean deleteMediaFileWithoutPrejudice(Object MediaFile) {
+    public static boolean deleteMediaFileWithoutPrejudice(String UIContextName, Object MediaFile) {
 
-        String User = getLoggedinUser();
+        String User = getLoggedinUser(UIContextName);
 
         if (User==null || User.equalsIgnoreCase(Plugin.SUPER_USER)) {
             return MediaFileAPI.DeleteFileWithoutPrejudice(MediaFile);
@@ -448,10 +536,13 @@ public class API {
      * - Does not alter core.
      */
 
-    // Invoke IN PLACE OF core API.
-    public static boolean isIntelligentRecordingDisabled() {
+    /**
+     * Replaces the core API.
+     * @return
+     */
+    public static boolean isIntelligentRecordingDisabled(String UIContextName) {
 
-        String User = getLoggedinUser();
+        String User = getLoggedinUser(UIContextName);
 
         if (User==null || User.equalsIgnoreCase(Plugin.SUPER_USER)) {
             return Configuration.IsIntelligentRecordingDisabled();
@@ -461,9 +552,12 @@ public class API {
         return user.isIntelligentRecordingDisabled();
     }
 
-    // Convenience method to avoid the confusion of double negatives.
-    public static boolean isIntelligentRecordingEnabled() {
-        return !isIntelligentRecordingDisabled();
+    /**
+     * Convenience method to avoid the confusion of double negatives.
+     * @return
+     */
+    public static boolean isIntelligentRecordingEnabled(String UIContextName) {
+        return !isIntelligentRecordingDisabled(UIContextName);
     }
 
     /**
@@ -479,11 +573,11 @@ public class API {
      * for individual users.  This implies that if Admin turns IR off all of the users must
      * individually turn it back on.
      *
-     * @param value
+     * @param disabling
      */
-    public static void setIntelligentRecordingDisabled(boolean disabling) {
+    public static void setIntelligentRecordingDisabled(String UIContextName, boolean disabling) {
 
-        String user = getLoggedinUser();
+        String user = getLoggedinUser(UIContextName);
 
         if (user==null || user.equalsIgnoreCase(Plugin.SUPER_USER)) {
 
@@ -518,9 +612,12 @@ public class API {
      * Global API.
      */
 
-    // Invoke IN PLACE OF core API.
-    public static long getUsedVideoDiskspace() {
-        String User = getLoggedinUser();
+    /**
+     * Invoke IN PLACE OF core API.
+     * @return
+     */
+    public static long getUsedVideoDiskspace(String UIContextName) {
+        String User = getLoggedinUser(UIContextName);
 
         if (User==null || User.equalsIgnoreCase(Plugin.SUPER_USER)) {
             return Global.GetUsedVideoDiskspace();
@@ -533,14 +630,18 @@ public class API {
         long bytes = 0;
 
         for (Object mediaFile : allMediaFiles)
-            if (isMediaFileForLoggedOnUser(mediaFile))
+            if (isMediaFileForLoggedOnUser(UIContextName, mediaFile))
                 bytes += MediaFileAPI.GetSize(mediaFile);
 
         return bytes;
     }
 
-    // Returns the number of bytes used by TV recordings belonging to User.
-    public static long getUsedVideoDiskspace(String User) {
+    /**
+     * Returns the number of bytes used by TV recordings belonging to User.
+     * @param User
+     * @return The number of bytes of space used by the User.
+     */
+    public static long getUsedVideoDiskspace(String UIContextName, String User) {
 
         if (User==null)
             return 0;
@@ -563,17 +664,40 @@ public class API {
         return bytes;
     }
 
+    public static Object[] getScheduledRecordings(String UIContextName) {
+        String user = getLoggedinUser(UIContextName);
+
+        if (user==null || user.equalsIgnoreCase(Plugin.SUPER_USER)) {
+            return Global.GetScheduledRecordings();
+        }
+
+        List<Object> userScheduledRecordings = new ArrayList<Object>();
+
+        Object[] scheduledRecordings = Global.GetScheduledRecordings();
+
+        if (scheduledRecordings==null)
+            return null;
+
+        for (Object recording : scheduledRecordings) {
+            if (isMediaFileForLoggedOnUser(UIContextName, recording))
+                userScheduledRecordings.add(recording);
+        }
+
+        return userScheduledRecordings.toArray();
+    }
+
     /*
      * Airing API.
-     *
-     * Behavour:
-     * - Anything to note?
      */
 
-    // Invoke IN PLACE OF core API.
-    public static Object record(Object Airing) {
+    /**
+     * Invoke IN PLACE OF core API.
+     * @param Airing
+     * @return
+     */
+    public static Object record(String UIContextName, Object Airing) {
 
-        String User = getLoggedinUser();
+        String User = getLoggedinUser(UIContextName);
 
         if (User==null || User.equalsIgnoreCase(Plugin.SUPER_USER)) {
             return AiringAPI.Record(Airing);
@@ -584,7 +708,11 @@ public class API {
         return AiringAPI.Record(Airing);
     }
 
-    // Lets the current logged in user mark an upcoming recording as a manual for another user.
+    /**
+     * Lets the current logged in user mark an upcoming recording as a manual for another user.
+     * @param User
+     * @param Airing
+     */
     public static void markAsManualRecord(String User, Object Airing) {
 
         // Nothing to do for null user or Admin.
@@ -596,10 +724,16 @@ public class API {
         MA.setManualRecord();
     }
 
-    // Invoke IN PLACE OF core API.
-    public static Object setRecordingTimes(Object Airing, long StartTime, long StopTime) {
+    /**
+     * Invoke IN PLACE OF core API.
+     * @param Airing
+     * @param StartTime
+     * @param StopTime
+     * @return
+     */
+    public static Object setRecordingTimes(String UIContextName, Object Airing, long StartTime, long StopTime) {
 
-        String User = getLoggedinUser();
+        String User = getLoggedinUser(UIContextName);
 
         if (User==null || User.equalsIgnoreCase(Plugin.SUPER_USER)) {
             return AiringAPI.SetRecordingTimes(Airing, StartTime, StopTime);
@@ -610,10 +744,14 @@ public class API {
         return AiringAPI.SetRecordingTimes(Airing, StartTime, StopTime);
     }
 
-    // Invoke IN PLACE OF core API.
-    public static boolean isManualRecord(Object Airing) {
+    /**
+     * Invoke IN PLACE OF core API.
+     * @param Airing
+     * @return
+     */
+    public static boolean isManualRecord(String UIContextName, Object Airing) {
 
-        String User = getLoggedinUser();
+        String User = getLoggedinUser(UIContextName);
 
         if (User==null || User.equalsIgnoreCase(Plugin.SUPER_USER)) {
             return AiringAPI.IsManualRecord(Airing);
@@ -623,10 +761,13 @@ public class API {
         return MA.isManualRecord();
     }
 
-    // Invole IN PLACE OF core API.
-    public static void cancelRecord(Object Airing) {
+    /**
+     * Invoke IN PLACE OF core API.
+     * @param Airing
+     */
+    public static void cancelRecord(String UIContextName, Object Airing) {
 
-        String User = getLoggedinUser();
+        String User = getLoggedinUser(UIContextName);
 
         MultiAiring MA = new MultiAiring(User, ensureIsAiring(Airing));
 
@@ -640,10 +781,14 @@ public class API {
         return;
     }
 
-    // Invoke IN PLACE OF core API.
-    public static Object getMediaFileForAiring(Object Airing) {
+    /**
+     * Invoke IN PLACE OF core API.
+     * @param Airing
+     * @return
+     */
+    public static Object getMediaFileForAiring(String UIContextName, Object Airing) {
 
-        String User = getLoggedinUser();
+        String User = getLoggedinUser(UIContextName);
         Object MediaFile = null;
 
         if (User==null || User.equalsIgnoreCase(Plugin.SUPER_USER) || Airing==null) {
@@ -669,10 +814,14 @@ public class API {
         return null;
     }
 
-    // Use IN PLACE OF core API.
-    public static boolean isDontLike(Object Airing) {
+    /**
+     * Invoke IN PLACE OF core API.
+     * @param Airing
+     * @return
+     */
+    public static boolean isDontLike(String UIContextName, Object Airing) {
 
-        String User = getLoggedinUser();
+        String User = getLoggedinUser(UIContextName);
 
         if (User==null || User.equalsIgnoreCase(Plugin.SUPER_USER))
             return AiringAPI.IsDontLike(Airing);
@@ -681,40 +830,56 @@ public class API {
         return MA.isDontLike();
     }
 
-    // Use IN PLACE OF core API.
-    public static void setDontLike(Object Airing) {
+    /**
+     * Invoke IN PLACE OF core API.
+     * @param Airing
+     */
+    public static void setDontLike(String UIContextName, Object Airing) {
 
-        String User = getLoggedinUser();
+        String User = getLoggedinUser(UIContextName);
 
         if (User==null || User.equalsIgnoreCase(Plugin.SUPER_USER)) {
             AiringAPI.SetDontLike(Airing);
             return;
         }
 
+        if (SageUtil.GetBoolProperty("mus/UpdateIR", true) && isIntelligentRecordingEnabled(UIContextName))
+            AiringAPI.SetDontLike(Airing);
+
         MultiAiring MA = new MultiAiring(User, ensureIsAiring(Airing));
         MA.setDontLike();
         return;
     }
 
-    // Use IN PLACE OF core API.
-    public static void clearDontLike(Object Airing) {
+    /**
+     * Invoke IN PLACE OF core API.
+     * @param Airing
+     */
+    public static void clearDontLike(String UIContextName, Object Airing) {
 
-        String User = getLoggedinUser();
+        String User = getLoggedinUser(UIContextName);
 
         if (User==null || User.equalsIgnoreCase(Plugin.SUPER_USER)) {
             AiringAPI.ClearDontLike(Airing);
             return;
         }
 
+        if (SageUtil.GetBoolProperty("mus/UpdateIR", true) && isIntelligentRecordingEnabled(UIContextName))
+            AiringAPI.ClearDontLike(Airing);
+
         MultiAiring MA = new MultiAiring(User, ensureIsAiring(Airing));
         MA.clearDontLike();
         return;
     }
 
-    // Invoke IN PLACE OF core API.
-    public static boolean isFavorite(Object Airing) {
+    /**
+     * Invoke IN PLACE OF core API.
+     * @param Airing
+     * @return
+     */
+    public static boolean isFavorite(String UIContextName, Object Airing) {
 
-        String User = getLoggedinUser();
+        String User = getLoggedinUser(UIContextName);
 
         if (User==null || User.equalsIgnoreCase(Plugin.SUPER_USER)) {
             return AiringAPI.IsFavorite(Airing);
@@ -728,10 +893,14 @@ public class API {
         return MA.isFavorite();
     }
 
-    // Invoke IN PLACE OF core API.
-    public static boolean isNotManualOrFavorite(Object Airing) {
+    /**
+     * Invoke IN PLACE OF core API.
+     * @param Airing
+     * @return
+     */
+    public static boolean isNotManualOrFavorite(String UIContextName, Object Airing) {
 
-        String User = getLoggedinUser();
+        String User = getLoggedinUser(UIContextName);
 
         if (User==null || User.equalsIgnoreCase(Plugin.SUPER_USER)) {
             return AiringAPI.IsNotManualOrFavorite(Airing);
@@ -769,10 +938,14 @@ public class API {
     // How is padding handled?
     //
 
-    // Use IN PLACE OF core API.
-    public static boolean isWatched(Object Airing) {
+    /**
+     * Invoke IN PLACE OF core API.
+     * @param Airing
+     * @return
+     */
+    public static boolean isWatched(String UIContextName, Object Airing) {
 
-        String User = getLoggedinUser();
+        String User = getLoggedinUser(UIContextName);
 
         if (User==null || User.equalsIgnoreCase(Plugin.SUPER_USER))
             return AiringAPI.IsWatched(Airing);
@@ -781,39 +954,55 @@ public class API {
         return MA.isWatched();
     }
 
-    // Use IN PLACE OF core API.
-    public static void setWatched(Object Airing) {
+    /**
+     * Invoke IN PLACE OF core API.
+     * @param Airing
+     */
+    public static void setWatched(String UIContextName, Object Airing) {
 
-        String User = getLoggedinUser();
+        String User = getLoggedinUser(UIContextName);
 
         if (User==null || User.equalsIgnoreCase(Plugin.SUPER_USER)) {
             AiringAPI.SetWatched(Airing);
             return;
         }
 
+        if (SageUtil.GetBoolProperty("mus/UpdateIR", true) && isIntelligentRecordingEnabled(UIContextName))
+            AiringAPI.SetWatched(Airing);
+
         MultiAiring MA = new MultiAiring(User, ensureIsAiring(Airing));
         MA.setWatched();
         return;
     }
 
-    // Use IN PLACE OF core API.
-    public static void clearWatched(Object Airing) {
+    /**
+     * Invoke IN PLACE OF core API.
+     * @param Airing
+     */
+    public static void clearWatched(String UIContextName, Object Airing) {
 
-        String User = getLoggedinUser();
+        String User = getLoggedinUser(UIContextName);
 
         if (User==null || User.equalsIgnoreCase(Plugin.SUPER_USER)) {
             AiringAPI.ClearWatched(Airing);
             return;
         }
 
+        if (SageUtil.GetBoolProperty("mus/UpdateIR", true) && isIntelligentRecordingEnabled(UIContextName))
+            AiringAPI.ClearWatched(Airing);
+
         MultiAiring MA = new MultiAiring(User, ensureIsAiring(Airing));
         MA.clearWatched();
         return;
     }
 
-    // Use IN PLACE OF core API.
-    public static long getRealWatchedStartTime(Object Airing) {
-        String User = getLoggedinUser();
+    /**
+     * Invoke IN PLACE OF core API.
+     * @param Airing
+     * @return
+     */
+    public static long getRealWatchedStartTime(String UIContextName, Object Airing) {
+        String User = getLoggedinUser(UIContextName);
 
         if (User==null || User.equalsIgnoreCase(Plugin.SUPER_USER)) {
             return AiringAPI.GetRealWatchedStartTime(Airing);
@@ -833,9 +1022,13 @@ public class API {
         return (StartTime == -1 ? AiringAPI.GetRealWatchedStartTime(Airing) : StartTime);
     }
 
-    // Use IN PLACE OF core API.
-    public static long getRealWatchedEndTime(Object Airing) {
-        String User = getLoggedinUser();
+    /**
+     * Invoke IN PLACE OF core API.
+     * @param Airing
+     * @return
+     */
+    public static long getRealWatchedEndTime(String UIContextName, Object Airing) {
+        String User = getLoggedinUser(UIContextName);
 
         if (User==null || User.equalsIgnoreCase(Plugin.SUPER_USER)) {
             return AiringAPI.GetRealWatchedEndTime(Airing);
@@ -855,9 +1048,13 @@ public class API {
         return (EndTime == -1 ? AiringAPI.GetRealWatchedEndTime(Airing) : EndTime);
     }
 
-    // Use IN PLACE OF core API.
-    public static long getWatchedDuration(Object Airing) {
-        String User = getLoggedinUser();
+    /**
+     * Invoke IN PLACE OF core API.
+     * @param Airing
+     * @return
+     */
+    public static long getWatchedDuration(String UIContextName, Object Airing) {
+        String User = getLoggedinUser(UIContextName);
 
         if (User==null || User.equalsIgnoreCase(Plugin.SUPER_USER)) {
             return AiringAPI.GetWatchedDuration(Airing);
@@ -877,9 +1074,13 @@ public class API {
         return (Duration == -1 ? AiringAPI.GetWatchedDuration(Airing) : Duration);
     }
 
-    // Use IN PLACE OF core API.
-    public static long getWatchedStartTime(Object Airing) {
-        String User = getLoggedinUser();
+    /**
+     * Invoke IN PLACE OF core API.
+     * @param Airing
+     * @return
+     */
+    public static long getWatchedStartTime(String UIContextName, Object Airing) {
+        String User = getLoggedinUser(UIContextName);
 
         if (User==null || User.equalsIgnoreCase(Plugin.SUPER_USER)) {
             return AiringAPI.GetWatchedStartTime(Airing);
@@ -899,9 +1100,13 @@ public class API {
         return (StartTime == -1 ? AiringAPI.GetAiringStartTime(Airing) : StartTime);
     }
 
-    // Use IN PLACE OF core API.
-    public static long getWatchedEndTime(Object Airing) {
-        String User = getLoggedinUser();
+    /**
+     * Invoke IN PLACE OF core API.
+     * @param Airing
+     * @return
+     */
+    public static long getWatchedEndTime(String UIContextName, Object Airing) {
+        String User = getLoggedinUser(UIContextName);
 
         if (User==null || User.equalsIgnoreCase(Plugin.SUPER_USER)) {
             return AiringAPI.GetWatchedEndTime(Airing);
@@ -925,7 +1130,11 @@ public class API {
         return (EndTime == -1 ? AiringAPI.GetAiringStartTime(Airing) : EndTime);
     }
 
-    // Use IN PLACE OF core API.
+    /**
+     * Invoke IN PLACE OF core API.
+     * @param Airing
+     * @return
+     */
     public static long getAiringDuration(Object Airing) {
         return AiringAPI.GetAiringDuration(Airing);
     }
@@ -939,22 +1148,28 @@ public class API {
      * - If a Favorite is added by more than one user, all users share the same Favorite.
      */
 
-    //Invoke IN PLACE OF core API.
-    public static Object[] getFavorites() {
+    /**
+     * Invoke IN PLACE OF core API.
+     * @return
+     */
+    public static Object[] getFavorites(String UIContextName) {
 
-        String User = getLoggedinUser();
+        String User = getLoggedinUser(UIContextName);
 
         if (User==null || User.equalsIgnoreCase(Plugin.SUPER_USER)) {
             return FavoriteAPI.GetFavorites();
         } else {
-            return MultiFavorite.getFavorites();
+            return MultiFavorite.getFavorites(UIContextName);
         }
     }
 
-    // Invoke IN PLACE OF core API.
-    public static void removeFavorite(Object Favorite) {
+    /**
+     * Invoke IN PLACE OF core API.
+     * @param Favorite
+     */
+    public static void removeFavorite(String UIContextName, Object Favorite) {
 
-        String User = getLoggedinUser();
+        String User = getLoggedinUser(UIContextName);
 
         if (User==null || User.equalsIgnoreCase(Plugin.SUPER_USER)) {
             FavoriteAPI.RemoveFavorite(Favorite);
@@ -966,10 +1181,13 @@ public class API {
         return;
     }
 
-    // Invoke IN ADDITION TO core API.
-    public static void addFavorite(Object Favorite) {
+    /**
+     * Invoke IN PLACE OF core API.
+     * @param Favorite
+     */
+    public static void addFavorite(String UIContextName, Object Favorite) {
 
-        String User = getLoggedinUser();
+        String User = getLoggedinUser(UIContextName);
 
         if (User==null || User.equalsIgnoreCase(Plugin.SUPER_USER)) {
             return;
@@ -980,10 +1198,14 @@ public class API {
         return;
     }
 
-    // Invoke IN PLACE OF core API.
-    public static Object getFavoriteForAiring(Object Airing) {
+    /**
+     * Invoke IN PLACE OF core API.
+     * @param Airing
+     * @return
+     */
+    public static Object getFavoriteForAiring(String UIContextName, Object Airing) {
 
-        String User = getLoggedinUser();
+        String User = getLoggedinUser(UIContextName);
 
         if (User==null || User.equalsIgnoreCase(Plugin.SUPER_USER)) {
             return FavoriteAPI.GetFavoriteForAiring(Airing);
@@ -998,7 +1220,12 @@ public class API {
         return 0;
     }
 
-    public static List<String> GetUsersForFavorite(Object Favorite) {
+    /**
+     * Returns a List of users that have the Favorite defined.
+     * @param Favorite
+     * @return
+     */
+    public static List<String> GetUsersForFavorite(String UIContextName, Object Favorite) {
 
         List<String> TheList = new ArrayList<String>();
 
@@ -1006,7 +1233,7 @@ public class API {
             return TheList;
         }
 
-        String User = getLoggedinUser();
+        String User = getLoggedinUser(UIContextName);
 
         if (User==null || User.equalsIgnoreCase(Plugin.SUPER_USER)) {
             return TheList;
@@ -1021,7 +1248,11 @@ public class API {
      * User related methods.
      */
 
-    // User exists in the user access database.
+    /**
+     * Check to see if a user exists in the database.
+     * @param UserID
+     * @return true if the user exists in the database, false otherwise.
+     */
     public static boolean userExists(String UserID) {
 
         if (UserID == null) {
@@ -1033,7 +1264,13 @@ public class API {
         return user.exists();
     }
 
-    // Create user in the user access database.
+    /**
+     * Creates a user in the user database.  Does NOT initialize the user information in the
+     * other databases, use addUserToDatabase() for that.
+     * @param UserID The userID must be unique in the system.
+     * @param Password The password can't be null.
+     * @return true for success, false otherwise.
+     */
     public static boolean createNewUser(String UserID, String Password) {
         if (UserID==null || Password==null || UserID.isEmpty() || Password.isEmpty()) {
             Log.getInstance().write(Log.LOGLEVEL_WARN, "createNewUser: Bad parameters " + UserID + ":" + Password);
@@ -1050,7 +1287,12 @@ public class API {
         return user.create(Password);
     }
 
-    // Remove user from the user database.
+    /**
+     * Removes a user from the user database.  Does NOT remove the user information from
+     * the other databases, use removeUserFromDatabase()for that.
+     * @param UserID
+     * @return true if success, false otherwise.
+     */
     public static boolean removeUser(String UserID) {
         if (UserID==null || UserID.isEmpty()) {
             Log.getInstance().write(Log.LOGLEVEL_WARN, "removeUser: Bad parameters " + UserID);
@@ -1061,13 +1303,23 @@ public class API {
         return user.destroy();
     }
 
-    // Gets the user password from the user access database.
+    /**
+     * Retrieves the user password from the database.  The returned password is not encrypted
+     * in any way.
+     * @param UserID
+     * @return The user password.
+     */
     public static String getUserPassword(String UserID) {
         User user = new User(UserID);
         return user.getPassword();
     }
 
-    // Adds the user the the MFC and MMF.
+    /**
+     * Initializes user access to the MediaFile or Airing. The user's view of the object
+     * (Watched, Like/Don't Like, viewing times, etc) will initially mirror the core.
+     * @param UserID The user to initialize.
+     * @param MediaFileOrAiring The MediaFile or Airing to initialize.
+     */
     public static void addUserToMediaFile(String UserID, Object MediaFileOrAiring) {
 
         if (UserID==null || MediaFileOrAiring==null) {
@@ -1094,13 +1346,19 @@ public class API {
         user.addToAiring(Airing);
     }
 
-    // Removes the user from the MFC and MMF.
+    /**
+     * Removes all user access data from the specified MediaFile (or Airing).
+     * @param UserID
+     * @param MediaFile
+     */
     public static void removeUserFromMediaFile(String UserID, Object MediaFile) {
         User user = new User(UserID);
         user.removeFromMediaFile(MediaFile);
     }
 
-    // Removes all users from the MFC and MMF.
+    /**
+     * Removes the information of all users from the MediaFile or Airing.
+     */
     public static void removeAllUsersFromMediaFile(Object MediaFile) {
         List<String> Users = User.getAllUsers();
 
@@ -1109,16 +1367,28 @@ public class API {
         }
     }
 
-    // Returns all users defined in the database.
+    /**
+     * Get a List of all users in the database including "Admin".
+     * @return
+     */
     public static List<String> getAllDefinedUsers() {
         return User.getAllUsers();
     }
 
+    /**
+     * Get a List of all users in the database, optionally returning "Admin".
+     * @param includeAdmin true to include "Admin" in the returned List, false otherwise.
+     * @return
+     */
     public static List<String> getAllDefinedUsers(boolean includeAdmin) {
         return User.getAllUsers(includeAdmin);
     }
 
-    // Removes all of the MFC, MMF and MF flags.
+    /**
+     * Completely removes all user information from the database.
+     * @param UserID
+     * @return true if success, false otherwise.
+     */
     public static boolean removeUserFromDatabase(String UserID) {
 
         if (UserID==null || UserID.isEmpty()) {
@@ -1130,7 +1400,10 @@ public class API {
         return user.removeFromDataBase();
     }
 
-    // Adds all of the MFC, MMC and MF flags.
+    /**
+     * Initializes the user in the database.
+     * @param UserID
+     */
     public static void addUserToDatabase(String UserID) {
 
         if (UserID==null || UserID.isEmpty()) {
@@ -1144,11 +1417,17 @@ public class API {
         return;
     }
 
-    // Wipes the User DataStore while leaving the others intact.
+    /**
+     * Removes all user information from the user database, leaves the other databases intact.
+     */
     public static void clearUserDatabase() {
         UserRecordAPI.DeleteAllUserRecords(User.STORE);
     }
 
+    /**
+     * Resets all user information (Watched, Like/Don't Like, watched times, etc.)
+     * in the MediaFile database.
+     */
     public static void resetMediaFileDatabase() {
         List<String> AllUsers = User.getAllUsers();
         
@@ -1165,7 +1444,7 @@ public class API {
      * Database Maintenance.
      */
 
-     /**
+    /**
       * Removes all records in the Favorite, MediaFile, Airing and User data stores.
       */
     public static void clearAll() {
@@ -1214,7 +1493,7 @@ public class API {
     }
 
     /**
-     *
+     * Get the number of records in the specified UserRecordAPI store.
      * @param Store The UserRecord data store.
      * @return The number of records in the data store.
      */
@@ -1229,7 +1508,7 @@ public class API {
      * Makes sure every UserRecord in the MediaFile store has a corresponding MediaFile in
      * the Sage core.  This method will take a long time to execute so it should be called in
      * a separate thread.
-     * @countOnly Set to true to just return the number of orphaned records and not delete
+     * @param countOnly Set to true to just return the number of orphaned records and not delete
      * any of them.  Set to false to physically remove all orphaned records.
      * @return The number of records removed because there was no corresponding MediaFile.
      */
@@ -1281,6 +1560,14 @@ public class API {
         return MultiObject.deleteNonKeepers(allRecords, countOnly);
     }
 
+    /**
+     * Makes sure every UserRecord in the Airing store has a corresponding Airing in
+     * the Sage core.  This method will take a long time to execute so it should be called in
+     * a separate thread.
+     * @param countOnly Set to true to just return the number of orphaned records and not delete
+     * any of them.  Set to false to physically remove all orphaned records.
+     * @return The number of records removed because there was no corresponding MediaFile.
+     */
     public static int cleanAiringUserRecord(boolean countOnly) {
 
         // Get all of the records in the Store.
@@ -1325,6 +1612,13 @@ public class API {
         return MultiObject.deleteNonKeepers(allRecords, countOnly);
     }
 
+    /**
+     * Makes sure that no records in any of the stores used in the Plugin contain references
+     * to users that no longer exist.
+     * @param remove Set to true to just return the number of occurances and not delete
+     * any of them.  Set to false to physically remove all occurances records.
+     * @return The number of occurances.
+     */
     public static Set<String> scanForOrphanedUserData(boolean remove) {
         Set<String> orphans = new HashSet<String>();
 
@@ -1476,6 +1770,13 @@ public class API {
     /*
      * Support methods.
      */
+
+    /**
+     * Check that the SageObject is an Airing.  If it is a MediaFile return the Airing for the
+     * MediaFile.  If it's not an Airing and not a MediaFile, return the original Object.
+     * @param SageObject The Object to check.
+     * @return The Airing if possible, the original Object otherwise.
+     */
     private static Object ensureIsAiring(Object SageObject) {
         if (AiringAPI.IsAiringObject(SageObject)) {
             return SageObject;
@@ -1490,6 +1791,12 @@ public class API {
         }
     }
 
+    /**
+     * Check that the SageObject is a MediaFile.  If it is an Airing return the MediaFile for the
+     * Airing.  If it's not an Airing and not a MediaFile, return the original Object.
+     * @param SageObject The Object to check.
+     * @return The Airing if possible, the original Object otherwise.
+     */
     private static Object ensureIsMediaFile(Object SageObject) {
         if (MediaFileAPI.IsMediaFileObject(SageObject)) {
             return SageObject;
@@ -1507,7 +1814,7 @@ public class API {
     /*
      * Debug stuff.
      */
-    public static List<String> getFlagsForMediaFile(Object MediaFile) {
+    public static List<String> getFlagsForMediaFile(String UIContextName, Object MediaFile) {
         List<String> TheList = new ArrayList<String>();
 
         if (MediaFile==null) {
@@ -1516,13 +1823,13 @@ public class API {
 
         if (MediaFileAPI.IsMediaFileObject(MediaFile)) {
 
-            MultiMediaFile MMF = new MultiMediaFile(getLoggedinUser(), MediaFile);
+            MultiMediaFile MMF = new MultiMediaFile(getLoggedinUser(UIContextName), MediaFile);
 
             for (String Flag : MultiMediaFile.FLAGS)
                 TheList.add(Flag + "=" + MMF.getFlagString(Flag));
 
         } else {
-            MultiAiring MA = new MultiAiring(getLoggedinUser(), MediaFile);
+            MultiAiring MA = new MultiAiring(getLoggedinUser(UIContextName), MediaFile);
 
             for (String Flag : MultiAiring.FLAGS)
                 TheList.add(Flag + "=" + MA.getFlagString(Flag));
@@ -1531,7 +1838,7 @@ public class API {
         Object Favorite = FavoriteAPI.GetFavoriteForAiring(MediaFile);
 
         if (Favorite!=null) {
-            MultiFavorite MF = new MultiFavorite(getLoggedinUser(), Favorite);
+            MultiFavorite MF = new MultiFavorite(getLoggedinUser(UIContextName), Favorite);
             for (String Flag : MultiFavorite.FLAGS)
                 TheList.add(Flag + "=" + MF.getFlagString(Flag));
         }
@@ -1550,7 +1857,7 @@ public class API {
         return TheList;
     }
 
-    public static List<String> getFlagsForUser(Object MediaFile) {
+    public static List<String> getFlagsForUser(String UIContextName, Object MediaFile) {
 
         List<String> TheList = new ArrayList<String>();
 
@@ -1559,10 +1866,10 @@ public class API {
         }
 
         if (MediaFileAPI.IsMediaFileObject(MediaFile)) {
-            MultiMediaFile MMF = new MultiMediaFile(getLoggedinUser(), MediaFile);
+            MultiMediaFile MMF = new MultiMediaFile(getLoggedinUser(UIContextName), MediaFile);
             return MMF.getFlagsForUser();
         } else {
-            MultiAiring MA = new MultiAiring(getLoggedinUser(), MediaFile);
+            MultiAiring MA = new MultiAiring(getLoggedinUser(UIContextName), MediaFile);
             return MA.getFlagsForUser();
         }
     }

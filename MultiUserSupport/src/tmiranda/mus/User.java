@@ -17,6 +17,7 @@ public class User {
 
     static final String STORE      = "MultiUser.User"; // Record Key is UserID.
 
+    private static final String KEY           = "Key";
     private static final String KEY_USERID    = "UserID";
     private static final String KEY_PASSWORD  = "Password";
     private static final String KEY_IR        = "IntelligentRecording";
@@ -26,6 +27,7 @@ public class User {
     private String  user    = null;
     private Object  record  = null;
     private boolean isValid = true;
+    //private String  UIContext = null;
 
     public User(String UserID) {
 
@@ -43,21 +45,29 @@ public class User {
 
         user = UserID;
         record = UserRecordAPI.GetUserRecord(STORE, user);
+/*
+        UIContext = Global.GetUIContextName();
+
+        if (UIContext==null || UIContext.isEmpty()) {
+            Log.getInstance().write(Log.LOGLEVEL_WARN, "User: null UIContextName.");
+            isValid = false;
+        }
+ * 
+ */
 
         if (record==null) {
             Log.getInstance().write(Log.LOGLEVEL_WARN, "User: null record.");
         }
     }
 
-    void logOn() {
+    void logOn(String UIContextName) {
         Log.getInstance().write(Log.LOGLEVEL_TRACE, "logOn: Logged on user " + user);
-        Configuration.SetProperty(Plugin.PROPERTY_LAST_LOGGEDIN_USER, user);
-        setUIContext();
+        Configuration.SetProperty(new UIContext(UIContextName), Plugin.PROPERTY_LAST_LOGGEDIN_USER, user);
     }
 
-    void logOff() {
+    void logOff(String UIContextName) {
         Log.getInstance().write(Log.LOGLEVEL_TRACE, "logOff: Logged off user " + user);
-        Configuration.SetProperty(Plugin.PROPERTY_LAST_LOGGEDIN_USER, null);
+        Configuration.SetProperty(new UIContext(UIContextName), Plugin.PROPERTY_LAST_LOGGEDIN_USER, null);
     }
 
     boolean exists() {
@@ -82,6 +92,7 @@ public class User {
             return false;
         }
 
+        UserRecordAPI.SetUserRecordData(record, KEY, user);
         UserRecordAPI.SetUserRecordData(record, KEY_USERID, user);
         UserRecordAPI.SetUserRecordData(record, KEY_PASSWORD, Password);
         
@@ -125,15 +136,15 @@ public class User {
     }
 
     private void setUIContext() {
-        String UIContext = Global.GetUIContextName();
+        String UIContextName = Global.GetUIContextName();
 
-        if (!isValid || UIContext==null || UIContext.isEmpty()) {
-            Log.getInstance().write(Log.LOGLEVEL_WARN, "setUIContext: null UIContext.");
+        if (!isValid || UIContextName==null || UIContextName.isEmpty()) {
+            Log.getInstance().write(Log.LOGLEVEL_WARN, "setUIContext: null UIContextName.");
             return;
         }
 
-        Log.getInstance().write(Log.LOGLEVEL_TRACE, "setUIContext: UIContext for user is " + UIContext);
-        UserRecordAPI.SetUserRecordData(record, KEY_UICONTEXT, UIContext);
+        Log.getInstance().write(Log.LOGLEVEL_TRACE, "setUIContext: UIContext for user is " + UIContextName);
+        UserRecordAPI.SetUserRecordData(record, KEY_UICONTEXT, UIContextName);
         return;
     }
     
@@ -494,19 +505,19 @@ public class User {
         Log.getInstance().write(Log.LOGLEVEL_WARN, "wipeDatabase: DataStore wiped.");
     }
 
-    static String getUserForContext(String UIContext) {
+    static String getUserForContext(String UIContextName) {
         List<String> UserIDs = getAllUsers();
 
         for (String UserID : UserIDs) {
             User user = new User(UserID);
             String context = user.getUIContext();
-            if (context!=null && context.equalsIgnoreCase(UIContext)) {
+            if (context!=null && context.equalsIgnoreCase(UIContextName)) {
                 Log.getInstance().write(Log.LOGLEVEL_TRACE, "getUserForContext: Found user " + UserID);
                 return UserID;
             }
         }
 
-        Log.getInstance().write(Log.LOGLEVEL_TRACE, "getUserForContext: No userID found for context " + UIContext);
+        Log.getInstance().write(Log.LOGLEVEL_TRACE, "getUserForContext: No userID found for context " + UIContextName);
         return null;
     }
 

@@ -5,15 +5,23 @@ import java.util.*;
 import sagex.api.*;
 
 /**
- *
+ * Class that implements the SageTV FavoriteAPI for multiple users. Unless noted otherwise the
+ * methods behave in the same way as the Sage core APIs.
  * @author Tom Miranda
  */
 public class MultiFavorite extends MultiObject {
 
-    static final String     FAVORITE_STORE  = "MultiUser.Favorite";
-    static final String     FAVORITE_USERS  = "AllowedUsers";
-    static final String[]   FLAGS = {FAVORITE_USERS};
+    /**
+     * The UserRecordAPI store used to keep the data used by this class.
+     */
+    public static final String     FAVORITE_STORE  = "MultiUser.Favorite";
 
+    /**
+     * The UserRecordAPI store "name" used to keep a delimited String of users that have the
+     * Favorite defined.
+     */
+    public static final String     FAVORITE_USERS  = "AllowedUsers";
+    static final String[]   FLAGS = {FAVORITE_USERS};
 
     private Object          sageFavorite = null;
     private List<String>    allowedUsers = null;
@@ -52,7 +60,7 @@ public class MultiFavorite extends MultiObject {
     /**
      * Adds the current User to the Favorite.
      */
-    synchronized void addFavorite() {
+    public void addFavorite() {
         if (!isValid) {
             Log.getInstance().write(Log.LOGLEVEL_WARN, "addFavories: !isValid.");
             return;
@@ -67,7 +75,7 @@ public class MultiFavorite extends MultiObject {
      * Removes the current User from the Favorite.  IF no more Users are defined for the
      * Favorite it is removed from the Sage core.
      */
-    synchronized void removeFavorite() {
+    public void removeFavorite() {
 
         if (!isValid) {
             Log.getInstance().write(Log.LOGLEVEL_WARN, "removeFavories: !isValid.");
@@ -91,7 +99,7 @@ public class MultiFavorite extends MultiObject {
      * Returns true if the current User has this Sage Favorite defined as a Favorite.
      * @return
      */
-    boolean isFavorite() {
+    public boolean isFavorite() {
 
         if (!isValid)
             return false;
@@ -104,7 +112,7 @@ public class MultiFavorite extends MultiObject {
      * Return a list of Users that have the current Sage Favorite defined as  Favorite for them.
      * @return
      */
-    List<String> getAllowedUsers() {
+    public List<String> getAllowedUsers() {
         return allowedUsers;
     }
 
@@ -112,7 +120,7 @@ public class MultiFavorite extends MultiObject {
      * Returns the Favorites for the current User.
      * @return The returned array is not mutable.
      */
-    static Object[] getFavorites() {
+    public static Object[] getFavorites(String UIContextName) {
 
         // Get all of the Sage Favorites.
         Object[] sageFavorites = FavoriteAPI.GetFavorites();
@@ -124,7 +132,7 @@ public class MultiFavorite extends MultiObject {
 
         // Check each sage Favorite to see if the current user can access it.
         for (Object Favorite : sageFavorites) {
-            MultiFavorite F = new MultiFavorite(API.getLoggedinUser(), Favorite);
+            MultiFavorite F = new MultiFavorite(API.getLoggedinUser(UIContextName), Favorite);
             if (F.isFavorite())
                 Favorites.add(Favorite);
         }
@@ -138,7 +146,7 @@ public class MultiFavorite extends MultiObject {
      * should be used instead.
      */
     @Deprecated
-    void initializeUser() {
+    public void initializeUser() {
         addFlag(FAVORITE_USERS, userID);
     }
 
@@ -148,14 +156,41 @@ public class MultiFavorite extends MultiObject {
      * depreciated, removeFavorite should be used instead.
      */
     @Deprecated
-    void clearUserFromFlags() {
+    public void clearUserFromFlags() {
         clearUser(userID, FLAGS);
     }
 
     /**
      * Removes all Favorite related data.
      */
-    static void WipeDatabase() {
+    public static void WipeDatabase() {
         UserRecordAPI.DeleteAllUserRecords(FAVORITE_STORE);
     }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (obj == null) {
+            return false;
+        }
+        if (getClass() != obj.getClass()) {
+            return false;
+        }
+        final MultiFavorite other = (MultiFavorite) obj;
+        if (this.sageFavorite != other.sageFavorite && (this.sageFavorite == null || !this.sageFavorite.equals(other.sageFavorite))) {
+            return false;
+        }
+        if (!this.userID.equals(other.userID) || (FavoriteAPI.GetFavoriteID(this.sageFavorite) != FavoriteAPI.GetFavoriteID(other.sageFavorite))) {
+            return false;
+        }
+        return true;
+    }
+
+    @Override
+    public int hashCode() {
+        int hash = 7;
+        hash = 17 * hash + (this.sageFavorite != null ? this.sageFavorite.hashCode() : 0);
+        hash = 17 * hash + (this.allowedUsers != null ? this.allowedUsers.hashCode() : 0);
+        return hash;
+    }
+
 }

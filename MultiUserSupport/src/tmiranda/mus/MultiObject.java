@@ -1,7 +1,3 @@
-/*
- * To change this template, choose Tools | Templates
- * and open the template in the editor.
- */
 
 package tmiranda.mus;
 
@@ -9,7 +5,7 @@ import java.util.*;
 import sagex.api.*;
 
 /**
- *
+ * Class that implements many of the methods needed for
  * @author Tom Miranda
  */
 public class MultiObject {
@@ -23,8 +19,24 @@ public class MultiObject {
     private Integer     altKey          = 0;
     private String      altStore        = null;
 
-    static final String INITIALIZED = "IsInitialized";
-    static final String KEY         = "Key";
+    /**
+     * The UserRecordAPI store "name" used to keep a delimited String of users that have
+     * already initialized the object.
+     */
+    public static final String INITIALIZED = "IsInitialized";
+    
+    /**
+     * The UserRecordAPI store "name" used to keep the key value for the object which will
+     * usually be the MediaFileID, AiringID or FavoriteID. Storing the key is necessary because
+     * in the current UserRecordAPI there is no way to retrieve all of the "keys" associated 
+     * with a particular "store".
+     */
+    public static final String KEY         = "Key";
+    
+    /*
+     * Used transiently to mark the record as one that needs to be kept (because there is a
+     * corresponding Airing or MediaFile.
+     */
     static final String KEEPER      = "Keep";
 
     static final String WATCHED     = "Watched";
