@@ -120,7 +120,7 @@ public class MultiFavorite extends MultiObject {
      * Returns the Favorites for the current User.
      * @return The returned array is not mutable.
      */
-    public static Object[] getFavorites(String UIContextName) {
+    public static Object[] getFavorites() {
 
         // Get all of the Sage Favorites.
         Object[] sageFavorites = FavoriteAPI.GetFavorites();
@@ -132,7 +132,7 @@ public class MultiFavorite extends MultiObject {
 
         // Check each sage Favorite to see if the current user can access it.
         for (Object Favorite : sageFavorites) {
-            MultiFavorite F = new MultiFavorite(API.getLoggedinUser(UIContextName), Favorite);
+            MultiFavorite F = new MultiFavorite(API.getLoggedinUser(), Favorite);
             if (F.isFavorite())
                 Favorites.add(Favorite);
         }

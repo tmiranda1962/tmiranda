@@ -10,7 +10,7 @@ import sagex.UIContext;
 import sagex.api.*;
 
 /**
- *
+ * Class that implements the user related functionality.
  * @author Default
  */
 public class User {
@@ -60,14 +60,16 @@ public class User {
         }
     }
 
-    void logOn(String UIContextName) {
+    void logOn() {
         Log.getInstance().write(Log.LOGLEVEL_TRACE, "logOn: Logged on user " + user);
-        Configuration.SetProperty(new UIContext(UIContextName), Plugin.PROPERTY_LAST_LOGGEDIN_USER, user);
+        SageUtil.setUIProperty(Plugin.PROPERTY_LAST_LOGGEDIN_USER, user);
+        //SageUtil.setUIProperty(Plugin.PROPERTY_LAST_LOGGEDIN_CONTEXT_NAME, Global.GetUIContextName(UIContext.getCurrentContext()));
     }
 
-    void logOff(String UIContextName) {
+    void logOff() {
         Log.getInstance().write(Log.LOGLEVEL_TRACE, "logOff: Logged off user " + user);
-        Configuration.SetProperty(new UIContext(UIContextName), Plugin.PROPERTY_LAST_LOGGEDIN_USER, null);
+        SageUtil.setUIProperty(Plugin.PROPERTY_LAST_LOGGEDIN_USER, null);
+        //SageUtil.setUIProperty(Plugin.PROPERTY_LAST_LOGGEDIN_CONTEXT_NAME, null);
     }
 
     boolean exists() {

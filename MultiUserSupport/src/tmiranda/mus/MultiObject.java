@@ -5,7 +5,7 @@ import java.util.*;
 import sagex.api.*;
 
 /**
- * Class that implements many of the methods needed for
+ * Class that implements many of the methods needed for MultiMediaFiles, MultiAirings and MultiFavorites.
  * @author Tom Miranda
  */
 public class MultiObject {
@@ -57,6 +57,20 @@ public class MultiObject {
                                                     WATCHEDENDTIME_PREFIX,
                                                     DURATION_PREFIX};
 
+    /**
+     * Constructor.
+     * @param UserID The UserID for the user we are interested in.
+     * @param Store The store (from UserRecordAPI) used to keep the data.
+     * @param keyInt The Object's key.  This will usually be the MediaFileID, AIringID or FavoriteID.
+     * @param altKeyInt the Object's alternate key.  If this Object is a MediaFile the alternate
+     * key will be the AiringID.  If the Object is an Airing, the alternate key will be the
+     * MediaFileID.  Use 0 if there is no alternate.  The alternate key is used to make sure we update
+     * the data for both the MediaFile AND the Airing since many of the sage APIs can use either
+     * Airings or MediaFiles.
+     * @param altStore The object's alternate Store.  Similar to the alyKey, if the Object is a
+     * MediaFile the altStore will be the store for the corresponding Airing.  If the Object is an
+     * Airing the altStore will be the MediaFile store. Use null if there is no alternate.
+     */
     public MultiObject(String UserID, String Store, Integer keyInt, Integer altKeyInt, String altStore) {
 
         if (UserID==null || UserID.isEmpty() || Store==null || Store.isEmpty() || keyInt==null) {
@@ -127,7 +141,12 @@ public class MultiObject {
         return DS;
     }
 
-    // Removes Data from the Flag.
+    /**
+     * Removes Data from the delimited String contained in Flag.
+     * @param Flag
+     * @param Data
+     * @return
+     */
     DelimitedString removeFlag(String Flag, String Data) {
         Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "removeFlag: Removing " + Data + " from " + Flag);
         DelimitedString DS = new DelimitedString(getRecordData(Flag), Plugin.LIST_SEPARATOR);
@@ -136,17 +155,32 @@ public class MultiObject {
         return DS;
     }
 
-    // True if the Flag contains Data.
+    /**
+     * Check if the specified Flag contains Data.
+     * @param Flag
+     * @param User
+     * @return
+     */
     boolean containsFlag(String Flag, String User) {
         DelimitedString DS = new DelimitedString(getRecordData(Flag), Plugin.LIST_SEPARATOR);
         return (DS.contains(User));
     }
 
+    /**
+     * Check if the Flag contains any data at all.
+     * @param Flag
+     * @return
+     */
     boolean containsFlagAnyData(String Flag) {
         DelimitedString DS = new DelimitedString(getRecordData(Flag), Plugin.LIST_SEPARATOR);
         return (DS!=null && !DS.isEmpty());
     }
 
+    /**
+     * Check if the Flag contains all of the userIDs.  Excludes Admin.
+     * @param Flag
+     * @return
+     */
     boolean containsFlagAllUsers(String Flag) {
         List<String> allUsers = User.getAllUsers(false);
 
@@ -160,7 +194,9 @@ public class MultiObject {
         return (DS.containsAll(allUsers));
     }
 
-    // Removes all Records from the DataStore.
+    /**
+     * Removes ALL data from the Store specified in the constructor.
+     */
     void wipeDatabase() {
 
         Object[] AllUserRecords = UserRecordAPI.GetAllUserRecords(store);
@@ -170,7 +206,11 @@ public class MultiObject {
         Log.getInstance().write(Log.LOGLEVEL_WARN, "wipeDatabase: DataStore wiped.");
     }
 
-    // Removes the specified User from the Flags.
+    /**
+     * Removes the specified User from the Flags.
+     * @param User
+     * @param Flags
+     */
     void clearUser(String User, String[] Flags) {
 
         for (String Flag : Flags) {
@@ -183,6 +223,10 @@ public class MultiObject {
         return;
     }
 
+    /**
+     * Removes the user from the Flags that begin with the specified prefixes.
+     * @param Prefixes
+     */
     void clearUserFromFlagPrefix(String[] Prefixes) {
 
         if (Prefixes==null || Prefixes.length==0)
@@ -192,7 +236,10 @@ public class MultiObject {
             setRecordData(prefix+userID, null);
     }
 
-    // Completely removes the UserRecord.
+    /**
+     * Completely removes the user record from the store.
+     * @return
+     */
     boolean removeRecord() {
         return UserRecordAPI.DeleteUserRecord(record);
     }
@@ -521,7 +568,9 @@ public class MultiObject {
         return true;
     }
 
-    // Just sets the DELETE Flag.
+    /**
+     * Alternate way to set the DELETE Flag.
+     */
     void hide() {
         if (!isValid)
             return;
@@ -534,6 +583,9 @@ public class MultiObject {
         }
     }
 
+    /**
+     * Alternate way to clear the DELETE Flag.
+     */
     void unhide() {
         if (!isValid)
             return;

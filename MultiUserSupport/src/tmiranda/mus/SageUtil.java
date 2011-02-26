@@ -7,10 +7,10 @@ package tmiranda.mus;
 
 import java.util.*;
 import sagex.api.*;
-import sagex.UIContext;
+import sage.SageTV;
 
 /**
- *
+ * Class containing useful utilities.
  * @author Tom Miranda
  */
 public class SageUtil {
@@ -63,8 +63,8 @@ public class SageUtil {
     * @return           A boolean indicating the status of the property.  If the Property is anything other
     *                   than "true", false is returned.
     */
-    static boolean GetLocalBoolProperty(String UIContextName, String Property, String Value) {
-        String prop = Configuration.GetProperty(new UIContext(UIContextName), Property, Value);
+    static boolean GetLocalBoolProperty(String Property, String Value) {
+        String prop = getUIProperty(Property, Value);
         return prop.equalsIgnoreCase("true");
     }
 
@@ -76,8 +76,8 @@ public class SageUtil {
     * @return           A boolean indicating the status of the property.  If the Property is anything other
     *                   than "true", false is returned.
     */
-    static boolean GetLocalBoolProperty(String UIContextName, String Property, Boolean Value) {
-        String prop = Configuration.GetProperty(new UIContext(UIContextName), Property, Value.toString());
+    static boolean GetLocalBoolProperty(String Property, Boolean Value) {
+        String prop = getUIProperty(Property, Value.toString());
         return prop.equalsIgnoreCase("true");
     }
 
@@ -91,7 +91,7 @@ public class SageUtil {
     */
     static boolean GetLocalBoolProperty(String Property, boolean Value) {
         Boolean DefaultValue = Value;
-        String prop = Configuration.GetProperty(UIContext.getCurrentContext(), Property, DefaultValue.toString());
+        String prop = getUIProperty(Property, DefaultValue.toString());
         return prop.equalsIgnoreCase("true");
     }
 
@@ -202,6 +202,26 @@ public class SageUtil {
                 return p;
         }
         return null;
+    }
+
+    public static String getUIProperty(String Prop, String Default) {
+
+        try {
+            return (String)SageTV.apiUI((String)SageTV.api("GetUIContextName", new Object[]{}),"GetProperty", new Object[] {Prop, Default});
+        } catch (Exception ex) {
+            Log.getInstance().write(Log.LOGLEVEL_ERROR, "getLoggedInUser: Exception from GetProperty " + ex.getMessage());
+            return null;
+        }
+    }
+
+    public static String setUIProperty(String Prop, String Value) {
+
+        try {
+            return (String)SageTV.apiUI((String)SageTV.api("GetUIContextName", new Object[]{}),"SetProperty", new Object[] {Prop, Value});
+        } catch (Exception ex) {
+            Log.getInstance().write(Log.LOGLEVEL_ERROR, "getLoggedInUser: Exception from SetProperty " + ex.getMessage());
+            return null;
+        }
     }
 
 }

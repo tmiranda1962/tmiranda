@@ -15,7 +15,7 @@ public class Plugin implements sage.SageTVPlugin, SageTVEventListener {
     /**
      * The current PLugin version.
      */
-    public static final String  VERSION = "0.05 02.23.2011";
+    public static final String  VERSION = "0.05 02.25.2011";
 
     /*
      * Constants used throughout the Plugin.
@@ -45,17 +45,6 @@ public class Plugin implements sage.SageTVPlugin, SageTVEventListener {
      * Settings used in Plugin Configuration.
      */
 
-    /**
-     * Setting used to store the current log level.
-     */
-    private static final String     SETTING_LOGLEVEL    = "LogLevel";       // Change the loglevel.
-
-    @Deprecated
-    private static final String     SETTING_NOT_ADMIN   = "NotAdmin";       // Used in case a non-admin tries to configure.
-
-    // Keep track of if we should automatically login a user when the UI starts.
-    // The property is local to each UI.
-    private static final String SETTING_LOGIN_LAST_USER    = "LoginLastUser";
 
     /**
      * Property used to determine if the last logged in user should be logged back in after the system is rebooted.
@@ -67,7 +56,6 @@ public class Plugin implements sage.SageTVPlugin, SageTVEventListener {
      * Property used to store if passwords are in use.
      */
     public static final String PROPERTY_USE_PASSWORDS = "mus/UsePasswords";
-    private static final String SETTING_USE_PASSWORDS = "UsePasswords";
 
     /**
      * Property used to store if users that have IR enabled should update the core with their actions.
@@ -75,9 +63,15 @@ public class Plugin implements sage.SageTVPlugin, SageTVEventListener {
     public static final String PROPERTY_UPDATE_IR = "mus/UpdateIR";
 
     /**
+     * Property used to store if multi user disk usage indicator should be displayed.
+     */
+    public static final String PROPERTY_SHOW_USER_DISK_USAGE = "mus/ShowUserDiskUsage";
+
+    /**
      * Property used to store the name of the user that was last logged on.
      */
     public static final String PROPERTY_LAST_LOGGEDIN_USER = "mus/LastLoggedinUser";    // LOCAL setting.
+    //public static final String PROPERTY_LAST_LOGGEDIN_CONTEXT_NAME = "mus/LastLoggedinContext";
 
     private sage.SageTVPluginRegistry   registry;
     private sage.SageTVEventListener    listener;
@@ -94,6 +88,11 @@ public class Plugin implements sage.SageTVPlugin, SageTVEventListener {
         Log.start();
     }
 
+    /**
+     * Constructor.
+     * @param Registry
+     * @param Reset
+     */
     public Plugin(sage.SageTVPluginRegistry Registry, boolean Reset) {
         registry = Registry;
         listener = this;
@@ -150,171 +149,35 @@ public class Plugin implements sage.SageTVPlugin, SageTVEventListener {
         Log.destroy();
     }
 
-    // Returns the names of the settings for this plugin
     @Override
     public String[] getConfigSettings() {
         return null;
-
-        /*
-        Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "Plugin: getConfigSetting received from Plugin Manager.");
-
-        List<String> CommandList = new ArrayList<String>();
-
-        // See if the user is logged in as "Admin".
-        String User = API.getLoggedinUser();
-        boolean isAdmin = (User == null ? false : User.equalsIgnoreCase(SUPER_USER));
-
-        if (!isAdmin) {
-            CommandList.add(SETTING_NOT_ADMIN);
-        } else {
-            //CommandList.add(SETTING_UNASSIGNEDMF);
-            CommandList.add(SETTING_LOGIN_LAST_USER);
-            CommandList.add(SETTING_USE_PASSWORDS);
-            CommandList.add(SETTING_LOGLEVEL);
-        }
-
-        return (String[])CommandList.toArray(new String[CommandList.size()]);
-         *
-         */
     }
 
-    // Returns the current value of the specified setting for this plugin
     @Override
     public String getConfigValue(String setting) {
-        return null;
-        /*
-        Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "Plugin: setConfigValue received from Plugin Manager. Setting = " + setting);
-        if (setting.startsWith(SETTING_LOGLEVEL)) {
-            switch (Log.getInstance().GetLogLevel()) {
-                case Log.LOGLEVEL_ALL:      return "Maximum";
-                case Log.LOGLEVEL_ERROR:    return "Error";
-                case Log.LOGLEVEL_NONE:     return "None";
-                case Log.LOGLEVEL_TRACE:    return "Trace";
-                case Log.LOGLEVEL_VERBOSE:  return "Verbose";
-                case Log.LOGLEVEL_WARN:     return "Warn";
-                default:                    return "Unknown";
-            }
-        }
-
-        //if (setting.startsWith(SETTING_UNASSIGNEDMF)) {
-            //return Configuration.GetServerProperty(PROPERTY_UNASSIGNEDMF, UNASSIGNEDMF_ALLOW_ALL);
-        //}
-
-        // Use local property.
-        if (setting.startsWith(SETTING_LOGIN_LAST_USER)) {
-            return Configuration.GetProperty(UIContext.getCurrentContext(), PROPERTY_LOGIN_LAST_USER, "false");
-        }
-
-        // Use local property.
-        if (setting.startsWith(SETTING_USE_PASSWORDS)) {
-            return Configuration.GetProperty(UIContext.getCurrentContext(), PROPERTY_USE_PASSWORDS, "true");
-        }
-
-        if (setting.startsWith(SETTING_NOT_ADMIN)) {
-            return "OK";
-        }
-
-        return null;
-         *
-         */
+        return null;     
     }
 
-    // Returns the current value of the specified multichoice setting for
-    // this plugin
+    // Returns the current value of the specified multichoice setting for this plugin
     @Override
     public String[] getConfigValues(String setting) {
         return null;
     }
-
-    /*
-    //public static final int CONFIG_BOOL = 1;
-    //public static final int CONFIG_INTEGER = 2;
-    //public static final int CONFIG_TEXT = 3;
-    //public static final int CONFIG_CHOICE = 4;
-    //public static final int CONFIG_MULTICHOICE = 5;
-    //public static final int CONFIG_FILE = 6;
-    //public static final int CONFIG_DIRECTORY = 7;
-    //public static final int CONFIG_BUTTON = 8;
-    //public static final int CONFIG_PASSWORD = 9;
-     */
 
     // Returns one of the constants above that indicates what type of value
     // is used for a specific settings
     @Override
     public int getConfigType(String setting) {
         Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "Plugin: getConfigType received from Plugin Manager. Setting = " + setting);
-
         return 0;
-
-        /*
-        if (setting.startsWith(SETTING_LOGLEVEL))
-            return CONFIG_CHOICE;
-
-        //if (setting.startsWith(SETTING_UNASSIGNEDMF))
-            //return CONFIG_CHOICE;
-
-        if (setting.startsWith(SETTING_LOGIN_LAST_USER))
-            return CONFIG_BOOL;
-
-        if (setting.startsWith(SETTING_USE_PASSWORDS))
-            return CONFIG_BOOL;
-
-        if (setting.startsWith(SETTING_NOT_ADMIN))
-            return CONFIG_BUTTON;
-
-        return CONFIG_TEXT;
-         *
-         */
     }
 
     // Sets a configuration value for this plugin
     @Override
     public void setConfigValue(String setting, String value) {
         Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "Plugin: setConfigValue received from Plugin Manager. Setting = " + setting + ":" + value);
-
         return;
-        /*
-        if (setting.startsWith(SETTING_LOGLEVEL)) {
-            if (value.startsWith("None"))
-                Log.getInstance().SetLogLevel(Log.LOGLEVEL_NONE);
-            else if (value.startsWith("Error"))
-                Log.getInstance().SetLogLevel(Log.LOGLEVEL_ERROR);
-            else if (value.startsWith("Warn"))
-                Log.getInstance().SetLogLevel(Log.LOGLEVEL_WARN);
-            else if (value.startsWith("Trace"))
-                Log.getInstance().SetLogLevel(Log.LOGLEVEL_TRACE);
-            else if (value.startsWith("Verbose"))
-                Log.getInstance().SetLogLevel(Log.LOGLEVEL_VERBOSE);
-            else if (value.startsWith("Maximum"))
-                Log.getInstance().SetLogLevel(Log.LOGLEVEL_ALL);
-            else Log.getInstance().SetLogLevel(Log.LOGLEVEL_ERROR);
-
-            return;
-        }
-
-        //if (setting.startsWith(SETTING_UNASSIGNEDMF)) {
-            //Configuration.SetServerProperty(PROPERTY_UNASSIGNEDMF, value);
-            //return;
-        //}
-
-        // Use local property for this setting.
-        if (setting.startsWith(SETTING_LOGIN_LAST_USER)) {
-            Configuration.SetProperty(UIContext.getCurrentContext(), PROPERTY_LOGIN_LAST_USER, value);
-            return;
-        }
-
-        // Use local property.
-        if (setting.startsWith(SETTING_USE_PASSWORDS)) {
-            Configuration.SetProperty(UIContext.getCurrentContext(), PROPERTY_USE_PASSWORDS, value);
-            return;
-        }
-
-        // Nothing to do, just keep placeholder.
-        if (setting.startsWith(SETTING_NOT_ADMIN)) {
-            return;
-        }
-         *
-         */
     }
 
     // Sets a configuration values for this plugin for a multiselect choice
@@ -328,97 +191,25 @@ public class Plugin implements sage.SageTVPlugin, SageTVEventListener {
     @Override
     public String[] getConfigOptions(String setting) {
         Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "PlugIn: getConfigOptions received from Plugin Manager. Setting = " + setting);
-
         return null;
-
-        /*
-        if (setting.startsWith(SETTING_LOGLEVEL)) {
-            String[] values = {"None", "Error", "Warn", "Trace", "Verbose", "Maximum"};
-            return values;
-        }
-
-        //if (setting.startsWith(SETTING_UNASSIGNEDMF)) {
-            //String[] values = {UNASSIGNEDMF_ALLOW_ALL, UNASSIGNEDMF_ALLOW_NONE, UNASSIGNEDMF_ALLOW_USERS};
-            //return values;
-        //}
-
-        return null;
-         *
-         */
     }
 
     // Returns the help text for a configuration setting
     @Override
     public String getConfigHelpText(String setting) {
         return null;
-        /*
-        if (setting.startsWith(SETTING_LOGLEVEL)) {
-            return "Set the Debug Logging Level.";
-        }
-
-        //if (setting.startsWith(SETTING_UNASSIGNEDMF)) {
-            //return "Set default permission for MediaFiles.";
-        //}
-
-        if (setting.startsWith(SETTING_LOGIN_LAST_USER)) {
-            return "The user that was logged in will remain logged in after Sage is rebooted.";
-        }
-
-        if (setting.startsWith(SETTING_USE_PASSWORDS)) {
-            return "Require passwords to log in user.";
-        }
-
-        if (setting.startsWith(SETTING_NOT_ADMIN)) {
-            return "To log in as Admin go to Main Menu -> Setup -> Users -> Log In.";
-        }
-
-        return null;
-         *
-         */
     }
 
     // Returns the label used to present this setting to the user
     @Override
     public String getConfigLabel(String setting) {
-
         return null;
-        /*
-        if (setting.startsWith(SETTING_LOGLEVEL)) {
-            return "Debug Logging Level";
-        }
-
-        //if (setting.startsWith(SETTING_UNASSIGNEDMF)) {
-            //return "Default Unassigned MediaFile Permission";
-        //}
-
-        if (setting.startsWith(SETTING_LOGIN_LAST_USER)) {
-            return "Stay Logged In After Reboot";
-        }
-
-        if (setting.startsWith(SETTING_USE_PASSWORDS)) {
-            return "Require User Passwords";
-        }
-
-        if (setting.startsWith(SETTING_NOT_ADMIN)) {
-            return "Not Admin, Settings Are Disabled";
-        }
-
-        return null;
-         *
-         */
     }
 
     // Resets the configuration of this plugin
     @Override
     public void resetConfig() {
         return;
-        /*
-        Log.getInstance().write(Log.LOGLEVEL_WARN, "Plugin: resetConfig received from Plugin Manager.");
-        Log.getInstance().SetLogLevel(Log.LOGLEVEL_WARN);
-        Configuration.SetProperty(UIContext.getCurrentContext(), PROPERTY_LOGIN_LAST_USER, "false");
-        Configuration.SetProperty(UIContext.getCurrentContext(), PROPERTY_USE_PASSWORDS, "true");
-         *
-         */
     }
 
 /*
@@ -488,6 +279,11 @@ public class Plugin implements sage.SageTVPlugin, SageTVEventListener {
  * are not required to follow that rule.
  */
 
+    /**
+     * Handles all of the subscribed to sageEvents.
+     * @param eventName
+     * @param eventVars
+     */
     @Override
     public synchronized void sageEvent(String eventName, java.util.Map eventVars) {
 
