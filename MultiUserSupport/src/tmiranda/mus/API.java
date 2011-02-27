@@ -80,9 +80,16 @@ public class API {
      * @return The user that should be logged in after the UI is reloaded.
      */
     public static String getUserAfterReboot() {
-        if (SageUtil.GetLocalBoolProperty(Plugin.PROPERTY_LOGIN_LAST_USER, "false"))
-            return getLoggedinUser();
-        else
+        if (SageUtil.GetLocalBoolProperty(Plugin.PROPERTY_LOGIN_LAST_USER, "false")) {
+            String userID = getLoggedinUser();
+            User user = new User(userID);
+            if (user.exists()) {
+                return userID;
+            } else {
+                logoutCurrentUser();
+                return null;
+            }
+        }  else
             return null;
     }
 
@@ -494,7 +501,7 @@ public class API {
      * Undeletes the MediaFile for the specified user.
      * @param MediaFile
      */
-    public static void XXundeleteMediaFile(String User, Object MediaFile) {
+    public static void undeleteMediaFile(String User, Object MediaFile) {
 
         MultiMediaFile MMF = null;
 
