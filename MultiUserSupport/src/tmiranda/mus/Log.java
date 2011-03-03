@@ -29,7 +29,7 @@ public class Log {
 
     private static final String     DEFAULT_LOGLEVEL = "50";
 
-    private static Log instance = null;
+    private static Log instance = new Log();
 
     /*
      * Private constructor.  Only let getInstance return a valid instance.
@@ -66,7 +66,8 @@ public class Log {
      * Restart the logger.
      */
     public static void start() {
-        instance = new Log();
+        if (instance == null)
+            instance = new Log();
     }
 
     /**

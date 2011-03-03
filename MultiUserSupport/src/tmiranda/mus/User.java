@@ -441,10 +441,14 @@ public class User {
         }
 
         for (Object Record : Records) {
-            String User = UserRecordAPI.GetUserRecordData(Record, KEY_USERID);
-            Log.getInstance().write(Log.LOGLEVEL_ALL, "getAllUsers: Found User " + User);
-            if (User != null && !User.isEmpty())
-                Users.add(User);
+            if (Record!=null) {
+                String User = UserRecordAPI.GetUserRecordData(Record, KEY_USERID);
+                Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "getAllUsers: Found User " + User);
+                if (User != null && !User.isEmpty())
+                    Users.add(User);
+            } else {
+                Log.getInstance().write(Log.LOGLEVEL_WARN, "getAllUsers: Found null Record.");
+            }
         }
 
         return Users;

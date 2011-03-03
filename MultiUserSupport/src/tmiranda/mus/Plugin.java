@@ -15,7 +15,7 @@ public class Plugin implements sage.SageTVPlugin, SageTVEventListener {
     /**
      * The current PLugin version.
      */
-    public static final String  VERSION = "0.05 02.25.2011";
+    public static final String  VERSION = "0.06 03.02.2011";
 
     /*
      * Constants used throughout the Plugin.
@@ -105,6 +105,12 @@ public class Plugin implements sage.SageTVPlugin, SageTVEventListener {
     @Override
     public void start() {
         System.out.println("MUS: Plugin starting. Version = " + VERSION);
+
+        // Set the loglevel.
+        //Integer defaultLevel = Log.LOGLEVEL_WARN;
+        //int currentLevel = SageUtil.GetIntProperty(Log.PROPERTY_LOGLEVEL, defaultLevel);
+        //Log.getInstance().SetLogLevel(currentLevel);
+        //System.out.println("MUS: LogLevel set to " + Log.getInstance().GetLogLevel());
 
         // If we're running on a client we are done.
         if (Global.IsClient()) {

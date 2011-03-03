@@ -82,7 +82,12 @@ public class API {
     public static String getUserAfterReboot() {
         if (SageUtil.GetLocalBoolProperty(Plugin.PROPERTY_LOGIN_LAST_USER, "false")) {
             String userID = getLoggedinUser();
+
+            if (userID==null || userID.isEmpty())
+                return null;
+
             User user = new User(userID);
+
             if (user.exists()) {
                 return userID;
             } else {
@@ -857,7 +862,7 @@ public class API {
             return;
         }
 
-        if (SageUtil.GetBoolProperty("mus/UpdateIR", true) && isIntelligentRecordingEnabled())
+        if (SageUtil.GetBoolProperty(Plugin.PROPERTY_UPDATE_IR, true) && isIntelligentRecordingEnabled())
             AiringAPI.SetDontLike(Airing);
 
         MultiAiring MA = new MultiAiring(User, ensureIsAiring(Airing));
@@ -878,7 +883,7 @@ public class API {
             return;
         }
 
-        if (SageUtil.GetBoolProperty("mus/UpdateIR", true) && isIntelligentRecordingEnabled())
+        if (SageUtil.GetBoolProperty(Plugin.PROPERTY_UPDATE_IR, true) && isIntelligentRecordingEnabled())
             AiringAPI.ClearDontLike(Airing);
 
         MultiAiring MA = new MultiAiring(User, ensureIsAiring(Airing));
@@ -981,8 +986,12 @@ public class API {
             return;
         }
 
-        if (SageUtil.GetBoolProperty("mus/UpdateIR", true) && isIntelligentRecordingEnabled())
-            AiringAPI.SetWatched(Airing);
+        // If we mark the Airing ad Watched here we run the risk of having the Airing removed
+        // by the Sage core before all users have a chance to watch it.  When the Airing is
+        // deleted we check to see if all Users have Watched it.
+        
+        //if (SageUtil.GetBoolProperty(Plugin.PROPERTY_UPDATE_IR, true) && isIntelligentRecordingEnabled())
+            //AiringAPI.SetWatched(Airing);
 
         MultiAiring MA = new MultiAiring(User, ensureIsAiring(Airing));
         MA.setWatched();
@@ -1002,7 +1011,7 @@ public class API {
             return;
         }
 
-        if (SageUtil.GetBoolProperty("mus/UpdateIR", true) && isIntelligentRecordingEnabled())
+        if (SageUtil.GetBoolProperty(Plugin.PROPERTY_UPDATE_IR, true) && isIntelligentRecordingEnabled())
             AiringAPI.ClearWatched(Airing);
 
         MultiAiring MA = new MultiAiring(User, ensureIsAiring(Airing));

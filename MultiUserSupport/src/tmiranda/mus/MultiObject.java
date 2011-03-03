@@ -195,6 +195,26 @@ public class MultiObject {
     }
 
     /**
+     * Checks if the Flag contains any Users that have IR enabled.  Excludes Admin.
+     * @param Flag
+     * @return
+     */
+    boolean containsFlagAnyIRUsers(String Flag) {
+        List<String> allUsers = User.getAllUsers(false);
+
+        for (String U : allUsers) {
+            User user = new User(U);
+
+            if (!user.isIntelligentRecordingDisabled() && containsFlag(WATCHED, U)) {
+                Log.getInstance().write(Log.LOGLEVEL_TRACE, "containsFlagAnyIRUsers: Found IR user " + U);
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
      * Removes ALL data from the Store specified in the constructor.
      */
     void wipeDatabase() {
@@ -554,6 +574,12 @@ public class MultiObject {
                 } else {
                     Log.getInstance().write(Log.LOGLEVEL_TRACE, "delete: MediaFile or Airing already deleted.");
                 }
+            }
+
+            // Check to see if we need to mark the Airing as Watched in the Sage core.
+            if (containsFlagAllUsers(WATCHED) || containsFlagAnyIRUsers(WATCHED)) {
+                Log.getInstance().write(Log.LOGLEVEL_TRACE, "delete: Setting Watched in core.");
+                AiringAPI.SetWatched(sageObject);
             }
 
             removeRecord();
