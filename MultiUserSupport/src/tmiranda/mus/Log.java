@@ -29,6 +29,8 @@ public class Log {
 
     private static final String     DEFAULT_LOGLEVEL = "50";
 
+    //public enum Level {EXTREME, VERBOSE, TRACE, WARN, ERROR, OFF}
+
     private static Log instance = new Log();
 
     /*
@@ -39,10 +41,10 @@ public class Log {
 
         try {
             CurrentLogLevel = Integer.parseInt(LoglevelString);
-            System.out.println("MUS: Log - Setting CurrentLoglevel to " + LoglevelString);
+            System.out.println("MUS: Log: Setting CurrentLoglevel to " + LoglevelString);
         } catch (NumberFormatException e) {
             CurrentLogLevel = LOGLEVEL_WARN;
-            System.out.println("MUS: Log - Malformed loglevel, setting to WARN. " + e.getMessage());
+            System.out.println("MUS: Log: Malformed loglevel, setting to WARN. " + e.getMessage());
         }
     }
 
@@ -93,7 +95,23 @@ public class Log {
      */
     public void SetLogLevel(Integer NewLevel) {
         CurrentLogLevel = NewLevel;
+
+        if (NewLevel<LOGLEVEL_ALL || NewLevel>LOGLEVEL_NONE) {
+            System.out.println("MUS: Invalid new loglevel, setting loglevel to default.");
+            Configuration.SetServerProperty(PROPERTY_LOGLEVEL, DEFAULT_LOGLEVEL);
+            return;
+        }
+
         Configuration.SetServerProperty(PROPERTY_LOGLEVEL, NewLevel.toString());
+
+        switch (NewLevel) {
+            case LOGLEVEL_NONE:     System.out.println("MUS: Setting loglevel to None.");   break;
+            case LOGLEVEL_ERROR:    System.out.println("MUS: Setting loglevel to Error.");  break;
+            case LOGLEVEL_WARN:     System.out.println("MUS: Setting loglevel to Warn.");   break;
+            case LOGLEVEL_TRACE:    System.out.println("MUS: Setting loglevel to Trace.");  break;
+            case LOGLEVEL_VERBOSE:  System.out.println("MUS: Setting loglevel to Verbose.");break;
+            case LOGLEVEL_ALL:      System.out.println("MUS: Setting loglevel to All.");    break;
+        }
     }
 
     /**

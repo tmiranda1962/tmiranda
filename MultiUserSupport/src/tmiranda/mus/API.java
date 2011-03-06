@@ -3,7 +3,9 @@ package tmiranda.mus;
 
 import java.util.*;
 import java.io.*;
+import sagex.UIContext;
 import sagex.api.*;
+import sagex.UIContext.*;
 
 /**
  * This class presents methods that can be invoked from within the Sage STV to perform all
@@ -259,13 +261,13 @@ public class API {
      * "this" set appropriately.
      * @param Content
      */
-    public static void preWatch(Object Content) {
+    public static Object watch(String ContextName, Object Content) {
 
         String User = getLoggedinUser();
 
         if (User==null || User.equalsIgnoreCase(Plugin.SUPER_USER)) {
             Log.getInstance().write(Log.LOGLEVEL_TRACE, "preWatch: null user or Admin " + User);
-            return;
+            return MediaPlayerAPI.Watch(new UIContext(ContextName), Content);
         }
 
         // Set flag showing that this user is watching this content. We will need this later
@@ -289,7 +291,7 @@ public class API {
             RealStartTime = MMF.getRealWatchedStartTime();
         } else {
             Log.getInstance().write(Log.LOGLEVEL_TRACE, "preWatch: Not an Airing or MediaFile.");
-            return;
+            return MediaPlayerAPI.Watch(new UIContext(ContextName), Content);
         }
 
         WatchedEndTime = (WatchedEndTime==-1 ? AiringAPI.GetWatchedEndTime(Content):WatchedEndTime);
@@ -301,7 +303,7 @@ public class API {
         AiringAPI.SetWatchedTimes(Content, WatchedEndTime, RealStartTime);
 
         // Let the core do its thing.
-        return;
+        return MediaPlayerAPI.Watch(new UIContext(ContextName), Content);
     }
 
     /*
@@ -904,6 +906,7 @@ public class API {
             return AiringAPI.IsFavorite(Airing);
         }
 
+        // If it's not defined in the core as a favorite always return false.
         if (!AiringAPI.IsFavorite(Airing)) {
             return false;
         }
@@ -1195,6 +1198,7 @@ public class API {
         String User = getLoggedinUser();
 
         if (User==null || User.equalsIgnoreCase(Plugin.SUPER_USER)) {
+            MultiFavorite.removeAllUsers(Favorite);
             FavoriteAPI.RemoveFavorite(Favorite);
             return;
         }
@@ -1205,18 +1209,27 @@ public class API {
     }
 
     /**
-     * Invoke IN PLACE OF core API.
+     * Invoke right after Core API.
      * @param Favorite
      */
     public static void addFavorite(Object Favorite) {
 
-        String User = getLoggedinUser();
+        String U = getLoggedinUser();
 
-        if (User==null || User.equalsIgnoreCase(Plugin.SUPER_USER)) {
+        if (U==null || U.equalsIgnoreCase(Plugin.SUPER_USER)) {
+            Log.getInstance().write(Log.LOGLEVEL_TRACE, "addFavorite: Adding Favorite for all Users.");
+
+            List<String> allUsers = User.getAllUsers(false);
+
+            for (String thisUser : allUsers) {
+                MultiFavorite MF = new MultiFavorite(thisUser, Favorite);
+                MF.addFavorite();
+            }
+
             return;
         }
 
-        MultiFavorite MF = new MultiFavorite(User, Favorite);
+        MultiFavorite MF = new MultiFavorite(U, Favorite);
         MF.addFavorite();
         return;
     }
@@ -1461,6 +1474,27 @@ public class API {
             Log.getInstance().write(Log.LOGLEVEL_TRACE, "resetMediaFileDatabase: Adding " + User);
             addUserToDatabase(User);
         }
+    }
+
+    public static boolean isShowImports(String U) {
+
+        if (U==null || U.equalsIgnoreCase(Plugin.SUPER_USER)) {
+            return true;
+        }
+
+        User user = new User(U);
+        return user.isShowImports();
+    }
+
+    public static void setShowImports(String U, boolean Show) {
+
+        if (U==null || U.equalsIgnoreCase(Plugin.SUPER_USER)) {
+            return;
+        }
+
+        User user = new User(U);
+        user.setShowImports(Show);
+        return;
     }
 
     /*
@@ -1788,6 +1822,40 @@ public class API {
         }
 
         return orphans;
+    }
+
+    /*
+     * Logging.
+     */
+
+    /**
+     * Returns the current loglevel.
+     * @return
+     */
+    public static int getLoglevel() {
+        return Log.getInstance().GetLogLevel();
+    }
+
+    /**
+     * Set the current loglevel.
+     */
+    public static void setLoglevel(int NewLevel) {
+        Log.getInstance().SetLogLevel(NewLevel);
+    }
+
+    public static boolean multiUserfySTV(String ContextName, Object[] ExistingWidgets, Object[] ImportedWidgets) {
+        System.out.println("MUS: Begin multiuserfication process for context " + ContextName);
+
+        if (ContextName==null || ContextName.isEmpty()) {
+            System.out.println("MUS: null of empty ContextName " + ContextName);
+            return false;
+        }
+
+        MultiSTV MSTV = new MultiSTV(ContextName, ExistingWidgets, ImportedWidgets);
+        int numChanges = MSTV.modifyWidgets(false);
+
+        System.out.println("MUS: End multiuserfication process for context " + ContextName + ":" + numChanges);
+        return true;
     }
 
     /*

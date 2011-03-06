@@ -21,6 +21,7 @@ public class User {
     private static final String KEY_USERID    = "UserID";
     private static final String KEY_PASSWORD  = "Password";
     private static final String KEY_IR        = "IntelligentRecording";
+    private static final String KEY_SHOW_IMPORTS = "ShowImportedVideos";
     private static final String KEY_UICONTEXT = "UIContext";
     private static final String KEY_WATCHING  = "Watching";
 
@@ -97,6 +98,7 @@ public class User {
         UserRecordAPI.SetUserRecordData(record, KEY, user);
         UserRecordAPI.SetUserRecordData(record, KEY_USERID, user);
         UserRecordAPI.SetUserRecordData(record, KEY_PASSWORD, Password);
+        UserRecordAPI.SetUserRecordData(record, KEY_SHOW_IMPORTS, "true");
         
         Boolean Intelligent = Configuration.IsIntelligentRecordingDisabled();
         UserRecordAPI.SetUserRecordData(record, KEY_IR, Intelligent.toString());
@@ -117,20 +119,54 @@ public class User {
 
     String getPassword() {
         String password = isValid ? UserRecordAPI.GetUserRecordData(record, KEY_PASSWORD) : null;
-        Log.getInstance().write(Log.LOGLEVEL_TRACE, "getPassword: Password " + password);
+        Log.getInstance().write(Log.LOGLEVEL_TRACE, "getPassword: Password " + password + ":" + isValid);
         return password;
     }
 
     void setPassword(String Password) {
 
         if (!isValid || Password==null || Password.isEmpty()) {
-            Log.getInstance().write(Log.LOGLEVEL_WARN, "setPassword: null Password.");
+            Log.getInstance().write(Log.LOGLEVEL_WARN, "setPassword: null Password, setting to " + user);
+            UserRecordAPI.SetUserRecordData(record, KEY_PASSWORD, user);
             return;
         }
 
         Log.getInstance().write(Log.LOGLEVEL_TRACE, "setPassword: Password " + Password);
         UserRecordAPI.SetUserRecordData(record, KEY_PASSWORD, Password);
         return;
+    }
+
+    String getShowImports() {
+        return UserRecordAPI.GetUserRecordData(record, KEY_SHOW_IMPORTS);
+    }
+
+    void setShowImports(Boolean Show) {
+        setShowImports(Show.toString());
+    }
+
+    void setShowImports(String Show) {
+
+        if (!isValid) {
+            Log.getInstance().write(Log.LOGLEVEL_WARN, "setShowImports: Invalid record " + user);
+            return;
+        }
+
+        if (Show==null || Show.isEmpty()) {
+            Log.getInstance().write(Log.LOGLEVEL_WARN, "setShowImports: null parameter, setting to true.");
+            UserRecordAPI.SetUserRecordData(record, KEY_SHOW_IMPORTS, "true");
+            return;
+        }
+
+        String setting = Show.equalsIgnoreCase("true") ? "true" : "false";
+
+        Log.getInstance().write(Log.LOGLEVEL_TRACE, "setShowImports: Setting to " + setting);
+        UserRecordAPI.SetUserRecordData(record, KEY_SHOW_IMPORTS, setting);
+        return;
+    }
+
+    boolean isShowImports() {
+        String show = getShowImports();
+        return show==null ? true : show.equalsIgnoreCase("true");
     }
 
     String getUIContext() {

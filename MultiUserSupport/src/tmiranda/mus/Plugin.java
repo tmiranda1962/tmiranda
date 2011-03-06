@@ -15,7 +15,7 @@ public class Plugin implements sage.SageTVPlugin, SageTVEventListener {
     /**
      * The current PLugin version.
      */
-    public static final String  VERSION = "0.06 03.02.2011";
+    public static final String  VERSION = "0.07 03.04.2011";
 
     /*
      * Constants used throughout the Plugin.
@@ -106,11 +106,18 @@ public class Plugin implements sage.SageTVPlugin, SageTVEventListener {
     public void start() {
         System.out.println("MUS: Plugin starting. Version = " + VERSION);
 
-        // Set the loglevel.
-        //Integer defaultLevel = Log.LOGLEVEL_WARN;
-        //int currentLevel = SageUtil.GetIntProperty(Log.PROPERTY_LOGLEVEL, defaultLevel);
-        //Log.getInstance().SetLogLevel(currentLevel);
-        //System.out.println("MUS: LogLevel set to " + Log.getInstance().GetLogLevel());
+        // Show what users are in the database
+        List<String>allUsers = User.getAllUsers();
+        Log.getInstance().write(Log.LOGLEVEL_TRACE, "start: Defined users " + allUsers);
+
+        for (String u : allUsers) {
+            Log.getInstance().write(Log.LOGLEVEL_TRACE, "start: User " + u);
+            User user = new User(u);
+            Log.getInstance().write(Log.LOGLEVEL_TRACE, "start:   Password " + user.getPassword());
+            Log.getInstance().write(Log.LOGLEVEL_TRACE, "start:   IR " + user.isIntelligentRecordingDisabled());
+            Log.getInstance().write(Log.LOGLEVEL_TRACE, "start:   UserID " + user.getUserID());
+            Log.getInstance().write(Log.LOGLEVEL_TRACE, "start:   Show Imported Videos " + user.isShowImports());
+        }
 
         // If we're running on a client we are done.
         if (Global.IsClient()) {
@@ -151,7 +158,7 @@ public class Plugin implements sage.SageTVPlugin, SageTVEventListener {
     // This method is called after plugin shutdown to free any resources used by the plugin.
     @Override
     public void destroy() {
-        Log.getInstance().write(Log.LOGLEVEL_WARN, "Plugin: Clearing enabled property.");
+        Log.getInstance().write(Log.LOGLEVEL_WARN, "Plugin: Destroy.");
         Log.destroy();
     }
 
@@ -434,12 +441,19 @@ public class Plugin implements sage.SageTVPlugin, SageTVEventListener {
 
             Log.getInstance().write(Log.LOGLEVEL_TRACE, "sageEvent: Importing the MediaFile.");
 
-            // Add all of the users.  No explicitly needed since the default is to allow all.
+            // Initialize for all users, then hide for users that should not see it.
             for (String User : Users) {
                 User user = new User(User);
                 user.addToMediaFile(MediaFile);
                 if (Airing!=null)
                     user.addToAiring(Airing);
+
+                if (!user.isShowImports()) {
+                    Log.getInstance().write(Log.LOGLEVEL_TRACE, "sageEvent: Hiding imported video file from user " + User);
+                    MultiMediaFile MMF = new MultiMediaFile(User, MediaFile);
+                    MMF.hide();
+                }
+
             }
 
             Log.getInstance().write(Log.LOGLEVEL_TRACE, "sageEvent: Added users to imported MediaFile " + Users);

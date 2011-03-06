@@ -96,6 +96,30 @@ public class MultiFavorite extends MultiObject {
     }
 
     /**
+     * Removes all users from the Favorite record.  Should be called when the Favorite
+     * is removed by Admin or the null user.
+     * @param Favorite
+     */
+    static void removeAllUsers(Object Favorite) {
+        List<String> allUsers = User.getAllUsers(false);
+
+        for (String thisUser : allUsers) {
+            MultiFavorite MF = new MultiFavorite(thisUser, Favorite);
+            MF.removeUser();
+        }
+    }
+
+    /**
+     * Removes the user from the list of allowed users without ever removing the core Favorite.
+     */
+    void removeUser() {
+        if (allowedUsers.contains(userID))
+            allowedUsers.remove(userID);
+
+        removeFlag(FAVORITE_USERS, userID);
+    }
+
+    /**
      * Returns true if the current User has this Sage Favorite defined as a Favorite.
      * @return
      */
