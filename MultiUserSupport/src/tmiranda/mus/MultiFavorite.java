@@ -67,7 +67,7 @@ public class MultiFavorite extends MultiObject {
         }
 
         allowedUsers.add(userID);
-        addFlag(FAVORITE_USERS, userID);
+        addDataToFlag(FAVORITE_USERS, userID);
         Log.getInstance().write(Log.LOGLEVEL_TRACE, "addFavorite: Users for Favorite " +  FavoriteAPI.GetFavoriteDescription(sageFavorite) + ":" + allowedUsers);
     }
 
@@ -85,7 +85,7 @@ public class MultiFavorite extends MultiObject {
         if (allowedUsers.contains(userID))
             allowedUsers.remove(userID);
 
-        DelimitedString DS = removeFlag(FAVORITE_USERS, userID);
+        DelimitedString DS = removeDataFromFlag(FAVORITE_USERS, userID);
         Log.getInstance().write(Log.LOGLEVEL_TRACE, "removeFavorite: Users for Favorite " + FavoriteAPI.GetFavoriteDescription(sageFavorite) + ":" + allowedUsers);
 
         if (DS==null || DS.isEmpty()) {
@@ -116,7 +116,7 @@ public class MultiFavorite extends MultiObject {
         if (allowedUsers.contains(userID))
             allowedUsers.remove(userID);
 
-        removeFlag(FAVORITE_USERS, userID);
+        removeDataFromFlag(FAVORITE_USERS, userID);
     }
 
     /**
@@ -171,7 +171,7 @@ public class MultiFavorite extends MultiObject {
      */
     @Deprecated
     public void initializeUser() {
-        addFlag(FAVORITE_USERS, userID);
+        addDataToFlag(FAVORITE_USERS, userID);
     }
 
     /**

@@ -133,7 +133,7 @@ public class MultiObject {
      * @param Data
      * @return
      */
-    DelimitedString addFlag(String Flag, String Data) {
+    DelimitedString addDataToFlag(String Flag, String Data) {
         Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "addFlag: Adding " + Data + " to " + Flag);
         DelimitedString DS = new DelimitedString(getRecordData(Flag), Plugin.LIST_SEPARATOR);
         DS.addUniqueElement(Data);
@@ -147,7 +147,7 @@ public class MultiObject {
      * @param Data
      * @return
      */
-    DelimitedString removeFlag(String Flag, String Data) {
+    DelimitedString removeDataFromFlag(String Flag, String Data) {
         Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "removeFlag: Removing " + Data + " from " + Flag);
         DelimitedString DS = new DelimitedString(getRecordData(Flag), Plugin.LIST_SEPARATOR);
         DS.removeElement(Data);
@@ -234,12 +234,12 @@ public class MultiObject {
     void clearUser(String User, String[] Flags) {
 
         for (String Flag : Flags) {
-            removeFlag(Flag, User);
+            removeDataFromFlag(Flag, User);
         }
 
         clearUserFromFlagPrefix(OBJECT_FLAG_PREFIXES);
 
-        removeFlag(INITIALIZED, userID);
+        removeDataFromFlag(INITIALIZED, userID);
         return;
     }
 
@@ -479,7 +479,7 @@ public class MultiObject {
         if (!isValid)
             return;
 
-        addFlag(WATCHED, userID);
+        addDataToFlag(WATCHED, userID);
 
         if (altKey != null && altKey != 0 && altKey != null) {
             MultiObject MO = new MultiObject(userID, altStore, altKey, 0, null);
@@ -493,7 +493,7 @@ public class MultiObject {
         if (!isValid)
             return;
 
-        removeFlag(WATCHED, userID);
+        removeDataFromFlag(WATCHED, userID);
         setWatchedStartTime(0);
         setWatchedEndTime(0);
         setRealWatchedStartTime(0);
@@ -519,7 +519,7 @@ public class MultiObject {
         if (!isValid)
             return;
 
-        addFlag(DONTLIKE, userID);
+        addDataToFlag(DONTLIKE, userID);
 
         if (altKey != null && altKey != 0 && altKey != null) {
             MultiObject MO = new MultiObject(userID, altStore, altKey, 0, null);
@@ -533,7 +533,7 @@ public class MultiObject {
         if (!isValid)
             return;
 
-        removeFlag(DONTLIKE, userID);
+        removeDataFromFlag(DONTLIKE, userID);
 
         if (altKey != null && altKey != 0 && altKey != null) {
             MultiObject MO = new MultiObject(userID, altStore, altKey, 0, null);
@@ -553,7 +553,7 @@ public class MultiObject {
         }
 
         // Mark the MediaFile as deleted.
-        addFlag(DELETED, userID);
+        addDataToFlag(DELETED, userID);
 
         if (altKey != null && altKey != 0 && altKey != null) {
             MultiObject MO = new MultiObject(userID, altStore, altKey, 0, null);
@@ -601,7 +601,7 @@ public class MultiObject {
         if (!isValid)
             return;
 
-        addFlag(DELETED, userID);
+        addDataToFlag(DELETED, userID);
 
         if (altKey != null && altKey != 0 && altKey != null) {
             MultiObject MO = new MultiObject(userID, altStore, altKey, 0, null);
@@ -616,7 +616,7 @@ public class MultiObject {
         if (!isValid)
             return;
 
-        removeFlag(DELETED, userID);
+        removeDataFromFlag(DELETED, userID);
 
         if (altKey != null && altKey != 0 && altKey != null) {
             MultiObject MO = new MultiObject(userID, altStore, altKey, 0, null);

@@ -61,19 +61,7 @@ public class API {
      * @return The currently logged on user.
      */
     public static String getLoggedinUser() {
-//System.out.println("LOGGED IN USER " + SageUtil.getUIProperty(Plugin.PROPERTY_LAST_LOGGEDIN_USER, null));
         return SageUtil.getUIProperty(Plugin.PROPERTY_LAST_LOGGEDIN_USER, null);
-        //if (Global.IsClient() && Global.IsServerUI())
-            //return Configuration.GetServerProperty(Plugin.PROPERTY_LAST_LOGGEDIN_USER, null);
-        //else
-
-        //try {
-            //String Name = (String)SageTV.api("GetUIContextName", new Object[]{});
-            //System.out.println("UIContextName 0 " + Name);
-        //} catch (Exception ex) {}
-//System.out.println("UIContextName 1 " + Global.GetUIContextName());
-//System.out.println("UIContextName 2 " + Global.GetUIContextName(UIContext.getCurrentContext()));
-            //return Configuration.GetProperty(UIContext.getCurrentContext(), Plugin.PROPERTY_LAST_LOGGEDIN_USER, null);
     }
 
     /**
@@ -304,6 +292,52 @@ public class API {
 
         // Let the core do its thing.
         return MediaPlayerAPI.Watch(new UIContext(ContextName), Content);
+    }
+
+    @Deprecated
+    public static void preWatch(Object Content) {
+
+        String User = getLoggedinUser();
+
+        if (User==null || User.equalsIgnoreCase(Plugin.SUPER_USER)) {
+            Log.getInstance().write(Log.LOGLEVEL_TRACE, "preWatch: null user or Admin " + User);
+            return;
+        }
+
+        // Set flag showing that this user is watching this content. We will need this later
+        // when the RecordingStopped Event is received so we can set RealWatchedEndTime and
+        // WatchedEndTime for the appropriate user.
+        User user = new User(User);
+        user.setWatching(Content);
+
+        long WatchedEndTime = 0;
+        long RealStartTime = 0;
+
+        if (AiringAPI.IsAiringObject(Content)) {
+            MultiAiring MA = new MultiAiring(User, Content);
+            MA.setRealWatchedStartTime(Utility.Time());
+            WatchedEndTime = MA.getWatchedEndTime();
+            RealStartTime = MA.getRealWatchedStartTime();
+        } else if (MediaFileAPI.IsMediaFileObject(Content)) {
+            MultiMediaFile MMF = new MultiMediaFile(User, Content);
+            MMF.setRealWatchedStartTime(Utility.Time());
+            WatchedEndTime = MMF.getWatchedEndTime();
+            RealStartTime = MMF.getRealWatchedStartTime();
+        } else {
+            Log.getInstance().write(Log.LOGLEVEL_TRACE, "preWatch: Not an Airing or MediaFile.");
+            return;
+        }
+
+        WatchedEndTime = (WatchedEndTime==-1 ? AiringAPI.GetWatchedEndTime(Content):WatchedEndTime);
+        RealStartTime = (RealStartTime==-1 ? AiringAPI.GetRealWatchedStartTime(Content):RealStartTime);
+        Log.getInstance().write(Log.LOGLEVEL_TRACE, "watch: Setting WatchedEndTime and RealStartTime " + Plugin.PrintDateAndTime(WatchedEndTime) + ":" + Plugin.PrintDateAndTime(RealStartTime));
+
+        // Reset the values.
+        AiringAPI.ClearWatched(Content);
+        AiringAPI.SetWatchedTimes(Content, WatchedEndTime, RealStartTime);
+
+        // Let the core do its thing.
+        return;
     }
 
     /*
@@ -650,9 +684,11 @@ public class API {
 
         long bytes = 0;
 
-        for (Object mediaFile : allMediaFiles)
-            if (isMediaFileForLoggedOnUser(mediaFile))
+        for (Object mediaFile : allMediaFiles) {
+            MultiMediaFile MMF = new MultiMediaFile(User, ensureIsMediaFile(mediaFile));
+            if (!MMF.isDeleted())
                 bytes += MediaFileAPI.GetSize(mediaFile);
+        }
 
         return bytes;
     }

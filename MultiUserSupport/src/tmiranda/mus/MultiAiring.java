@@ -47,7 +47,7 @@ public class MultiAiring extends MultiObject {
         if (!isInitialized) {
             Log.getInstance().write(Log.LOGLEVEL_TRACE, "MultiAiring: Initializing user " + userID + ":" + AiringAPI.GetAiringTitle(Airing));
             initializeUser();
-            addFlag(INITIALIZED, userID);
+            addDataToFlag(INITIALIZED, userID);
         }
     }
 
@@ -67,8 +67,8 @@ public class MultiAiring extends MultiObject {
         if (!isValid)
             return;
         else {
-            addFlag(MANUAL, userID);
-            addFlag(MANUAL_IN_PROGRESS, userID);
+            addDataToFlag(MANUAL, userID);
+            addDataToFlag(MANUAL_IN_PROGRESS, userID);
         }
     }
 
@@ -77,8 +77,8 @@ public class MultiAiring extends MultiObject {
         if (!isValid)
             return;
         else {
-            addFlag(MANUAL, userID);
-            addFlag(MANUAL_IN_PROGRESS, userID);
+            addDataToFlag(MANUAL, userID);
+            addDataToFlag(MANUAL_IN_PROGRESS, userID);
         }
     }
 
@@ -90,8 +90,8 @@ public class MultiAiring extends MultiObject {
             return;
         }
 
-        removeFlag(MANUAL, userID);
-        removeFlag(MANUAL_IN_PROGRESS, userID);
+        removeDataFromFlag(MANUAL, userID);
+        removeDataFromFlag(MANUAL_IN_PROGRESS, userID);
 
         if (!containsFlagAnyData(MANUAL_IN_PROGRESS)) {
             Log.getInstance().write(Log.LOGLEVEL_TRACE, "cancelManualRecord: No users need this manual, removing.");
@@ -110,8 +110,8 @@ public class MultiAiring extends MultiObject {
         List<String> users = User.getAllUsers();
 
         for (String user : users) {
-            removeFlag(MANUAL, user);
-            removeFlag(MANUAL_IN_PROGRESS, user);
+            removeDataFromFlag(MANUAL, user);
+            removeDataFromFlag(MANUAL_IN_PROGRESS, user);
         }
 
     }
@@ -156,17 +156,17 @@ public class MultiAiring extends MultiObject {
     final void initializeUser() {
 
         if (AiringAPI.IsDontLike(sageAiring))
-            addFlag(DONTLIKE, userID);
+            addDataToFlag(DONTLIKE, userID);
         else
-            removeFlag(DONTLIKE, userID);
+            removeDataFromFlag(DONTLIKE, userID);
 
         if (AiringAPI.IsManualRecord(sageAiring))
-            addFlag(MANUAL, userID);
+            addDataToFlag(MANUAL, userID);
         else
-            removeFlag(MANUAL, userID);
+            removeDataFromFlag(MANUAL, userID);
 
-        removeFlag(MANUAL_IN_PROGRESS, userID);
-        removeFlag(DELETED, userID);
+        removeDataFromFlag(MANUAL_IN_PROGRESS, userID);
+        removeDataFromFlag(DELETED, userID);
 
         //setRealWatchedStartTime(AiringAPI.GetRealWatchedStartTime(sageAiring));
         //setRealWatchedEndTime(AiringAPI.GetRealWatchedEndTime(sageAiring));
@@ -174,7 +174,7 @@ public class MultiAiring extends MultiObject {
         //setWatchedStartTime(AiringAPI.GetWatchedStartTime(sageAiring));
         //setWatchedEndTime(AiringAPI.GetWatchedEndTime(sageAiring));
 
-        addFlag(INITIALIZED, userID);
+        addDataToFlag(INITIALIZED, userID);
         isInitialized = true;
         return;
     }

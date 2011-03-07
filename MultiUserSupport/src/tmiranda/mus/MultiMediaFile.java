@@ -52,7 +52,7 @@ public class MultiMediaFile extends MultiObject {
         if (!isInitialized) {
             Log.getInstance().write(Log.LOGLEVEL_TRACE, "MultiMediaFile: Initializing user " + userID + ":" + MediaFileAPI.GetMediaTitle(MediaFile));
             initializeUser();
-            addFlag(INITIALIZED, userID);
+            addDataToFlag(INITIALIZED, userID);
         }
     }
 
@@ -61,14 +61,14 @@ public class MultiMediaFile extends MultiObject {
         if (!isValid)
             MediaFileAPI.MoveFileToLibrary(sageMediaFile);
         else
-            addFlag(ARCHIVED, userID);
+            addDataToFlag(ARCHIVED, userID);
     }
     
     void clearArchived() {
         if (!isValid)
             MediaFileAPI.MoveTVFileOutOfLibrary(sageMediaFile);
         else
-            removeFlag(ARCHIVED, userID);
+            removeDataFromFlag(ARCHIVED, userID);
     }
 
     boolean isArchived() {
@@ -128,11 +128,11 @@ public class MultiMediaFile extends MultiObject {
     final void initializeUser() {
 
         if (MediaFileAPI.IsLibraryFile(sageMediaFile))
-            addFlag(ARCHIVED, userID);
+            addDataToFlag(ARCHIVED, userID);
         else
-            removeFlag(ARCHIVED, userID);
+            removeDataFromFlag(ARCHIVED, userID);
 
-        removeFlag(DELETED, userID);
+        removeDataFromFlag(DELETED, userID);
 
         setWatchedDuration(null);
         //setMediaTime(null);
@@ -145,7 +145,7 @@ public class MultiMediaFile extends MultiObject {
         //setWatchedStartTime(AiringAPI.GetWatchedStartTime(sageMediaFile));
         //setWatchedEndTime(AiringAPI.GetWatchedEndTime(sageMediaFile));
 
-        addFlag(INITIALIZED, userID);
+        addDataToFlag(INITIALIZED, userID);
         isInitialized = true;
         return;
     }

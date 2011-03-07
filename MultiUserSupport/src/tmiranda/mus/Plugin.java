@@ -15,7 +15,7 @@ public class Plugin implements sage.SageTVPlugin, SageTVEventListener {
     /**
      * The current PLugin version.
      */
-    public static final String  VERSION = "0.07 03.04.2011";
+    public static final String  VERSION = "0.07 03.06.2011";
 
     /*
      * Constants used throughout the Plugin.
@@ -366,7 +366,7 @@ public class Plugin implements sage.SageTVPlugin, SageTVEventListener {
                     user.addToMediaFile(MediaFile);
                     if (Airing!=null)
                         user.addToAiring(Airing);
-                    MA.removeFlag(MultiAiring.MANUAL_IN_PROGRESS, ThisUser);
+                    MA.removeDataFromFlag(MultiAiring.MANUAL_IN_PROGRESS, ThisUser);
                     Log.getInstance().write(Log.LOGLEVEL_TRACE, "sageEvent: Added Manual or Favorite to user " + ThisUser);
                 } else {
                     MultiMediaFile MMF = new MultiMediaFile(ThisUser, MediaFile);
@@ -482,7 +482,7 @@ public class Plugin implements sage.SageTVPlugin, SageTVEventListener {
                 user.addToMediaFile(MediaFile);
                 if (Airing!=null)
                     user.addToAiring(Airing);
-                MA.removeFlag(MultiAiring.MANUAL_IN_PROGRESS, ThisUser);
+                MA.removeDataFromFlag(MultiAiring.MANUAL_IN_PROGRESS, ThisUser);
                 Log.getInstance().write(Log.LOGLEVEL_TRACE, "sageEvent: Added Manual or Favorite to user " + ThisUser);
             } else {
                 MultiMediaFile MMF = new MultiMediaFile(ThisUser, MediaFile);
