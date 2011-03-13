@@ -33,7 +33,7 @@ public class MultiMediaFile extends MultiObject {
     private Object sageMediaFile    = null;
 
     public MultiMediaFile(String UserID, Object MediaFile) {
-        super(UserID, MEDIAFILE_STORE, MediaFileAPI.GetMediaFileID(MediaFile), AiringAPI.GetAiringID(MediaFileAPI.GetMediaFileAiring(MediaFile)), MultiAiring.AIRING_STORE);
+        super(UserID, MEDIAFILE_STORE, sagex.api.MediaFileAPI.GetMediaFileID(MediaFile), sagex.api.AiringAPI.GetAiringID(sagex.api.MediaFileAPI.GetMediaFileAiring(MediaFile)), MultiAiring.AIRING_STORE);
 
         if (!isValid || MediaFile==null) {
             isValid = false;
@@ -41,16 +41,16 @@ public class MultiMediaFile extends MultiObject {
             return;
         }
 
-        if (!MediaFileAPI.IsMediaFileObject(MediaFile)) {
+        if (!sagex.api.MediaFileAPI.IsMediaFileObject(MediaFile)) {
             isValid = false;
-            Log.getInstance().write(Log.LOGLEVEL_TRACE, "MultiMediaFile: Object is not a MediaFile " + MediaFileAPI.GetMediaTitle(MediaFile));
+            Log.getInstance().write(Log.LOGLEVEL_TRACE, "MultiMediaFile: Object is not a MediaFile " + sagex.api.MediaFileAPI.GetMediaTitle(MediaFile));
             return;
         }
 
         sageMediaFile = MediaFile;
 
         if (!isInitialized) {
-            Log.getInstance().write(Log.LOGLEVEL_TRACE, "MultiMediaFile: Initializing user " + userID + ":" + MediaFileAPI.GetMediaTitle(MediaFile));
+            Log.getInstance().write(Log.LOGLEVEL_TRACE, "MultiMediaFile: Initializing user " + userID + ":" + sagex.api.MediaFileAPI.GetMediaTitle(MediaFile));
             initializeUser();
             addDataToFlag(INITIALIZED, userID);
         }
@@ -59,14 +59,14 @@ public class MultiMediaFile extends MultiObject {
 
     void setArchived() {
         if (!isValid)
-            MediaFileAPI.MoveFileToLibrary(sageMediaFile);
+            sagex.api.MediaFileAPI.MoveFileToLibrary(sageMediaFile);
         else
             addDataToFlag(ARCHIVED, userID);
     }
     
     void clearArchived() {
         if (!isValid)
-            MediaFileAPI.MoveTVFileOutOfLibrary(sageMediaFile);
+            sagex.api.MediaFileAPI.MoveTVFileOutOfLibrary(sageMediaFile);
         else
             removeDataFromFlag(ARCHIVED, userID);
     }
@@ -74,7 +74,7 @@ public class MultiMediaFile extends MultiObject {
     boolean isArchived() {
 
         if (!isValid)
-            return MediaFileAPI.IsLibraryFile(sageMediaFile);
+            return sagex.api.MediaFileAPI.IsLibraryFile(sageMediaFile);
         else
             return containsFlag(ARCHIVED, userID);
     }
@@ -127,7 +127,7 @@ public class MultiMediaFile extends MultiObject {
     // Initialize MediaFile for this user.
     final void initializeUser() {
 
-        if (MediaFileAPI.IsLibraryFile(sageMediaFile))
+        if (sagex.api.MediaFileAPI.IsLibraryFile(sageMediaFile))
             addDataToFlag(ARCHIVED, userID);
         else
             removeDataFromFlag(ARCHIVED, userID);

@@ -33,9 +33,9 @@ public class MultiFavorite extends MultiObject {
      */
     public MultiFavorite(String User, Object Favorite) {
 
-        super(User, FAVORITE_STORE, FavoriteAPI.GetFavoriteID(Favorite), 0, null);
+        super(User, FAVORITE_STORE, sagex.api.FavoriteAPI.GetFavoriteID(Favorite), 0, null);
 
-        if (!isValid || Favorite==null || !FavoriteAPI.IsFavoriteObject(Favorite)) {
+        if (!isValid || Favorite==null || !sagex.api.FavoriteAPI.IsFavoriteObject(Favorite)) {
             Log.getInstance().write(Log.LOGLEVEL_ERROR, "MultiFavorite: Invalid Favorite Object. " + User + ":" + Favorite);
             isValid = false;
             return;
@@ -53,7 +53,7 @@ public class MultiFavorite extends MultiObject {
         }
 
         allowedUsers = DelimitedString.delimitedStringToList(userString, Plugin.LIST_SEPARATOR);
-        Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "MultiFavorite: AllowedUsers " + FavoriteAPI.GetFavoriteDescription(sageFavorite) + ":" + allowedUsers);
+        Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "MultiFavorite: AllowedUsers " + sagex.api.FavoriteAPI.GetFavoriteDescription(sageFavorite) + ":" + allowedUsers);
         return;
     }
 
@@ -68,7 +68,7 @@ public class MultiFavorite extends MultiObject {
 
         allowedUsers.add(userID);
         addDataToFlag(FAVORITE_USERS, userID);
-        Log.getInstance().write(Log.LOGLEVEL_TRACE, "addFavorite: Users for Favorite " +  FavoriteAPI.GetFavoriteDescription(sageFavorite) + ":" + allowedUsers);
+        Log.getInstance().write(Log.LOGLEVEL_TRACE, "addFavorite: Users for Favorite " +  sagex.api.FavoriteAPI.GetFavoriteDescription(sageFavorite) + ":" + allowedUsers);
     }
 
     /**
@@ -86,12 +86,12 @@ public class MultiFavorite extends MultiObject {
             allowedUsers.remove(userID);
 
         DelimitedString DS = removeDataFromFlag(FAVORITE_USERS, userID);
-        Log.getInstance().write(Log.LOGLEVEL_TRACE, "removeFavorite: Users for Favorite " + FavoriteAPI.GetFavoriteDescription(sageFavorite) + ":" + allowedUsers);
+        Log.getInstance().write(Log.LOGLEVEL_TRACE, "removeFavorite: Users for Favorite " + sagex.api.FavoriteAPI.GetFavoriteDescription(sageFavorite) + ":" + allowedUsers);
 
         if (DS==null || DS.isEmpty()) {
-            Log.getInstance().write(Log.LOGLEVEL_TRACE, "removeFavorite: No more users, deleting Favorite from sage database " + FavoriteAPI.GetFavoriteDescription(sageFavorite));
+            Log.getInstance().write(Log.LOGLEVEL_TRACE, "removeFavorite: No more users, deleting Favorite from sage database " + sagex.api.FavoriteAPI.GetFavoriteDescription(sageFavorite));
             removeRecord();
-            FavoriteAPI.RemoveFavorite(sageFavorite);
+            sagex.api.FavoriteAPI.RemoveFavorite(sageFavorite);
         }
     }
 
@@ -147,7 +147,7 @@ public class MultiFavorite extends MultiObject {
     public static Object[] getFavorites() {
 
         // Get all of the Sage Favorites.
-        Object[] sageFavorites = FavoriteAPI.GetFavorites();
+        Object[] sageFavorites = sagex.api.FavoriteAPI.GetFavorites();
 
         if (sageFavorites==null || sageFavorites.length==0)
             return sageFavorites;
@@ -203,7 +203,7 @@ public class MultiFavorite extends MultiObject {
         if (this.sageFavorite != other.sageFavorite && (this.sageFavorite == null || !this.sageFavorite.equals(other.sageFavorite))) {
             return false;
         }
-        if (!this.userID.equals(other.userID) || (FavoriteAPI.GetFavoriteID(this.sageFavorite) != FavoriteAPI.GetFavoriteID(other.sageFavorite))) {
+        if (!this.userID.equals(other.userID) || (sagex.api.FavoriteAPI.GetFavoriteID(this.sageFavorite) != sagex.api.FavoriteAPI.GetFavoriteID(other.sageFavorite))) {
             return false;
         }
         return true;

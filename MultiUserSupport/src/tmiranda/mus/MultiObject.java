@@ -563,12 +563,12 @@ public class MultiObject {
         // If all users have it marked as deleted, delete it for real.
         if (containsFlagAllUsers(DELETED)) {
             Log.getInstance().write(Log.LOGLEVEL_TRACE, "delete: Deleting physical file for user " + userID);
-            Object sageObject = MediaFileAPI.GetMediaFileForID(keyInt);
+            Object sageObject = sagex.api.MediaFileAPI.GetMediaFileForID(keyInt);
 
             if (sageObject!=null) {
                 Log.getInstance().write(Log.LOGLEVEL_TRACE, "delete: Found MediaFile.");
             } else {
-                sageObject = AiringAPI.GetAiringForID(keyInt);
+                sageObject = sagex.api.AiringAPI.GetAiringForID(keyInt);
                 if (sageObject!=null) {
                     Log.getInstance().write(Log.LOGLEVEL_TRACE, "delete: Found Airing.");
                 } else {
@@ -579,7 +579,7 @@ public class MultiObject {
             // Check to see if we need to mark the Airing as Watched in the Sage core.
             if (containsFlagAllUsers(WATCHED) || containsFlagAnyIRUsers(WATCHED)) {
                 Log.getInstance().write(Log.LOGLEVEL_TRACE, "delete: Setting Watched in core.");
-                AiringAPI.SetWatched(sageObject);
+                sagex.api.AiringAPI.SetWatched(sageObject);
             }
 
             removeRecord();
@@ -587,7 +587,7 @@ public class MultiObject {
             if (sageObject==null)
                 return true;
             else
-                return(WithoutPrejudice ? MediaFileAPI.DeleteFileWithoutPrejudice(sageObject) : MediaFileAPI.DeleteFile(sageObject));
+                return(WithoutPrejudice ? sagex.api.MediaFileAPI.DeleteFileWithoutPrejudice(sageObject) : sagex.api.MediaFileAPI.DeleteFile(sageObject));
         }
 
         Log.getInstance().write(Log.LOGLEVEL_TRACE, "delete: Leaving physical file intact.");

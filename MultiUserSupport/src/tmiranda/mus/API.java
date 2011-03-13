@@ -33,6 +33,7 @@ public class API {
      * Logs on the specified user.
      * @param UserID
      */
+    @Deprecated
     public static void loginUser(String UserID) {
         
         if (UserID == null) {
@@ -47,6 +48,7 @@ public class API {
     /**
      * Logs out the current user.
      */
+    @Deprecated
     public static void logoutCurrentUser() {
 
         if (getLoggedinUser()==null)
@@ -60,6 +62,7 @@ public class API {
      * Returns the currently logged on user.
      * @return The currently logged on user.
      */
+    @Deprecated
     public static String getLoggedinUser() {
         return SageUtil.getUIProperty(Plugin.PROPERTY_LAST_LOGGEDIN_USER, null);
     }
@@ -69,6 +72,7 @@ public class API {
      * indicating that no user should be logged on.
      * @return The user that should be logged in after the UI is reloaded.
      */
+    @Deprecated
     public static String getUserAfterReboot() {
         if (SageUtil.GetLocalBoolProperty(Plugin.PROPERTY_LOGIN_LAST_USER, "false")) {
             String userID = getLoggedinUser();
@@ -168,11 +172,11 @@ public class API {
         if (Airing==null)
             return false;
 
-        int AiringID = AiringAPI.GetAiringID(ensureIsAiring(Airing));
+        int AiringID = sagex.api.AiringAPI.GetAiringID(ensureIsAiring(Airing));
         Object[] scheduledAirings = Global.GetScheduledRecordings();
 
         for (Object airing : scheduledAirings)
-            if (MediaFileAPI.IsFileCurrentlyRecording(airing) || (AiringID == AiringAPI.GetAiringID(airing)))
+            if (sagex.api.MediaFileAPI.IsFileCurrentlyRecording(airing) || (AiringID == sagex.api.AiringAPI.GetAiringID(airing)))
                 return true;
 
         return false;
@@ -249,13 +253,14 @@ public class API {
      * "this" set appropriately.
      * @param Content
      */
+    @Deprecated
     public static Object watch(String ContextName, Object Content) {
 
         String User = getLoggedinUser();
 
         if (User==null || User.equalsIgnoreCase(Plugin.SUPER_USER)) {
             Log.getInstance().write(Log.LOGLEVEL_TRACE, "preWatch: null user or Admin " + User);
-            return MediaPlayerAPI.Watch(new UIContext(ContextName), Content);
+            return sagex.api.MediaPlayerAPI.Watch(new UIContext(ContextName), Content);
         }
 
         // Set flag showing that this user is watching this content. We will need this later
@@ -267,31 +272,31 @@ public class API {
         long WatchedEndTime = 0;
         long RealStartTime = 0;
 
-        if (AiringAPI.IsAiringObject(Content)) {
+        if (sagex.api.AiringAPI.IsAiringObject(Content)) {
             MultiAiring MA = new MultiAiring(User, Content);
             MA.setRealWatchedStartTime(Utility.Time());
             WatchedEndTime = MA.getWatchedEndTime();
             RealStartTime = MA.getRealWatchedStartTime();
-        } else if (MediaFileAPI.IsMediaFileObject(Content)) {
+        } else if (sagex.api.MediaFileAPI.IsMediaFileObject(Content)) {
             MultiMediaFile MMF = new MultiMediaFile(User, Content);
             MMF.setRealWatchedStartTime(Utility.Time());
             WatchedEndTime = MMF.getWatchedEndTime();
             RealStartTime = MMF.getRealWatchedStartTime();
         } else {
             Log.getInstance().write(Log.LOGLEVEL_TRACE, "preWatch: Not an Airing or MediaFile.");
-            return MediaPlayerAPI.Watch(new UIContext(ContextName), Content);
+            return sagex.api.MediaPlayerAPI.Watch(new UIContext(ContextName), Content);
         }
 
-        WatchedEndTime = (WatchedEndTime==-1 ? AiringAPI.GetWatchedEndTime(Content):WatchedEndTime);
-        RealStartTime = (RealStartTime==-1 ? AiringAPI.GetRealWatchedStartTime(Content):RealStartTime);
+        WatchedEndTime = (WatchedEndTime==-1 ? sagex.api.AiringAPI.GetWatchedEndTime(Content):WatchedEndTime);
+        RealStartTime = (RealStartTime==-1 ? sagex.api.AiringAPI.GetRealWatchedStartTime(Content):RealStartTime);
         Log.getInstance().write(Log.LOGLEVEL_TRACE, "watch: Setting WatchedEndTime and RealStartTime " + Plugin.PrintDateAndTime(WatchedEndTime) + ":" + Plugin.PrintDateAndTime(RealStartTime));
 
         // Reset the values.
-        AiringAPI.ClearWatched(Content);
-        AiringAPI.SetWatchedTimes(Content, WatchedEndTime, RealStartTime);
+        sagex.api.AiringAPI.ClearWatched(Content);
+        sagex.api.AiringAPI.SetWatchedTimes(Content, WatchedEndTime, RealStartTime);
 
         // Let the core do its thing.
-        return MediaPlayerAPI.Watch(new UIContext(ContextName), Content);
+        return sagex.api.MediaPlayerAPI.Watch(new UIContext(ContextName), Content);
     }
 
     @Deprecated
@@ -313,12 +318,12 @@ public class API {
         long WatchedEndTime = 0;
         long RealStartTime = 0;
 
-        if (AiringAPI.IsAiringObject(Content)) {
+        if (sagex.api.AiringAPI.IsAiringObject(Content)) {
             MultiAiring MA = new MultiAiring(User, Content);
             MA.setRealWatchedStartTime(Utility.Time());
             WatchedEndTime = MA.getWatchedEndTime();
             RealStartTime = MA.getRealWatchedStartTime();
-        } else if (MediaFileAPI.IsMediaFileObject(Content)) {
+        } else if (sagex.api.MediaFileAPI.IsMediaFileObject(Content)) {
             MultiMediaFile MMF = new MultiMediaFile(User, Content);
             MMF.setRealWatchedStartTime(Utility.Time());
             WatchedEndTime = MMF.getWatchedEndTime();
@@ -328,13 +333,13 @@ public class API {
             return;
         }
 
-        WatchedEndTime = (WatchedEndTime==-1 ? AiringAPI.GetWatchedEndTime(Content):WatchedEndTime);
-        RealStartTime = (RealStartTime==-1 ? AiringAPI.GetRealWatchedStartTime(Content):RealStartTime);
+        WatchedEndTime = (WatchedEndTime==-1 ? sagex.api.AiringAPI.GetWatchedEndTime(Content):WatchedEndTime);
+        RealStartTime = (RealStartTime==-1 ? sagex.api.AiringAPI.GetRealWatchedStartTime(Content):RealStartTime);
         Log.getInstance().write(Log.LOGLEVEL_TRACE, "watch: Setting WatchedEndTime and RealStartTime " + Plugin.PrintDateAndTime(WatchedEndTime) + ":" + Plugin.PrintDateAndTime(RealStartTime));
 
         // Reset the values.
-        AiringAPI.ClearWatched(Content);
-        AiringAPI.SetWatchedTimes(Content, WatchedEndTime, RealStartTime);
+        sagex.api.AiringAPI.ClearWatched(Content);
+        sagex.api.AiringAPI.SetWatchedTimes(Content, WatchedEndTime, RealStartTime);
 
         // Let the core do its thing.
         return;
@@ -344,6 +349,7 @@ public class API {
      * MediaFile API.
      */
 
+    @Deprecated
     public static Object getMediaFilesWithImportPrefix(Object Mask, String Prefix, boolean b1, boolean b2, boolean b3) {
         String user = getLoggedinUser();
 
@@ -366,16 +372,17 @@ public class API {
         return userMediaFiles.toArray();
     }
 
+    @Deprecated
     public static Object[] getMediaFiles(String Mask) {
         String user = getLoggedinUser();
 
         if (user==null || user.equalsIgnoreCase(Plugin.SUPER_USER)) {
-            return MediaFileAPI.GetMediaFiles(Mask);
+            return sagex.api.MediaFileAPI.GetMediaFiles(Mask);
         }
 
         List<Object> userMediaFiles = new ArrayList<Object>();
 
-        Object[] mediaFiles = MediaFileAPI.GetMediaFiles(Mask);
+        Object[] mediaFiles = sagex.api.MediaFileAPI.GetMediaFiles(Mask);
 
         if (mediaFiles==null)
             return null;
@@ -388,16 +395,17 @@ public class API {
         return userMediaFiles.toArray();
     }
 
+    @Deprecated
     public static Object[] getMediaFiles() {
         String user = getLoggedinUser();
 
         if (user==null || user.equalsIgnoreCase(Plugin.SUPER_USER)) {
-            return MediaFileAPI.GetMediaFiles();
+            return sagex.api.MediaFileAPI.GetMediaFiles();
         }
 
         List<Object> userMediaFiles = new ArrayList<Object>();
 
-        Object[] mediaFiles = MediaFileAPI.GetMediaFiles();
+        Object[] mediaFiles = sagex.api.MediaFileAPI.GetMediaFiles();
 
         if (mediaFiles==null)
             return null;
@@ -418,6 +426,7 @@ public class API {
      * @return true if the MediaFile or Airing should be displayed for the currently logged on
      * user, false otherwise.
      */
+    @Deprecated
     public static boolean isMediaFileForLoggedOnUser(Object MediaFile) {
         String UserID = getLoggedinUser();
 
@@ -428,6 +437,7 @@ public class API {
         return !MMF.isDeleted();
     }
 
+    @Deprecated
     public static Object[] filterMediaFilesNotForLoggedOnUser(Object[] MediaFiles) {
         List<Object> theList = new ArrayList<Object>();
 
@@ -441,6 +451,7 @@ public class API {
         return theList.toArray();
     }
 
+    @Deprecated
     public static Object[] filterMediaFilesNotForLoggedOnUser(List<Object> MediaFiles) {
         return filterMediaFilesNotForLoggedOnUser(MediaFiles.toArray());
     }
@@ -451,11 +462,12 @@ public class API {
      * @param Prefix
      * @return The added MediaFile.
      */
+    @Deprecated
     public static Object addMediaFile(File file, String Prefix) {
 
         String User = getLoggedinUser();
 
-        Object MediaFile = MediaFileAPI.AddMediaFile(file, Prefix);
+        Object MediaFile = sagex.api.MediaFileAPI.AddMediaFile(file, Prefix);
 
         if (User==null || User.equalsIgnoreCase(Plugin.SUPER_USER) || file==null || Prefix==null || MediaFile==null)
             return MediaFile;
@@ -470,12 +482,13 @@ public class API {
      * @param MediaFile
      * @return true if archived, false otherwise.
      */
+    @Deprecated
     public static boolean isArchived(Object MediaFile) {
 
         String User = getLoggedinUser();
 
         if (User==null || User.equalsIgnoreCase(Plugin.SUPER_USER)) {
-            return MediaFileAPI.IsLibraryFile(MediaFile);
+            return sagex.api.MediaFileAPI.IsLibraryFile(MediaFile);
         }
 
         MultiMediaFile MMF = new MultiMediaFile(User, ensureIsMediaFile(MediaFile));
@@ -486,12 +499,13 @@ public class API {
      * Replaces the core API MoveTVFileOutOfLibrary().  (clearArchived is a more intuitive name.)
      * @param MediaFile
      */
+    @Deprecated
     public static void clearArchived(Object MediaFile) {
 
         String User = getLoggedinUser();
 
         if (User==null || User.equalsIgnoreCase(Plugin.SUPER_USER)) {
-            MediaFileAPI.MoveTVFileOutOfLibrary(MediaFile);
+            sagex.api.MediaFileAPI.MoveTVFileOutOfLibrary(MediaFile);
             return;
         }
 
@@ -504,12 +518,13 @@ public class API {
      * Replaces the core API MoveFileToLibrary().  (setArchived is a more intuitive name.)
      * @param MediaFile
      */
+    @Deprecated
     public static void setArchived(Object MediaFile) {
 
         String User = getLoggedinUser();
 
         if (User==null || User.equalsIgnoreCase(Plugin.SUPER_USER)) {
-            MediaFileAPI.MoveFileToLibrary(MediaFile);
+            sagex.api.MediaFileAPI.MoveFileToLibrary(MediaFile);
             return;
         }
 
@@ -523,6 +538,7 @@ public class API {
      * @param MediaFile
      * @return true if the MediaFile was deleted, false otherwise.
      */
+    @Deprecated
     public static boolean deleteMediaFile(Object MediaFile) {
 
         String User = getLoggedinUser();
@@ -531,7 +547,7 @@ public class API {
         if (User==null || User.equalsIgnoreCase(Plugin.SUPER_USER)) {
             MultiMediaFile MMF = new MultiMediaFile(Plugin.SUPER_USER, MediaFile);
             MMF.removeRecord();
-            return MediaFileAPI.DeleteFile(MediaFile);
+            return sagex.api.MediaFileAPI.DeleteFile(MediaFile);
         }
 
         MultiMediaFile MMF = new MultiMediaFile(getLoggedinUser(), ensureIsMediaFile(MediaFile));
@@ -542,6 +558,7 @@ public class API {
      * Undeletes the MediaFile for the specified user.
      * @param MediaFile
      */
+    @Deprecated
     public static void undeleteMediaFile(String User, Object MediaFile) {
 
         MultiMediaFile MMF = null;
@@ -562,12 +579,13 @@ public class API {
      * @param MediaFile
      * @return true if the MediaFile was deleted, false otherwise.
      */
+    @Deprecated
     public static boolean deleteMediaFileWithoutPrejudice(Object MediaFile) {
 
         String User = getLoggedinUser();
 
         if (User==null || User.equalsIgnoreCase(Plugin.SUPER_USER)) {
-            return MediaFileAPI.DeleteFileWithoutPrejudice(MediaFile);
+            return sagex.api.MediaFileAPI.DeleteFileWithoutPrejudice(MediaFile);
         }
 
         MultiMediaFile MMF = new MultiMediaFile(User, ensureIsMediaFile(MediaFile));
@@ -579,6 +597,7 @@ public class API {
      * @param ID
      * @return
      */
+    @Deprecated
     private static Object getMediaFileForID(int ID) {
         return null;
     }
@@ -595,6 +614,7 @@ public class API {
      * Replaces the core API.
      * @return
      */
+    @Deprecated
     public static boolean isIntelligentRecordingDisabled() {
 
         String User = getLoggedinUser();
@@ -611,6 +631,7 @@ public class API {
      * Convenience method to avoid the confusion of double negatives.
      * @return
      */
+    @Deprecated
     public static boolean isIntelligentRecordingEnabled() {
         return !isIntelligentRecordingDisabled();
     }
@@ -630,6 +651,7 @@ public class API {
      *
      * @param disabling
      */
+    @Deprecated
     public static void setIntelligentRecordingDisabled(boolean disabling) {
 
         String user = getLoggedinUser();
@@ -671,6 +693,7 @@ public class API {
      * Invoke IN PLACE OF core API.
      * @return
      */
+    @Deprecated
     public static long getUsedVideoDiskspace() {
         String User = getLoggedinUser();
 
@@ -678,7 +701,7 @@ public class API {
             return Global.GetUsedVideoDiskspace();
         }
 
-        Object[] allMediaFiles = MediaFileAPI.GetMediaFiles("T");
+        Object[] allMediaFiles = sagex.api.MediaFileAPI.GetMediaFiles("T");
         if (allMediaFiles==null || allMediaFiles.length==0)
             return 0;
 
@@ -687,7 +710,7 @@ public class API {
         for (Object mediaFile : allMediaFiles) {
             MultiMediaFile MMF = new MultiMediaFile(User, ensureIsMediaFile(mediaFile));
             if (!MMF.isDeleted())
-                bytes += MediaFileAPI.GetSize(mediaFile);
+                bytes += sagex.api.MediaFileAPI.GetSize(mediaFile);
         }
 
         return bytes;
@@ -698,6 +721,7 @@ public class API {
      * @param User
      * @return The number of bytes of space used by the User.
      */
+    @Deprecated
     public static long getUsedVideoDiskspace(String User) {
 
         if (User==null)
@@ -706,7 +730,7 @@ public class API {
         if (User.equalsIgnoreCase(Plugin.SUPER_USER))
             return Global.GetUsedVideoDiskspace();
 
-        Object[] allMediaFiles = MediaFileAPI.GetMediaFiles("T");
+        Object[] allMediaFiles = sagex.api.MediaFileAPI.GetMediaFiles("T");
         if (allMediaFiles==null || allMediaFiles.length==0)
             return 0;
 
@@ -715,12 +739,13 @@ public class API {
         for (Object mediaFile : allMediaFiles) {
             MultiMediaFile MMF = new MultiMediaFile(User, ensureIsMediaFile(mediaFile));
             if (!MMF.isDeleted())
-                bytes += MediaFileAPI.GetSize(mediaFile);
+                bytes += sagex.api.MediaFileAPI.GetSize(mediaFile);
         }
 
         return bytes;
     }
 
+    @Deprecated
     public static Object[] getScheduledRecordings() {
         String user = getLoggedinUser();
 
@@ -752,17 +777,18 @@ public class API {
      * @param Airing
      * @return
      */
+    @Deprecated
     public static Object record(Object Airing) {
 
         String User = getLoggedinUser();
 
         if (User==null || User.equalsIgnoreCase(Plugin.SUPER_USER)) {
-            return AiringAPI.Record(Airing);
+            return sagex.api.AiringAPI.Record(Airing);
         }
 
         MultiAiring MA = new MultiAiring(User, ensureIsAiring(Airing));
         MA.setManualRecord();
-        return AiringAPI.Record(Airing);
+        return sagex.api.AiringAPI.Record(Airing);
     }
 
     /**
@@ -770,6 +796,7 @@ public class API {
      * @param User
      * @param Airing
      */
+    @Deprecated
     public static void markAsManualRecord(String User, Object Airing) {
 
         // Nothing to do for null user or Admin.
@@ -788,17 +815,18 @@ public class API {
      * @param StopTime
      * @return
      */
+    @Deprecated
     public static Object setRecordingTimes(Object Airing, long StartTime, long StopTime) {
 
         String User = getLoggedinUser();
 
         if (User==null || User.equalsIgnoreCase(Plugin.SUPER_USER)) {
-            return AiringAPI.SetRecordingTimes(Airing, StartTime, StopTime);
+            return sagex.api.AiringAPI.SetRecordingTimes(Airing, StartTime, StopTime);
         }
 
         MultiAiring MA = new MultiAiring(User, ensureIsAiring(Airing));
         MA.setRecordingTimes(StartTime, StopTime);
-        return AiringAPI.SetRecordingTimes(Airing, StartTime, StopTime);
+        return sagex.api.AiringAPI.SetRecordingTimes(Airing, StartTime, StopTime);
     }
 
     /**
@@ -806,12 +834,13 @@ public class API {
      * @param Airing
      * @return
      */
+    @Deprecated
     public static boolean isManualRecord(Object Airing) {
 
         String User = getLoggedinUser();
 
         if (User==null || User.equalsIgnoreCase(Plugin.SUPER_USER)) {
-            return AiringAPI.IsManualRecord(Airing);
+            return sagex.api.AiringAPI.IsManualRecord(Airing);
         }
 
         MultiAiring MA = new MultiAiring(User, ensureIsAiring(Airing));
@@ -822,6 +851,7 @@ public class API {
      * Invoke IN PLACE OF core API.
      * @param Airing
      */
+    @Deprecated
     public static void cancelRecord(Object Airing) {
 
         String User = getLoggedinUser();
@@ -829,7 +859,7 @@ public class API {
         MultiAiring MA = new MultiAiring(User, ensureIsAiring(Airing));
 
         if (User==null || User.equalsIgnoreCase(Plugin.SUPER_USER)) {
-            AiringAPI.CancelRecord(Airing);
+            sagex.api.AiringAPI.CancelRecord(Airing);
             MA.cancelManualRecordForAllUsers();
         } else {
             MA.cancelManualRecord();
@@ -843,16 +873,17 @@ public class API {
      * @param Airing
      * @return
      */
+    @Deprecated
     public static Object getMediaFileForAiring(Object Airing) {
 
         String User = getLoggedinUser();
         Object MediaFile = null;
 
         if (User==null || User.equalsIgnoreCase(Plugin.SUPER_USER) || Airing==null) {
-            return AiringAPI.GetMediaFileForAiring(Airing);
+            return sagex.api.AiringAPI.GetMediaFileForAiring(Airing);
         }
 
-        MediaFile = AiringAPI.IsAiringObject(Airing) ? AiringAPI.GetMediaFileForAiring(Airing) : Airing;
+        MediaFile = sagex.api.AiringAPI.IsAiringObject(Airing) ? sagex.api.AiringAPI.GetMediaFileForAiring(Airing) : Airing;
 
         if (MediaFile==null)
             return null;
@@ -862,11 +893,13 @@ public class API {
     }
 
     // Not implemented, placeholder.
+    @Deprecated
     private static Object addAiring() {
         return null;
     }
 
     // Not implemented, placeholder.
+    @Deprecated
     private static Object addAiringDetailed() {
         return null;
     }
@@ -876,12 +909,13 @@ public class API {
      * @param Airing
      * @return
      */
+    @Deprecated
     public static boolean isDontLike(Object Airing) {
 
         String User = getLoggedinUser();
 
         if (User==null || User.equalsIgnoreCase(Plugin.SUPER_USER))
-            return AiringAPI.IsDontLike(Airing);
+            return sagex.api.AiringAPI.IsDontLike(Airing);
 
         MultiAiring MA = new MultiAiring(User, ensureIsAiring(Airing));
         return MA.isDontLike();
@@ -891,17 +925,18 @@ public class API {
      * Invoke IN PLACE OF core API.
      * @param Airing
      */
+    @Deprecated
     public static void setDontLike(Object Airing) {
 
         String User = getLoggedinUser();
 
         if (User==null || User.equalsIgnoreCase(Plugin.SUPER_USER)) {
-            AiringAPI.SetDontLike(Airing);
+            sagex.api.AiringAPI.SetDontLike(Airing);
             return;
         }
 
         if (SageUtil.GetBoolProperty(Plugin.PROPERTY_UPDATE_IR, true) && isIntelligentRecordingEnabled())
-            AiringAPI.SetDontLike(Airing);
+            sagex.api.AiringAPI.SetDontLike(Airing);
 
         MultiAiring MA = new MultiAiring(User, ensureIsAiring(Airing));
         MA.setDontLike();
@@ -912,17 +947,18 @@ public class API {
      * Invoke IN PLACE OF core API.
      * @param Airing
      */
+    @Deprecated
     public static void clearDontLike(Object Airing) {
 
         String User = getLoggedinUser();
 
         if (User==null || User.equalsIgnoreCase(Plugin.SUPER_USER)) {
-            AiringAPI.ClearDontLike(Airing);
+            sagex.api.AiringAPI.ClearDontLike(Airing);
             return;
         }
 
         if (SageUtil.GetBoolProperty(Plugin.PROPERTY_UPDATE_IR, true) && isIntelligentRecordingEnabled())
-            AiringAPI.ClearDontLike(Airing);
+            sagex.api.AiringAPI.ClearDontLike(Airing);
 
         MultiAiring MA = new MultiAiring(User, ensureIsAiring(Airing));
         MA.clearDontLike();
@@ -934,16 +970,17 @@ public class API {
      * @param Airing
      * @return
      */
+    @Deprecated
     public static boolean isFavorite(Object Airing) {
 
         String User = getLoggedinUser();
 
         if (User==null || User.equalsIgnoreCase(Plugin.SUPER_USER)) {
-            return AiringAPI.IsFavorite(Airing);
+            return sagex.api.AiringAPI.IsFavorite(Airing);
         }
 
         // If it's not defined in the core as a favorite always return false.
-        if (!AiringAPI.IsFavorite(Airing)) {
+        if (!sagex.api.AiringAPI.IsFavorite(Airing)) {
             return false;
         }
 
@@ -952,16 +989,40 @@ public class API {
     }
 
     /**
+     * Invoke in place of core API.
+     * @param O
+     * @return
+     */
+    @Deprecated
+    public static boolean isFavoriteObject(Object O) {
+
+        String User = getLoggedinUser();
+
+        if (User==null || User.equalsIgnoreCase(Plugin.SUPER_USER)) {
+            return sagex.api.FavoriteAPI.IsFavoriteObject(O);
+        }
+
+        // If it's not defined in the core as a favorite always return false.
+        if (!sagex.api.FavoriteAPI.IsFavoriteObject(O)) {
+            return false;
+        }
+
+        MultiAiring MA = new MultiAiring(User, ensureIsAiring(O));
+        return MA.isFavorite();
+    }
+
+    /**
      * Invoke IN PLACE OF core API.
      * @param Airing
      * @return
      */
+    @Deprecated
     public static boolean isNotManualOrFavorite(Object Airing) {
 
         String User = getLoggedinUser();
 
         if (User==null || User.equalsIgnoreCase(Plugin.SUPER_USER)) {
-            return AiringAPI.IsNotManualOrFavorite(Airing);
+            return sagex.api.AiringAPI.IsNotManualOrFavorite(Airing);
         }
 
         MultiAiring MA = new MultiAiring(User, ensureIsAiring(Airing));
@@ -1001,12 +1062,13 @@ public class API {
      * @param Airing
      * @return
      */
+    @Deprecated
     public static boolean isWatched(Object Airing) {
 
         String User = getLoggedinUser();
 
         if (User==null || User.equalsIgnoreCase(Plugin.SUPER_USER))
-            return AiringAPI.IsWatched(Airing);
+            return sagex.api.AiringAPI.IsWatched(Airing);
 
         MultiAiring MA = new MultiAiring(User, ensureIsAiring(Airing));
         return MA.isWatched();
@@ -1016,12 +1078,13 @@ public class API {
      * Invoke IN PLACE OF core API.
      * @param Airing
      */
+    @Deprecated
     public static void setWatched(Object Airing) {
 
         String User = getLoggedinUser();
 
         if (User==null || User.equalsIgnoreCase(Plugin.SUPER_USER)) {
-            AiringAPI.SetWatched(Airing);
+            sagex.api.AiringAPI.SetWatched(Airing);
             return;
         }
 
@@ -1041,17 +1104,18 @@ public class API {
      * Invoke IN PLACE OF core API.
      * @param Airing
      */
+    @Deprecated
     public static void clearWatched(Object Airing) {
 
         String User = getLoggedinUser();
 
         if (User==null || User.equalsIgnoreCase(Plugin.SUPER_USER)) {
-            AiringAPI.ClearWatched(Airing);
+            sagex.api.AiringAPI.ClearWatched(Airing);
             return;
         }
 
         if (SageUtil.GetBoolProperty(Plugin.PROPERTY_UPDATE_IR, true) && isIntelligentRecordingEnabled())
-            AiringAPI.ClearWatched(Airing);
+            sagex.api.AiringAPI.ClearWatched(Airing);
 
         MultiAiring MA = new MultiAiring(User, ensureIsAiring(Airing));
         MA.clearWatched();
@@ -1063,16 +1127,17 @@ public class API {
      * @param Airing
      * @return
      */
+    @Deprecated
     public static long getRealWatchedStartTime(Object Airing) {
         String User = getLoggedinUser();
 
         if (User==null || User.equalsIgnoreCase(Plugin.SUPER_USER)) {
-            return AiringAPI.GetRealWatchedStartTime(Airing);
+            return sagex.api.AiringAPI.GetRealWatchedStartTime(Airing);
         }
 
         long StartTime = 0;
 
-        if (MediaFileAPI.IsMediaFileObject(Airing)) {
+        if (sagex.api.MediaFileAPI.IsMediaFileObject(Airing)) {
             MultiMediaFile MMF = new MultiMediaFile(User, Airing);
             StartTime = MMF.getRealWatchedStartTime();
         } else {
@@ -1080,8 +1145,8 @@ public class API {
             StartTime = MA.getRealWatchedStartTime();
         }
 
-        Log.getInstance().write(Log.LOGLEVEL_TRACE, "getRealWatchedStartTime: StartTime " + MediaFileAPI.GetMediaTitle(Airing) + ":" + Plugin.PrintDateAndTime(StartTime));
-        return (StartTime == -1 ? AiringAPI.GetRealWatchedStartTime(Airing) : StartTime);
+        Log.getInstance().write(Log.LOGLEVEL_TRACE, "getRealWatchedStartTime: StartTime " + sagex.api.MediaFileAPI.GetMediaTitle(Airing) + ":" + Plugin.PrintDateAndTime(StartTime));
+        return (StartTime == -1 ? sagex.api.AiringAPI.GetRealWatchedStartTime(Airing) : StartTime);
     }
 
     /**
@@ -1089,16 +1154,17 @@ public class API {
      * @param Airing
      * @return
      */
+    @Deprecated
     public static long getRealWatchedEndTime(Object Airing) {
         String User = getLoggedinUser();
 
         if (User==null || User.equalsIgnoreCase(Plugin.SUPER_USER)) {
-            return AiringAPI.GetRealWatchedEndTime(Airing);
+            return sagex.api.AiringAPI.GetRealWatchedEndTime(Airing);
         }
 
         long EndTime = 0;
 
-        if (MediaFileAPI.IsMediaFileObject(Airing)) {
+        if (sagex.api.MediaFileAPI.IsMediaFileObject(Airing)) {
             MultiMediaFile MMF = new MultiMediaFile(User, Airing);
             EndTime = MMF.getRealWatchedEndTime();
         } else {
@@ -1106,8 +1172,8 @@ public class API {
             EndTime = MA.getRealWatchedEndTime();
         }
 
-        Log.getInstance().write(Log.LOGLEVEL_TRACE, "getRealWatchedEndTime: EndTime " + MediaFileAPI.GetMediaTitle(Airing) + ":" + Plugin.PrintDateAndTime(EndTime));
-        return (EndTime == -1 ? AiringAPI.GetRealWatchedEndTime(Airing) : EndTime);
+        Log.getInstance().write(Log.LOGLEVEL_TRACE, "getRealWatchedEndTime: EndTime " + sagex.api.MediaFileAPI.GetMediaTitle(Airing) + ":" + Plugin.PrintDateAndTime(EndTime));
+        return (EndTime == -1 ? sagex.api.AiringAPI.GetRealWatchedEndTime(Airing) : EndTime);
     }
 
     /**
@@ -1115,16 +1181,17 @@ public class API {
      * @param Airing
      * @return
      */
+    @Deprecated
     public static long getWatchedDuration(Object Airing) {
         String User = getLoggedinUser();
 
         if (User==null || User.equalsIgnoreCase(Plugin.SUPER_USER)) {
-            return AiringAPI.GetWatchedDuration(Airing);
+            return sagex.api.AiringAPI.GetWatchedDuration(Airing);
         }
 
         long Duration = 0;
 
-        if (MediaFileAPI.IsMediaFileObject(Airing)) {
+        if (sagex.api.MediaFileAPI.IsMediaFileObject(Airing)) {
             MultiMediaFile MMF = new MultiMediaFile(User, Airing);
             Duration = MMF.getWatchedDuration();
         } else {
@@ -1132,8 +1199,8 @@ public class API {
             Duration = MA.getWatchedDuration();
         }
 
-        Log.getInstance().write(Log.LOGLEVEL_TRACE, "getWatchedDuration: Duration " + MediaFileAPI.GetMediaTitle(Airing) + ":" + Plugin.PrintDateAndTime(Duration));
-        return (Duration == -1 ? AiringAPI.GetWatchedDuration(Airing) : Duration);
+        Log.getInstance().write(Log.LOGLEVEL_TRACE, "getWatchedDuration: Duration " + sagex.api.MediaFileAPI.GetMediaTitle(Airing) + ":" + Plugin.PrintDateAndTime(Duration));
+        return (Duration == -1 ? sagex.api.AiringAPI.GetWatchedDuration(Airing) : Duration);
     }
 
     /**
@@ -1141,16 +1208,17 @@ public class API {
      * @param Airing
      * @return
      */
+    @Deprecated
     public static long getWatchedStartTime(Object Airing) {
         String User = getLoggedinUser();
 
         if (User==null || User.equalsIgnoreCase(Plugin.SUPER_USER)) {
-            return AiringAPI.GetWatchedStartTime(Airing);
+            return sagex.api.AiringAPI.GetWatchedStartTime(Airing);
         }
 
         long StartTime = 0;
 
-        if (MediaFileAPI.IsMediaFileObject(Airing)) {
+        if (sagex.api.MediaFileAPI.IsMediaFileObject(Airing)) {
             MultiMediaFile MMF = new MultiMediaFile(User, Airing);
             StartTime = MMF.getWatchedStartTime();
         } else {
@@ -1158,8 +1226,8 @@ public class API {
             StartTime = MA.getWatchedStartTime();
         }
 
-        Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "getWatchedStartTime: StartTime " + MediaFileAPI.GetMediaTitle(Airing) + ":" + Plugin.PrintDateAndTime(StartTime));
-        return (StartTime == -1 ? AiringAPI.GetAiringStartTime(Airing) : StartTime);
+        Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "getWatchedStartTime: StartTime " + sagex.api.MediaFileAPI.GetMediaTitle(Airing) + ":" + Plugin.PrintDateAndTime(StartTime));
+        return (StartTime == -1 ? sagex.api.AiringAPI.GetAiringStartTime(Airing) : StartTime);
     }
 
     /**
@@ -1167,11 +1235,12 @@ public class API {
      * @param Airing
      * @return
      */
+    @Deprecated
     public static long getWatchedEndTime(Object Airing) {
         String User = getLoggedinUser();
 
         if (User==null || User.equalsIgnoreCase(Plugin.SUPER_USER)) {
-            return AiringAPI.GetWatchedEndTime(Airing);
+            return sagex.api.AiringAPI.GetWatchedEndTime(Airing);
         }
 
         // Special case.  If the Airing isWatched we must return 0 for WatchedEndTime.
@@ -1180,7 +1249,7 @@ public class API {
 
         long EndTime = 0;
 
-        if (MediaFileAPI.IsMediaFileObject(Airing)) {
+        if (sagex.api.MediaFileAPI.IsMediaFileObject(Airing)) {
             MultiMediaFile MMF = new MultiMediaFile(User, Airing);
             EndTime = MMF.getWatchedEndTime();
         } else {
@@ -1188,8 +1257,8 @@ public class API {
             EndTime = MA.getWatchedEndTime();
         }
 
-        Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "getWatchedEndTime: EndTime " + MediaFileAPI.GetMediaTitle(Airing) + ":" + Plugin.PrintDateAndTime(EndTime));
-        return (EndTime == -1 ? AiringAPI.GetAiringStartTime(Airing) : EndTime);
+        Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "getWatchedEndTime: EndTime " + sagex.api.MediaFileAPI.GetMediaTitle(Airing) + ":" + Plugin.PrintDateAndTime(EndTime));
+        return (EndTime == -1 ? sagex.api.AiringAPI.GetAiringStartTime(Airing) : EndTime);
     }
 
     /**
@@ -1197,8 +1266,9 @@ public class API {
      * @param Airing
      * @return
      */
+    @Deprecated
     public static long getAiringDuration(Object Airing) {
-        return AiringAPI.GetAiringDuration(Airing);
+        return sagex.api.AiringAPI.GetAiringDuration(Airing);
     }
 
     /*
@@ -1214,12 +1284,13 @@ public class API {
      * Invoke IN PLACE OF core API.
      * @return
      */
+    @Deprecated
     public static Object[] getFavorites() {
 
         String User = getLoggedinUser();
 
         if (User==null || User.equalsIgnoreCase(Plugin.SUPER_USER)) {
-            return FavoriteAPI.GetFavorites();
+            return sagex.api.FavoriteAPI.GetFavorites();
         } else {
             return MultiFavorite.getFavorites();
         }
@@ -1229,13 +1300,14 @@ public class API {
      * Invoke IN PLACE OF core API.
      * @param Favorite
      */
+    @Deprecated
     public static void removeFavorite(Object Favorite) {
 
         String User = getLoggedinUser();
 
         if (User==null || User.equalsIgnoreCase(Plugin.SUPER_USER)) {
             MultiFavorite.removeAllUsers(Favorite);
-            FavoriteAPI.RemoveFavorite(Favorite);
+            sagex.api.FavoriteAPI.RemoveFavorite(Favorite);
             return;
         }
 
@@ -1248,6 +1320,7 @@ public class API {
      * Invoke right after Core API.
      * @param Favorite
      */
+    @Deprecated
     public static void addFavorite(Object Favorite) {
 
         String U = getLoggedinUser();
@@ -1275,6 +1348,7 @@ public class API {
      * @param UserID
      * @param Favorite
      */
+    @Deprecated
     public static void addFavorite(String UserID, Object Favorite) {
 
         if (UserID==null || UserID.equalsIgnoreCase(Plugin.SUPER_USER)) {
@@ -1301,12 +1375,13 @@ public class API {
      * @param Airing
      * @return
      */
+    @Deprecated
     public static Object getFavoriteForAiring(Object Airing) {
 
         String User = getLoggedinUser();
 
         if (User==null || User.equalsIgnoreCase(Plugin.SUPER_USER)) {
-            return FavoriteAPI.GetFavoriteForAiring(Airing);
+            return sagex.api.FavoriteAPI.GetFavoriteForAiring(Airing);
         }
 
         MultiAiring MA = new MultiAiring(User, ensureIsAiring(Airing));
@@ -1314,6 +1389,7 @@ public class API {
     }
 
     // Not in the default STV, but put here as a placeholder.
+    @Deprecated
     private static int getFavoriteID(Object Favorite) {
         return 0;
     }
@@ -1323,11 +1399,12 @@ public class API {
      * @param Favorite
      * @return
      */
+    @Deprecated
     public static List<String> GetUsersForFavorite(Object Favorite) {
 
         List<String> TheList = new ArrayList<String>();
 
-        if (Favorite==null || !FavoriteAPI.IsFavoriteObject(Favorite)) {
+        if (Favorite==null || !sagex.api.FavoriteAPI.IsFavoriteObject(Favorite)) {
             return TheList;
         }
 
@@ -1351,6 +1428,7 @@ public class API {
      * @param UserID
      * @return true if the user exists in the database, false otherwise.
      */
+    @Deprecated
     public static boolean userExists(String UserID) {
 
         if (UserID == null) {
@@ -1369,6 +1447,7 @@ public class API {
      * @param Password The password can't be null.
      * @return true for success, false otherwise.
      */
+    @Deprecated
     public static boolean createNewUser(String UserID, String Password) {
         if (UserID==null || Password==null || UserID.isEmpty() || Password.isEmpty()) {
             Log.getInstance().write(Log.LOGLEVEL_WARN, "createNewUser: Bad parameters " + UserID + ":" + Password);
@@ -1391,6 +1470,7 @@ public class API {
      * @param UserID
      * @return true if success, false otherwise.
      */
+    @Deprecated
     public static boolean removeUser(String UserID) {
         if (UserID==null || UserID.isEmpty()) {
             Log.getInstance().write(Log.LOGLEVEL_WARN, "removeUser: Bad parameters " + UserID);
@@ -1407,6 +1487,7 @@ public class API {
      * @param UserID
      * @return The user password.
      */
+    @Deprecated
     public static String getUserPassword(String UserID) {
         User user = new User(UserID);
         return user.getPassword();
@@ -1418,6 +1499,7 @@ public class API {
      * @param UserID The user to initialize.
      * @param MediaFileOrAiring The MediaFile or Airing to initialize.
      */
+    @Deprecated
     public static void addUserToMediaFile(String UserID, Object MediaFileOrAiring) {
 
         if (UserID==null || MediaFileOrAiring==null) {
@@ -1425,19 +1507,19 @@ public class API {
             return;
         }
 
-        Log.getInstance().write(Log.LOGLEVEL_WARN, "addUserToMediaFile: Adding User to MediaFile " + UserID + ":" + MediaFileAPI.GetMediaTitle(MediaFileOrAiring));
+        Log.getInstance().write(Log.LOGLEVEL_WARN, "addUserToMediaFile: Adding User to MediaFile " + UserID + ":" + sagex.api.MediaFileAPI.GetMediaTitle(MediaFileOrAiring));
 
         User user = new User(UserID);
 
         Object Airing = null;
         Object MediaFile = null;
 
-        if (AiringAPI.IsAiringObject(MediaFileOrAiring)) {
+        if (sagex.api.AiringAPI.IsAiringObject(MediaFileOrAiring)) {
             Airing = MediaFileOrAiring;
-            MediaFile = AiringAPI.GetMediaFileForAiring(MediaFileOrAiring);
+            MediaFile = sagex.api.AiringAPI.GetMediaFileForAiring(MediaFileOrAiring);
         } else {
             MediaFile = MediaFileOrAiring;
-            Airing = MediaFileAPI.GetMediaFileAiring(MediaFileOrAiring);
+            Airing = sagex.api.MediaFileAPI.GetMediaFileAiring(MediaFileOrAiring);
         }
 
         user.addToMediaFile(MediaFile);
@@ -1449,6 +1531,7 @@ public class API {
      * @param UserID
      * @param MediaFile
      */
+    @Deprecated
     public static void removeUserFromMediaFile(String UserID, Object MediaFile) {
         User user = new User(UserID);
         user.removeFromMediaFile(MediaFile);
@@ -1457,6 +1540,7 @@ public class API {
     /**
      * Removes the information of all users from the MediaFile or Airing.
      */
+    @Deprecated
     public static void removeAllUsersFromMediaFile(Object MediaFile) {
         List<String> Users = User.getAllUsers();
 
@@ -1469,6 +1553,7 @@ public class API {
      * Get a List of all users in the database including "Admin".
      * @return
      */
+    @Deprecated
     public static List<String> getAllDefinedUsers() {
         return User.getAllUsers();
     }
@@ -1478,6 +1563,7 @@ public class API {
      * @param includeAdmin true to include "Admin" in the returned List, false otherwise.
      * @return
      */
+    @Deprecated
     public static List<String> getAllDefinedUsers(boolean includeAdmin) {
         return User.getAllUsers(includeAdmin);
     }
@@ -1487,6 +1573,7 @@ public class API {
      * @param UserID
      * @return true if success, false otherwise.
      */
+    @Deprecated
     public static boolean removeUserFromDatabase(String UserID) {
 
         if (UserID==null || UserID.isEmpty()) {
@@ -1502,6 +1589,7 @@ public class API {
      * Initializes the user in the database.
      * @param UserID
      */
+    @Deprecated
     public static void addUserToDatabase(String UserID) {
 
         if (UserID==null || UserID.isEmpty()) {
@@ -1518,6 +1606,7 @@ public class API {
     /**
      * Removes all user information from the user database, leaves the other databases intact.
      */
+    @Deprecated
     public static void clearUserDatabase() {
         UserRecordAPI.DeleteAllUserRecords(User.STORE);
     }
@@ -1526,6 +1615,7 @@ public class API {
      * Resets all user information (Watched, Like/Don't Like, watched times, etc.)
      * in the MediaFile database.
      */
+    @Deprecated
     public static void resetMediaFileDatabase() {
         List<String> AllUsers = User.getAllUsers();
         
@@ -1538,6 +1628,7 @@ public class API {
         }
     }
 
+    @Deprecated
     public static boolean isShowImports(String U) {
 
         if (U==null || U.equalsIgnoreCase(Plugin.SUPER_USER)) {
@@ -1548,6 +1639,7 @@ public class API {
         return user.isShowImports();
     }
 
+    @Deprecated
     public static void setShowImports(String U, boolean Show) {
 
         if (U==null || U.equalsIgnoreCase(Plugin.SUPER_USER)) {
@@ -1644,7 +1736,7 @@ public class API {
         Log.getInstance().write(Log.LOGLEVEL_WARN, "cleanMediaFileUserRecord: Found records " + allRecords.length);
         
         // Get all of the MediaFiles known to the Sage core.
-        Object[] AllMediaFiles = MediaFileAPI.GetMediaFiles();
+        Object[] AllMediaFiles = sagex.api.MediaFileAPI.GetMediaFiles();
 
         // If there are no MediaFiles delete everything in the Store.
         if (AllMediaFiles==null || AllMediaFiles.length==0) {
@@ -1664,12 +1756,12 @@ public class API {
 
         // Loop through all of the MediaFiles setting the "keep" flag.
         for (Object MediaFile : AllMediaFiles) {
-            Integer ID = MediaFileAPI.GetMediaFileID(MediaFile);
+            Integer ID = sagex.api.MediaFileAPI.GetMediaFileID(MediaFile);
             String key = ID.toString();
             Object record = UserRecordAPI.GetUserRecord(MultiMediaFile.MEDIAFILE_STORE, key);
 
             if (record==null) {
-                Log.getInstance().write(Log.LOGLEVEL_WARN, "cleanMediaFileUserRecord: null record for " + MediaFileAPI.GetMediaTitle(MediaFile));
+                Log.getInstance().write(Log.LOGLEVEL_WARN, "cleanMediaFileUserRecord: null record for " + sagex.api.MediaFileAPI.GetMediaTitle(MediaFile));
             } else {
                 MultiObject.setKeeperFlag(record);
             }
@@ -1720,7 +1812,7 @@ public class API {
 
         // Loop through all of the MediaFiles setting the "keep" flag.
         for (Object Airing : AllAirings) {
-            Integer ID = AiringAPI.GetAiringID(Airing);
+            Integer ID = sagex.api.AiringAPI.GetAiringID(Airing);
             String key = ID.toString();
             Object record = UserRecordAPI.GetUserRecord(MultiAiring.AIRING_STORE, key);
             if (record!=null)
@@ -1930,16 +2022,16 @@ public class API {
      * @param SageObject The Object to check.
      * @return The Airing if possible, the original Object otherwise.
      */
-    private static Object ensureIsAiring(Object SageObject) {
-        if (AiringAPI.IsAiringObject(SageObject)) {
+    static Object ensureIsAiring(Object SageObject) {
+        if (sagex.api.AiringAPI.IsAiringObject(SageObject)) {
             return SageObject;
-        } else if (MediaFileAPI.IsMediaFileObject(SageObject)) {
-            return MediaFileAPI.GetMediaFileAiring(SageObject);
+        } else if (sagex.api.MediaFileAPI.IsMediaFileObject(SageObject)) {
+            return sagex.api.MediaFileAPI.GetMediaFileAiring(SageObject);
         } else {
             if (ShowAPI.IsShowObject(SageObject))
                 Log.getInstance().write(Log.LOGLEVEL_WARN, "ensureIsAiring: Found a Show.");
             else
-                Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "ensureIsAiring: Found unknown Object " + AiringAPI.PrintAiringShort(SageObject));
+                Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "ensureIsAiring: Found unknown Object " + sagex.api.AiringAPI.PrintAiringShort(SageObject));
             return SageObject;
         }
     }
@@ -1950,16 +2042,16 @@ public class API {
      * @param SageObject The Object to check.
      * @return The Airing if possible, the original Object otherwise.
      */
-    private static Object ensureIsMediaFile(Object SageObject) {
-        if (MediaFileAPI.IsMediaFileObject(SageObject)) {
+    static Object ensureIsMediaFile(Object SageObject) {
+        if (sagex.api.MediaFileAPI.IsMediaFileObject(SageObject)) {
             return SageObject;
-        } else if (AiringAPI.IsAiringObject(SageObject)) {
-            return AiringAPI.GetMediaFileForAiring(SageObject);
+        } else if (sagex.api.AiringAPI.IsAiringObject(SageObject)) {
+            return sagex.api.AiringAPI.GetMediaFileForAiring(SageObject);
         } else {
             if (ShowAPI.IsShowObject(SageObject))
                 Log.getInstance().write(Log.LOGLEVEL_WARN, "ensureIsMediaFile: Found a Show.");
             else
-                Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "ensureIsMediaFile: Found unknown Object " + AiringAPI.PrintAiringShort(SageObject));
+                Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "ensureIsMediaFile: Found unknown Object " + sagex.api.AiringAPI.PrintAiringShort(SageObject));
             return SageObject;
         }
     }
@@ -1974,7 +2066,7 @@ public class API {
             return TheList;
         }
 
-        if (MediaFileAPI.IsMediaFileObject(MediaFile)) {
+        if (sagex.api.MediaFileAPI.IsMediaFileObject(MediaFile)) {
 
             MultiMediaFile MMF = new MultiMediaFile(getLoggedinUser(), MediaFile);
 
@@ -1988,7 +2080,7 @@ public class API {
                 TheList.add(Flag + "=" + MA.getFlagString(Flag));
         }
 
-        Object Favorite = FavoriteAPI.GetFavoriteForAiring(MediaFile);
+        Object Favorite = sagex.api.FavoriteAPI.GetFavoriteForAiring(MediaFile);
 
         if (Favorite!=null) {
             MultiFavorite MF = new MultiFavorite(getLoggedinUser(), Favorite);
@@ -2001,10 +2093,10 @@ public class API {
         TheList.addAll(MultiMediaFile.GetFlagsStartingWith(MultiMediaFile.CHAPTERNUM_PREFIX));
         TheList.addAll(MultiMediaFile.GetFlagsStartingWith(MultiMediaFile.TITLENUM_PREFIX));
 
-        Boolean IsArchived = MediaFileAPI.IsLibraryFile(MediaFile);
-        Boolean DontLike = AiringAPI.IsDontLike(MediaFile);
-        Boolean Manual = AiringAPI.IsManualRecord(MediaFile);
-        Boolean IsFavorite = AiringAPI.IsFavorite(MediaFile);
+        Boolean IsArchived = sagex.api.MediaFileAPI.IsLibraryFile(MediaFile);
+        Boolean DontLike = sagex.api.AiringAPI.IsDontLike(MediaFile);
+        Boolean Manual = sagex.api.AiringAPI.IsManualRecord(MediaFile);
+        Boolean IsFavorite = sagex.api.AiringAPI.IsFavorite(MediaFile);
         TheList.add("Core: Archived=" + IsArchived.toString() + " DontLike=" + DontLike.toString() + " Manual=" + Manual.toString() + " Favorite=" + IsFavorite.toString());
 
         return TheList;
@@ -2018,7 +2110,7 @@ public class API {
             return TheList;
         }
 
-        if (MediaFileAPI.IsMediaFileObject(MediaFile)) {
+        if (sagex.api.MediaFileAPI.IsMediaFileObject(MediaFile)) {
             MultiMediaFile MMF = new MultiMediaFile(getLoggedinUser(), MediaFile);
             return MMF.getFlagsForUser();
         } else {

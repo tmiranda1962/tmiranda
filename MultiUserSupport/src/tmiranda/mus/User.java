@@ -64,7 +64,7 @@ public class User {
     void logOn() {
         Log.getInstance().write(Log.LOGLEVEL_TRACE, "logOn: Logged on user " + user);
         SageUtil.setUIProperty(Plugin.PROPERTY_LAST_LOGGEDIN_USER, user);
-        //SageUtil.setUIProperty(Plugin.PROPERTY_LAST_LOGGEDIN_CONTEXT_NAME, Global.GetUIContextName(UIContext.getCurrentContext()));
+        SageUtil.setUIProperty(Plugin.PROPERTY_LAST_LOGGEDIN_CONTEXT_NAME, Global.GetUIContextName(UIContext.getCurrentContext()));
     }
 
     void logOff() {
@@ -228,8 +228,8 @@ public class User {
     void setWatching(Object MediaFile) {
         Object MF = null;
 
-        if (AiringAPI.IsAiringObject(MediaFile)) {
-            MF = AiringAPI.GetMediaFileForAiring(MediaFile);
+        if (sagex.api.AiringAPI.IsAiringObject(MediaFile)) {
+            MF = sagex.api.AiringAPI.GetMediaFileForAiring(MediaFile);
         } else  {
             MF = MediaFile;
         }
@@ -239,7 +239,7 @@ public class User {
             return;
         }
 
-        Integer ID = MediaFileAPI.GetMediaFileID(MF);
+        Integer ID = sagex.api.MediaFileAPI.GetMediaFileID(MF);
         UserRecordAPI.SetUserRecordData(record, KEY_WATCHING, ID.toString());
         return;
     }
@@ -287,7 +287,7 @@ public class User {
             return;
         }
 
-        Object[] AllMediaFiles = MediaFileAPI.GetMediaFiles();
+        Object[] AllMediaFiles = sagex.api.MediaFileAPI.GetMediaFiles();
 
         if (AllMediaFiles==null || AllMediaFiles.length==0) {
             Log.getInstance().write(Log.LOGLEVEL_TRACE, "removeFromAllMediaFiles: No MediaFiles.");
@@ -308,7 +308,7 @@ public class User {
             return;
         }
 
-        Object[] AllMediaFiles = MediaFileAPI.GetMediaFiles();
+        Object[] AllMediaFiles = sagex.api.MediaFileAPI.GetMediaFiles();
 
         if (AllMediaFiles==null || AllMediaFiles.length==0) {
             Log.getInstance().write(Log.LOGLEVEL_TRACE, "addUserToAllMediaFiles: No MediaFiles.");
@@ -401,7 +401,7 @@ public class User {
             return;
         }
 
-        Object[] Favorites = FavoriteAPI.GetFavorites();
+        Object[] Favorites = sagex.api.FavoriteAPI.GetFavorites();
 
         if (Favorites==null || Favorites.length==0) {
             Log.getInstance().write(Log.LOGLEVEL_TRACE, "addToAllFavories: No Favorites.");
@@ -422,7 +422,7 @@ public class User {
             return;
         }
 
-        Object[] Favorites = FavoriteAPI.GetFavorites();
+        Object[] Favorites = sagex.api.FavoriteAPI.GetFavorites();
 
         if (Favorites==null || Favorites.length==0) {
             Log.getInstance().write(Log.LOGLEVEL_TRACE, "removeAllFavories: No Favorites.");

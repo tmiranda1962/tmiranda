@@ -3,7 +3,6 @@ package tmiranda.mus;
 
 import sage.*;
 import sagex.api.*;
-import sagex.UIContext;
 import java.util.*;
 
 /**
@@ -13,9 +12,9 @@ import java.util.*;
 public class Plugin implements sage.SageTVPlugin, SageTVEventListener {
 
     /**
-     * The current PLugin version.
+     * The current Plugin version.
      */
-    public static final String  VERSION = "0.07 03.06.2011";
+    public static final String  VERSION = "0.08 03.11.2011";
 
     /*
      * Constants used throughout the Plugin.
@@ -71,7 +70,7 @@ public class Plugin implements sage.SageTVPlugin, SageTVEventListener {
      * Property used to store the name of the user that was last logged on.
      */
     public static final String PROPERTY_LAST_LOGGEDIN_USER = "mus/LastLoggedinUser";    // LOCAL setting.
-    //public static final String PROPERTY_LAST_LOGGEDIN_CONTEXT_NAME = "mus/LastLoggedinContext";
+    public static final String PROPERTY_LAST_LOGGEDIN_CONTEXT_NAME = "mus/LastLoggedinContext";
 
     private sage.SageTVPluginRegistry   registry;
     private sage.SageTVEventListener    listener;
@@ -324,9 +323,9 @@ public class Plugin implements sage.SageTVPlugin, SageTVEventListener {
             return;
         }
 
-        Log.getInstance().write(Log.LOGLEVEL_TRACE, "sageEvent: MediaTitle " + MediaFileAPI.GetMediaTitle(MediaFile));
+        Log.getInstance().write(Log.LOGLEVEL_TRACE, "sageEvent: MediaTitle " + sagex.api.MediaFileAPI.GetMediaTitle(MediaFile));
 
-        Integer MediaFileID = MediaFileAPI.GetMediaFileID(MediaFile);
+        Integer MediaFileID = sagex.api.MediaFileAPI.GetMediaFileID(MediaFile);
 
         // If the core just removed the MediaFile make sure the record is also deleted.
         // It's possible that the API did not remove the MediaFile so we need to catch it here.
@@ -346,7 +345,7 @@ public class Plugin implements sage.SageTVPlugin, SageTVEventListener {
 
         Log.getInstance().write(Log.LOGLEVEL_TRACE, "sageEvent: Defined users " + Users);
         
-        Object Airing = MediaFileAPI.GetMediaFileAiring(MediaFile);
+        Object Airing = sagex.api.MediaFileAPI.GetMediaFileAiring(MediaFile);
 
         if (Airing==null) {
             Log.getInstance().write(Log.LOGLEVEL_WARN, "sageEvent: null Airing.");
@@ -415,7 +414,7 @@ public class Plugin implements sage.SageTVPlugin, SageTVEventListener {
             // because the end of file has been reached.
             MultiMediaFile MMF = new MultiMediaFile(UserID, MediaFile);
             //MMF.setMediaTime(MediaTime);
-            MMF.setWatchedDuration(MediaTime - AiringAPI.GetAiringStartTime(MediaFile));
+            MMF.setWatchedDuration(MediaTime - sagex.api.AiringAPI.GetAiringStartTime(MediaFile));
             MMF.setChapterNum(ChapterNum);
             MMF.setTitleNum(TitleNum);
             MMF.setRealWatchedEndTime(Utility.Time());

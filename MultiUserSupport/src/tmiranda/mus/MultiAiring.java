@@ -28,7 +28,7 @@ public class MultiAiring extends MultiObject {
 
     public MultiAiring(String UserID, Object Airing) {
         
-        super(UserID, AIRING_STORE, AiringAPI.GetAiringID(Airing), MediaFileAPI.GetMediaFileID(AiringAPI.GetMediaFileForAiring(Airing)), MultiMediaFile.MEDIAFILE_STORE);
+        super(UserID, AIRING_STORE, sagex.api.AiringAPI.GetAiringID(Airing), sagex.api.MediaFileAPI.GetMediaFileID(sagex.api.AiringAPI.GetMediaFileForAiring(Airing)), MultiMediaFile.MEDIAFILE_STORE);
 
         if (!isValid || Airing==null) {
             isValid = false;
@@ -36,16 +36,16 @@ public class MultiAiring extends MultiObject {
             return;
         }
 
-        if (!AiringAPI.IsAiringObject(Airing)) {
+        if (!sagex.api.AiringAPI.IsAiringObject(Airing)) {
             isValid = false;
-            Log.getInstance().write(Log.LOGLEVEL_TRACE, "MultiAiring: Object is not an Airing " + MediaFileAPI.GetMediaTitle(Airing));
+            Log.getInstance().write(Log.LOGLEVEL_TRACE, "MultiAiring: Object is not an Airing " + sagex.api.MediaFileAPI.GetMediaTitle(Airing));
             return;
         }
 
         sageAiring = Airing;
 
         if (!isInitialized) {
-            Log.getInstance().write(Log.LOGLEVEL_TRACE, "MultiAiring: Initializing user " + userID + ":" + AiringAPI.GetAiringTitle(Airing));
+            Log.getInstance().write(Log.LOGLEVEL_TRACE, "MultiAiring: Initializing user " + userID + ":" + sagex.api.AiringAPI.GetAiringTitle(Airing));
             initializeUser();
             addDataToFlag(INITIALIZED, userID);
         }
@@ -57,7 +57,7 @@ public class MultiAiring extends MultiObject {
     boolean isManualRecord() {
 
         if (!isValid) {
-            return AiringAPI.IsManualRecord(sageAiring);
+            return sagex.api.AiringAPI.IsManualRecord(sageAiring);
         } else
             return containsFlag(MANUAL, userID);
     }
@@ -86,7 +86,7 @@ public class MultiAiring extends MultiObject {
     void cancelManualRecord() {
 
         if (!isValid) {
-            AiringAPI.CancelRecord(sageAiring);
+            sagex.api.AiringAPI.CancelRecord(sageAiring);
             return;
         }
 
@@ -95,7 +95,7 @@ public class MultiAiring extends MultiObject {
 
         if (!containsFlagAnyData(MANUAL_IN_PROGRESS)) {
             Log.getInstance().write(Log.LOGLEVEL_TRACE, "cancelManualRecord: No users need this manual, removing.");
-            AiringAPI.CancelRecord(sageAiring);
+            sagex.api.AiringAPI.CancelRecord(sageAiring);
         }
     }
 
@@ -121,7 +121,7 @@ public class MultiAiring extends MultiObject {
     // Airings can have Favorite status.
 
     boolean isFavorite() {
-        Object Favorite = FavoriteAPI.GetFavoriteForAiring(sageAiring);
+        Object Favorite = sagex.api.FavoriteAPI.GetFavoriteForAiring(sageAiring);
 
         if (Favorite==null) {
             return false;
@@ -133,7 +133,7 @@ public class MultiAiring extends MultiObject {
 
     Object getFavoriteForAiring() {
 
-        Object Favorite = FavoriteAPI.GetFavoriteForAiring(sageAiring);
+        Object Favorite = sagex.api.FavoriteAPI.GetFavoriteForAiring(sageAiring);
 
         if (Favorite==null)
             return null;
@@ -155,12 +155,12 @@ public class MultiAiring extends MultiObject {
     // Initialize this user for the Airing.
     final void initializeUser() {
 
-        if (AiringAPI.IsDontLike(sageAiring))
+        if (sagex.api.AiringAPI.IsDontLike(sageAiring))
             addDataToFlag(DONTLIKE, userID);
         else
             removeDataFromFlag(DONTLIKE, userID);
 
-        if (AiringAPI.IsManualRecord(sageAiring))
+        if (sagex.api.AiringAPI.IsManualRecord(sageAiring))
             addDataToFlag(MANUAL, userID);
         else
             removeDataFromFlag(MANUAL, userID);

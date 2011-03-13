@@ -246,18 +246,18 @@ public class DelimitedString {
     @Deprecated
     public static synchronized void addToMediaFile(Object MediaFile, String Flag, String User) {
         if (MediaFile != null) {
-            DelimitedString DS = new DelimitedString(MediaFileAPI.GetMediaFileMetadata(MediaFile, Flag), Plugin.LIST_SEPARATOR);
+            DelimitedString DS = new DelimitedString(sagex.api.MediaFileAPI.GetMediaFileMetadata(MediaFile, Flag), Plugin.LIST_SEPARATOR);
             DS.addUniqueElement(User);
-            MediaFileAPI.SetMediaFileMetadata(MediaFile, Flag, DS.toString());
+            sagex.api.MediaFileAPI.SetMediaFileMetadata(MediaFile, Flag, DS.toString());
         }
     }
 
     @Deprecated
     public static synchronized void removeFromMediaFile(Object MediaFile, String Flag, String User) {
         if (MediaFile != null) {
-            DelimitedString DS = new DelimitedString(MediaFileAPI.GetMediaFileMetadata(MediaFile, Flag), Plugin.LIST_SEPARATOR);
+            DelimitedString DS = new DelimitedString(sagex.api.MediaFileAPI.GetMediaFileMetadata(MediaFile, Flag), Plugin.LIST_SEPARATOR);
             DS.removeElement(User);
-            MediaFileAPI.SetMediaFileMetadata(MediaFile, Flag, DS.toString());
+            sagex.api.MediaFileAPI.SetMediaFileMetadata(MediaFile, Flag, DS.toString());
         }
     }
 
