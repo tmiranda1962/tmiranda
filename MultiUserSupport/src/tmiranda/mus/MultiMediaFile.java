@@ -42,9 +42,9 @@ public class MultiMediaFile extends MultiObject {
         }
 
         if (!sagex.api.MediaFileAPI.IsMediaFileObject(MediaFile)) {
-            isValid = false;
+            //isValid = false;
             Log.getInstance().write(Log.LOGLEVEL_TRACE, "MultiMediaFile: Object is not a MediaFile " + sagex.api.MediaFileAPI.GetMediaTitle(MediaFile));
-            return;
+            //return;
         }
 
         sageMediaFile = MediaFile;
@@ -52,7 +52,7 @@ public class MultiMediaFile extends MultiObject {
         if (!isInitialized) {
             Log.getInstance().write(Log.LOGLEVEL_TRACE, "MultiMediaFile: Initializing user " + userID + ":" + sagex.api.MediaFileAPI.GetMediaTitle(MediaFile));
             initializeUser();
-            addDataToFlag(INITIALIZED, userID);
+            database.addDataToFlag(INITIALIZED, userID);
         }
     }
 
@@ -61,14 +61,14 @@ public class MultiMediaFile extends MultiObject {
         if (!isValid)
             sagex.api.MediaFileAPI.MoveFileToLibrary(sageMediaFile);
         else
-            addDataToFlag(ARCHIVED, userID);
+            database.addDataToFlag(ARCHIVED, userID);
     }
     
     void clearArchived() {
         if (!isValid)
             sagex.api.MediaFileAPI.MoveTVFileOutOfLibrary(sageMediaFile);
         else
-            removeDataFromFlag(ARCHIVED, userID);
+            database.removeDataFromFlag(ARCHIVED, userID);
     }
 
     boolean isArchived() {
@@ -76,12 +76,12 @@ public class MultiMediaFile extends MultiObject {
         if (!isValid)
             return sagex.api.MediaFileAPI.IsLibraryFile(sageMediaFile);
         else
-            return containsFlag(ARCHIVED, userID);
+            return database.containsFlag(ARCHIVED, userID);
     }
 
 
     int getChapterNum() {
-        String D = getRecordData(CHAPTERNUM_PREFIX + userID);
+        String D = database.getRecordData(CHAPTERNUM_PREFIX + userID);
 
         try {
             int duration = Integer.parseInt(D);
@@ -93,7 +93,7 @@ public class MultiMediaFile extends MultiObject {
     }
 
     void setChapterNum(String Num) {
-        setRecordData(CHAPTERNUM_PREFIX + userID, Num);
+        database.setRecordData(CHAPTERNUM_PREFIX + userID, Num);
     }
 
     void setChapterNum(int Num) {
@@ -103,7 +103,7 @@ public class MultiMediaFile extends MultiObject {
 
 
     int getTitleNum() {
-        String D = getRecordData(TITLENUM_PREFIX + userID);
+        String D = database.getRecordData(TITLENUM_PREFIX + userID);
 
         try {
             int duration = Integer.parseInt(D);
@@ -115,7 +115,7 @@ public class MultiMediaFile extends MultiObject {
     }
 
     void setTitleNum(String Num) {
-        setRecordData(TITLENUM_PREFIX + userID, Num);
+        database.setRecordData(TITLENUM_PREFIX + userID, Num);
     }
 
     void setTitleNum(int Num) {
@@ -128,11 +128,11 @@ public class MultiMediaFile extends MultiObject {
     final void initializeUser() {
 
         if (sagex.api.MediaFileAPI.IsLibraryFile(sageMediaFile))
-            addDataToFlag(ARCHIVED, userID);
+            database.addDataToFlag(ARCHIVED, userID);
         else
-            removeDataFromFlag(ARCHIVED, userID);
+            database.removeDataFromFlag(ARCHIVED, userID);
 
-        removeDataFromFlag(DELETED, userID);
+        database.removeDataFromFlag(DELETED, userID);
 
         setWatchedDuration(null);
         //setMediaTime(null);
@@ -145,7 +145,7 @@ public class MultiMediaFile extends MultiObject {
         //setWatchedStartTime(AiringAPI.GetWatchedStartTime(sageMediaFile));
         //setWatchedEndTime(AiringAPI.GetWatchedEndTime(sageMediaFile));
 
-        addDataToFlag(INITIALIZED, userID);
+        database.addDataToFlag(INITIALIZED, userID);
         isInitialized = true;
         return;
     }
@@ -193,16 +193,16 @@ public class MultiMediaFile extends MultiObject {
 
        for (String flag : FLAGS)
             if (userID.equalsIgnoreCase(Plugin.SUPER_USER)) {
-               theList.add(flag + getRecordData(flag));
+               theList.add(flag + database.getRecordData(flag));
             } else {
-               if (containsFlag(flag, userID))
+               if (database.containsFlag(flag, userID))
                    theList.add("Contains " + flag);
                else
                    theList.add("!Contains " + flag);
             }
 
         for (String prefix : FLAG_PREFIXES)
-            theList.add(prefix + "=" + getRecordData(prefix+userID));
+            theList.add(prefix + "=" + database.getRecordData(prefix+userID));
 
        return theList;
    }

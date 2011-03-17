@@ -21,7 +21,7 @@ public class API {
     private API() {}
 
     /*
-     * User login and logout.
+     * Primary User login and logout.
      *
      * General behavour:
      * - Admin user accesses underlying Sage core.
@@ -33,7 +33,6 @@ public class API {
      * Logs on the specified user.
      * @param UserID
      */
-    @Deprecated
     public static void loginUser(String UserID) {
         
         if (UserID == null) {
@@ -48,7 +47,6 @@ public class API {
     /**
      * Logs out the current user.
      */
-    @Deprecated
     public static void logoutCurrentUser() {
 
         if (getLoggedinUser()==null)
@@ -62,7 +60,6 @@ public class API {
      * Returns the currently logged on user.
      * @return The currently logged on user.
      */
-    @Deprecated
     public static String getLoggedinUser() {
         return SageUtil.getUIProperty(Plugin.PROPERTY_LAST_LOGGEDIN_USER, null);
     }
@@ -72,7 +69,6 @@ public class API {
      * indicating that no user should be logged on.
      * @return The user that should be logged in after the UI is reloaded.
      */
-    @Deprecated
     public static String getUserAfterReboot() {
         if (SageUtil.GetLocalBoolProperty(Plugin.PROPERTY_LOGIN_LAST_USER, "false")) {
             String userID = getLoggedinUser();
@@ -253,37 +249,66 @@ public class API {
      * "this" set appropriately.
      * @param Content
      */
-    @Deprecated
     public static Object watch(String ContextName, Object Content) {
 
+        // Set the secondary users as watching this show as well.
+        List<String> secondaryUsers = UserAPI.getLoggedinSecondaryUsers();
+
+        for (String secondaryUser : secondaryUsers) {
+            Log.getInstance().write(Log.LOGLEVEL_TRACE, "watch: Setting secondary user watching " + secondaryUser);
+            User user = new User(secondaryUser);
+            user.setWatching(Content);
+        }
+
         String User = getLoggedinUser();
 
         if (User==null || User.equalsIgnoreCase(Plugin.SUPER_USER)) {
-            Log.getInstance().write(Log.LOGLEVEL_TRACE, "preWatch: null user or Admin " + User);
+            Log.getInstance().write(Log.LOGLEVEL_TRACE, "watch: null user or Admin " + User);
             return sagex.api.MediaPlayerAPI.Watch(new UIContext(ContextName), Content);
         }
 
         // Set flag showing that this user is watching this content. We will need this later
         // when the RecordingStopped Event is received so we can set RealWatchedEndTime and
         // WatchedEndTime for the appropriate user.
+        Log.getInstance().write(Log.LOGLEVEL_TRACE, "watch: Setting primary user watching " + User);
         User user = new User(User);
         user.setWatching(Content);
 
         long WatchedEndTime = 0;
         long RealStartTime = 0;
+        int chapter = 0;
 
         if (sagex.api.AiringAPI.IsAiringObject(Content)) {
+            Log.getInstance().write(Log.LOGLEVEL_TRACE, "watch: Is an Airing.");
             MultiAiring MA = new MultiAiring(User, Content);
             MA.setRealWatchedStartTime(Utility.Time());
             WatchedEndTime = MA.getWatchedEndTime();
             RealStartTime = MA.getRealWatchedStartTime();
-        } else if (sagex.api.MediaFileAPI.IsMediaFileObject(Content)) {
+
+            for (String secondaryUser : secondaryUsers) {
+                MA = new MultiAiring(secondaryUser, Content);
+                MA.setRealWatchedStartTime(Utility.Time());
+                //WatchedEndTime = MA.getWatchedEndTime();
+                //RealStartTime = MA.getRealWatchedStartTime();
+            }
+
+        } else if (sagex.api.MediaFileAPI.IsMediaFileObject(Content) || sagex.api.MediaFileAPI.IsDVD(Content)) {
+            Log.getInstance().write(Log.LOGLEVEL_TRACE, "watch: Is a MediaFile.");
             MultiMediaFile MMF = new MultiMediaFile(User, Content);
             MMF.setRealWatchedStartTime(Utility.Time());
             WatchedEndTime = MMF.getWatchedEndTime();
             RealStartTime = MMF.getRealWatchedStartTime();
+            chapter = MMF.getChapterNum();
+            Log.getInstance().write(Log.LOGLEVEL_TRACE, "watch: Setting DVD chapter to " + chapter);
+
+            for (String secondaryUser : secondaryUsers) {
+                MMF = new MultiMediaFile(secondaryUser, Content);
+                MMF.setRealWatchedStartTime(Utility.Time());
+                //WatchedEndTime = MMF.getWatchedEndTime();
+                //RealStartTime = MMF.getRealWatchedStartTime();
+            }
         } else {
-            Log.getInstance().write(Log.LOGLEVEL_TRACE, "preWatch: Not an Airing or MediaFile.");
+            Log.getInstance().write(Log.LOGLEVEL_TRACE, "watch: Not an Airing or MediaFile.");
             return sagex.api.MediaPlayerAPI.Watch(new UIContext(ContextName), Content);
         }
 
@@ -291,65 +316,24 @@ public class API {
         RealStartTime = (RealStartTime==-1 ? sagex.api.AiringAPI.GetRealWatchedStartTime(Content):RealStartTime);
         Log.getInstance().write(Log.LOGLEVEL_TRACE, "watch: Setting WatchedEndTime and RealStartTime " + Plugin.PrintDateAndTime(WatchedEndTime) + ":" + Plugin.PrintDateAndTime(RealStartTime));
 
-        // Reset the values.
+        // Reset the values in the Sage core.
         sagex.api.AiringAPI.ClearWatched(Content);
         sagex.api.AiringAPI.SetWatchedTimes(Content, WatchedEndTime, RealStartTime);
 
+        // If it's a DVD, set the chapter.
+        if (sagex.api.MediaFileAPI.IsDVD(Content)) {
+            sagex.api.MediaPlayerAPI.DVDChapterSet(chapter);
+        }
+
         // Let the core do its thing.
+        Log.getInstance().write(Log.LOGLEVEL_TRACE, "watch: About to watch " + ShowAPI.GetShowTitle(Content) + ":" + ShowAPI.GetShowEpisode(Content));
         return sagex.api.MediaPlayerAPI.Watch(new UIContext(ContextName), Content);
-    }
-
-    @Deprecated
-    public static void preWatch(Object Content) {
-
-        String User = getLoggedinUser();
-
-        if (User==null || User.equalsIgnoreCase(Plugin.SUPER_USER)) {
-            Log.getInstance().write(Log.LOGLEVEL_TRACE, "preWatch: null user or Admin " + User);
-            return;
-        }
-
-        // Set flag showing that this user is watching this content. We will need this later
-        // when the RecordingStopped Event is received so we can set RealWatchedEndTime and
-        // WatchedEndTime for the appropriate user.
-        User user = new User(User);
-        user.setWatching(Content);
-
-        long WatchedEndTime = 0;
-        long RealStartTime = 0;
-
-        if (sagex.api.AiringAPI.IsAiringObject(Content)) {
-            MultiAiring MA = new MultiAiring(User, Content);
-            MA.setRealWatchedStartTime(Utility.Time());
-            WatchedEndTime = MA.getWatchedEndTime();
-            RealStartTime = MA.getRealWatchedStartTime();
-        } else if (sagex.api.MediaFileAPI.IsMediaFileObject(Content)) {
-            MultiMediaFile MMF = new MultiMediaFile(User, Content);
-            MMF.setRealWatchedStartTime(Utility.Time());
-            WatchedEndTime = MMF.getWatchedEndTime();
-            RealStartTime = MMF.getRealWatchedStartTime();
-        } else {
-            Log.getInstance().write(Log.LOGLEVEL_TRACE, "preWatch: Not an Airing or MediaFile.");
-            return;
-        }
-
-        WatchedEndTime = (WatchedEndTime==-1 ? sagex.api.AiringAPI.GetWatchedEndTime(Content):WatchedEndTime);
-        RealStartTime = (RealStartTime==-1 ? sagex.api.AiringAPI.GetRealWatchedStartTime(Content):RealStartTime);
-        Log.getInstance().write(Log.LOGLEVEL_TRACE, "watch: Setting WatchedEndTime and RealStartTime " + Plugin.PrintDateAndTime(WatchedEndTime) + ":" + Plugin.PrintDateAndTime(RealStartTime));
-
-        // Reset the values.
-        sagex.api.AiringAPI.ClearWatched(Content);
-        sagex.api.AiringAPI.SetWatchedTimes(Content, WatchedEndTime, RealStartTime);
-
-        // Let the core do its thing.
-        return;
     }
 
     /*
      * MediaFile API.
      */
 
-    @Deprecated
     public static Object getMediaFilesWithImportPrefix(Object Mask, String Prefix, boolean b1, boolean b2, boolean b3) {
         String user = getLoggedinUser();
 
@@ -372,7 +356,6 @@ public class API {
         return userMediaFiles.toArray();
     }
 
-    @Deprecated
     public static Object[] getMediaFiles(String Mask) {
         String user = getLoggedinUser();
 
@@ -395,7 +378,6 @@ public class API {
         return userMediaFiles.toArray();
     }
 
-    @Deprecated
     public static Object[] getMediaFiles() {
         String user = getLoggedinUser();
 
@@ -426,7 +408,6 @@ public class API {
      * @return true if the MediaFile or Airing should be displayed for the currently logged on
      * user, false otherwise.
      */
-    @Deprecated
     public static boolean isMediaFileForLoggedOnUser(Object MediaFile) {
         String UserID = getLoggedinUser();
 
@@ -437,7 +418,6 @@ public class API {
         return !MMF.isDeleted();
     }
 
-    @Deprecated
     public static Object[] filterMediaFilesNotForLoggedOnUser(Object[] MediaFiles) {
         List<Object> theList = new ArrayList<Object>();
 
@@ -451,7 +431,6 @@ public class API {
         return theList.toArray();
     }
 
-    @Deprecated
     public static Object[] filterMediaFilesNotForLoggedOnUser(List<Object> MediaFiles) {
         return filterMediaFilesNotForLoggedOnUser(MediaFiles.toArray());
     }
@@ -462,16 +441,26 @@ public class API {
      * @param Prefix
      * @return The added MediaFile.
      */
-    @Deprecated
     public static Object addMediaFile(File file, String Prefix) {
 
-        String User = getLoggedinUser();
-
+        // Add the MediaFile.
         Object MediaFile = sagex.api.MediaFileAPI.AddMediaFile(file, Prefix);
+
+        // Add to secondary users.
+        List<String> secondaryUsers = UserAPI.getLoggedinSecondaryUsers();
+
+        for (String secondaryUser : secondaryUsers) {
+            Log.getInstance().write(Log.LOGLEVEL_TRACE, "addMediaFile: Adding secondary user " + secondaryUser);
+            User user = new User(secondaryUser);
+            user.addToMediaFile(MediaFile);
+        }
+
+        String User = getLoggedinUser();
 
         if (User==null || User.equalsIgnoreCase(Plugin.SUPER_USER) || file==null || Prefix==null || MediaFile==null)
             return MediaFile;
 
+        Log.getInstance().write(Log.LOGLEVEL_TRACE, "addMediaFile: Adding primary user " + User);
         User user = new User(User);
         user.addToMediaFile(MediaFile);
         return MediaFile;
@@ -482,7 +471,6 @@ public class API {
      * @param MediaFile
      * @return true if archived, false otherwise.
      */
-    @Deprecated
     public static boolean isArchived(Object MediaFile) {
 
         String User = getLoggedinUser();
@@ -499,8 +487,15 @@ public class API {
      * Replaces the core API MoveTVFileOutOfLibrary().  (clearArchived is a more intuitive name.)
      * @param MediaFile
      */
-    @Deprecated
     public static void clearArchived(Object MediaFile) {
+
+        List<String> secondaryUsers = UserAPI.getLoggedinSecondaryUsers();
+
+        for (String secondaryUser : secondaryUsers) {
+            Log.getInstance().write(Log.LOGLEVEL_TRACE, "clearArchived: Clearing for secondary user " + secondaryUser);
+            MultiMediaFile MMF = new MultiMediaFile(secondaryUser, ensureIsMediaFile(MediaFile));
+            MMF.clearArchived();
+        }
 
         String User = getLoggedinUser();
 
@@ -518,8 +513,15 @@ public class API {
      * Replaces the core API MoveFileToLibrary().  (setArchived is a more intuitive name.)
      * @param MediaFile
      */
-    @Deprecated
     public static void setArchived(Object MediaFile) {
+
+        List<String> secondaryUsers = UserAPI.getLoggedinSecondaryUsers();
+
+        for (String secondaryUser : secondaryUsers) {
+            Log.getInstance().write(Log.LOGLEVEL_TRACE, "setArchived: Setting for secondary user " + secondaryUser);
+            MultiMediaFile MMF = new MultiMediaFile(secondaryUser, ensureIsMediaFile(MediaFile));
+            MMF.setArchived();
+        }
 
         String User = getLoggedinUser();
 
@@ -538,19 +540,27 @@ public class API {
      * @param MediaFile
      * @return true if the MediaFile was deleted, false otherwise.
      */
-    @Deprecated
     public static boolean deleteMediaFile(Object MediaFile) {
 
         String User = getLoggedinUser();
 
         // If the MediaFile is removed make sure we remove the corresponding record.
         if (User==null || User.equalsIgnoreCase(Plugin.SUPER_USER)) {
+            Log.getInstance().write(Log.LOGLEVEL_TRACE, "deleteMediaFile: Deleting file and removing DB record.");
             MultiMediaFile MMF = new MultiMediaFile(Plugin.SUPER_USER, MediaFile);
             MMF.removeRecord();
             return sagex.api.MediaFileAPI.DeleteFile(MediaFile);
         }
 
-        MultiMediaFile MMF = new MultiMediaFile(getLoggedinUser(), ensureIsMediaFile(MediaFile));
+        List<String> secondaryUsers = UserAPI.getLoggedinSecondaryUsers();
+
+        for (String secondaryUser : secondaryUsers) {
+            Log.getInstance().write(Log.LOGLEVEL_TRACE, "deleteMediaFile: Deleting for secondary user " + secondaryUser);
+            MultiMediaFile MMF = new MultiMediaFile(secondaryUser, ensureIsMediaFile(MediaFile));
+            MMF.delete(false);
+        }
+
+        MultiMediaFile MMF = new MultiMediaFile(User, ensureIsMediaFile(MediaFile));
         return MMF.delete(false);
     }
 
@@ -558,7 +568,6 @@ public class API {
      * Undeletes the MediaFile for the specified user.
      * @param MediaFile
      */
-    @Deprecated
     public static void undeleteMediaFile(String User, Object MediaFile) {
 
         MultiMediaFile MMF = null;
@@ -569,7 +578,18 @@ public class API {
             MMF = new MultiMediaFile(User, MediaFile);
         }
 
+        // Unhide for the primary user.
         MMF.unhide();
+
+        // Unhide for all secondary users.
+        List<String> secondaryUsers = UserAPI.getLoggedinSecondaryUsers();
+
+        for (String secondaryUser : secondaryUsers) {
+            Log.getInstance().write(Log.LOGLEVEL_TRACE, "undeleteMediaFile: Undeleting for secondary user " + secondaryUser);
+            MMF = new MultiMediaFile(secondaryUser, ensureIsMediaFile(MediaFile));
+            MMF.unhide();
+        }
+
         return;
 
     }
@@ -579,14 +599,23 @@ public class API {
      * @param MediaFile
      * @return true if the MediaFile was deleted, false otherwise.
      */
-    @Deprecated
     public static boolean deleteMediaFileWithoutPrejudice(Object MediaFile) {
 
         String User = getLoggedinUser();
 
         if (User==null || User.equalsIgnoreCase(Plugin.SUPER_USER)) {
+            MultiMediaFile MMF = new MultiMediaFile(Plugin.SUPER_USER, MediaFile);
+            MMF.removeRecord();
             return sagex.api.MediaFileAPI.DeleteFileWithoutPrejudice(MediaFile);
         }
+
+        List<String> secondaryUsers = UserAPI.getLoggedinSecondaryUsers();
+
+        for (String secondaryUser : secondaryUsers) {
+            Log.getInstance().write(Log.LOGLEVEL_TRACE, "deleteMediaFIleWithoutPrejudice: Deleting for secondary user " + secondaryUser);
+            MultiMediaFile MMF = new MultiMediaFile(secondaryUser, ensureIsMediaFile(MediaFile));
+            MMF.delete(true);
+        } 
 
         MultiMediaFile MMF = new MultiMediaFile(User, ensureIsMediaFile(MediaFile));
         return MMF.delete(true);
@@ -597,7 +626,6 @@ public class API {
      * @param ID
      * @return
      */
-    @Deprecated
     private static Object getMediaFileForID(int ID) {
         return null;
     }
@@ -614,7 +642,6 @@ public class API {
      * Replaces the core API.
      * @return
      */
-    @Deprecated
     public static boolean isIntelligentRecordingDisabled() {
 
         String User = getLoggedinUser();
@@ -631,7 +658,6 @@ public class API {
      * Convenience method to avoid the confusion of double negatives.
      * @return
      */
-    @Deprecated
     public static boolean isIntelligentRecordingEnabled() {
         return !isIntelligentRecordingDisabled();
     }
@@ -651,7 +677,6 @@ public class API {
      *
      * @param disabling
      */
-    @Deprecated
     public static void setIntelligentRecordingDisabled(boolean disabling) {
 
         String user = getLoggedinUser();
@@ -661,9 +686,19 @@ public class API {
             // Set the Core to the appropriate state.
             Configuration.SetIntelligentRecordingDisabled(disabling);
 
-            // If we just turned IR off, turn it off for all users.
-            if (disabling)
+            // If we just turned IR off, turn it off for all users. Otherwise it is being turned
+            // on so turn it on for all secondary users.
+            if (disabling) {
                 User.disableIntelligentRecordingForAllUsers();
+            } else {
+                List<String> secondaryUsers = UserAPI.getLoggedinSecondaryUsers();
+
+                for (String secondaryUser : secondaryUsers) {
+                    Log.getInstance().write(Log.LOGLEVEL_TRACE, "setIntelligentRecordingDisabled: Setting for secondary user " + secondaryUser);
+                    User u = new User(secondaryUser);
+                    u.setIntelligentRecordingDisabled(disabling);
+                }
+            }
 
             return;
         }
@@ -671,6 +706,14 @@ public class API {
         // Change the state for the user.
         User u = new User(user);
         u.setIntelligentRecordingDisabled(disabling);
+
+        List<String> secondaryUsers = UserAPI.getLoggedinSecondaryUsers();
+
+        for (String secondaryUser : secondaryUsers) {
+            Log.getInstance().write(Log.LOGLEVEL_TRACE, "setIntelligentRecordingDisabled: Setting for secondary user " + secondaryUser);
+            u = new User(secondaryUser);
+            u.setIntelligentRecordingDisabled(disabling);
+        }
 
         // If we just enabled IR for the user, make sure it's enabled in the Core.
         // If we just disabled IR for the user and no users have IR enabled, disable it in the Core.
@@ -693,7 +736,6 @@ public class API {
      * Invoke IN PLACE OF core API.
      * @return
      */
-    @Deprecated
     public static long getUsedVideoDiskspace() {
         String User = getLoggedinUser();
 
@@ -721,7 +763,6 @@ public class API {
      * @param User
      * @return The number of bytes of space used by the User.
      */
-    @Deprecated
     public static long getUsedVideoDiskspace(String User) {
 
         if (User==null)
@@ -745,7 +786,6 @@ public class API {
         return bytes;
     }
 
-    @Deprecated
     public static Object[] getScheduledRecordings() {
         String user = getLoggedinUser();
 
@@ -777,8 +817,15 @@ public class API {
      * @param Airing
      * @return
      */
-    @Deprecated
     public static Object record(Object Airing) {
+
+        List<String> secondaryUsers = UserAPI.getLoggedinSecondaryUsers();
+
+        for (String secondaryUser : secondaryUsers) {
+            Log.getInstance().write(Log.LOGLEVEL_TRACE, "record: Setting for secondary user " + secondaryUser);
+            MultiAiring MA = new MultiAiring(secondaryUser, ensureIsAiring(Airing));
+            MA.setManualRecord();
+        }
 
         String User = getLoggedinUser();
 
@@ -796,8 +843,15 @@ public class API {
      * @param User
      * @param Airing
      */
-    @Deprecated
     public static void markAsManualRecord(String User, Object Airing) {
+
+        List<String> secondaryUsers = UserAPI.getLoggedinSecondaryUsers();
+
+        for (String secondaryUser : secondaryUsers) {
+            Log.getInstance().write(Log.LOGLEVEL_TRACE, "markAsManualRecord: Marking for secondary user " + secondaryUser);
+            MultiAiring MA = new MultiAiring(secondaryUser, ensureIsAiring(Airing));
+            MA.setManualRecord();
+        }
 
         // Nothing to do for null user or Admin.
         if (User==null || User.equalsIgnoreCase(Plugin.SUPER_USER)) {
@@ -815,8 +869,15 @@ public class API {
      * @param StopTime
      * @return
      */
-    @Deprecated
     public static Object setRecordingTimes(Object Airing, long StartTime, long StopTime) {
+
+        List<String> secondaryUsers = UserAPI.getLoggedinSecondaryUsers();
+
+        for (String secondaryUser : secondaryUsers) {
+            Log.getInstance().write(Log.LOGLEVEL_TRACE, "setRecordingTime: Setting for secondary user " + secondaryUser);
+            MultiAiring MA = new MultiAiring(secondaryUser, ensureIsAiring(Airing));
+            MA.setRecordingTimes(StartTime, StopTime);
+        }
 
         String User = getLoggedinUser();
 
@@ -834,7 +895,6 @@ public class API {
      * @param Airing
      * @return
      */
-    @Deprecated
     public static boolean isManualRecord(Object Airing) {
 
         String User = getLoggedinUser();
@@ -851,8 +911,15 @@ public class API {
      * Invoke IN PLACE OF core API.
      * @param Airing
      */
-    @Deprecated
-    public static void cancelRecord(Object Airing) {
+     public static void cancelRecord(Object Airing) {
+
+        List<String> secondaryUsers = UserAPI.getLoggedinSecondaryUsers();
+
+        for (String secondaryUser : secondaryUsers) {
+            Log.getInstance().write(Log.LOGLEVEL_TRACE, "cancelRecord: Cancel for secondary user " + secondaryUser);
+            MultiAiring MA = new MultiAiring(secondaryUser, ensureIsAiring(Airing));
+            MA.cancelManualRecord();
+        }
 
         String User = getLoggedinUser();
 
@@ -873,7 +940,6 @@ public class API {
      * @param Airing
      * @return
      */
-    @Deprecated
     public static Object getMediaFileForAiring(Object Airing) {
 
         String User = getLoggedinUser();
@@ -893,13 +959,11 @@ public class API {
     }
 
     // Not implemented, placeholder.
-    @Deprecated
     private static Object addAiring() {
         return null;
     }
 
     // Not implemented, placeholder.
-    @Deprecated
     private static Object addAiringDetailed() {
         return null;
     }
@@ -909,7 +973,6 @@ public class API {
      * @param Airing
      * @return
      */
-    @Deprecated
     public static boolean isDontLike(Object Airing) {
 
         String User = getLoggedinUser();
@@ -925,8 +988,15 @@ public class API {
      * Invoke IN PLACE OF core API.
      * @param Airing
      */
-    @Deprecated
     public static void setDontLike(Object Airing) {
+
+        List<String> secondaryUsers = UserAPI.getLoggedinSecondaryUsers();
+
+        for (String secondaryUser : secondaryUsers) {
+            Log.getInstance().write(Log.LOGLEVEL_TRACE, "setDontLike: Setting for secondary user " + secondaryUser);
+            MultiAiring MA = new MultiAiring(secondaryUser, ensureIsAiring(Airing));
+            MA.setDontLike();
+        }
 
         String User = getLoggedinUser();
 
@@ -947,8 +1017,15 @@ public class API {
      * Invoke IN PLACE OF core API.
      * @param Airing
      */
-    @Deprecated
     public static void clearDontLike(Object Airing) {
+
+        List<String> secondaryUsers = UserAPI.getLoggedinSecondaryUsers();
+
+        for (String secondaryUser : secondaryUsers) {
+            Log.getInstance().write(Log.LOGLEVEL_TRACE, "clearDontLike: Clearing for secondary user " + secondaryUser);
+            MultiAiring MA = new MultiAiring(secondaryUser, ensureIsAiring(Airing));
+            MA.clearDontLike();
+        }
 
         String User = getLoggedinUser();
 
@@ -970,7 +1047,6 @@ public class API {
      * @param Airing
      * @return
      */
-    @Deprecated
     public static boolean isFavorite(Object Airing) {
 
         String User = getLoggedinUser();
@@ -993,7 +1069,6 @@ public class API {
      * @param O
      * @return
      */
-    @Deprecated
     public static boolean isFavoriteObject(Object O) {
 
         String User = getLoggedinUser();
@@ -1016,7 +1091,6 @@ public class API {
      * @param Airing
      * @return
      */
-    @Deprecated
     public static boolean isNotManualOrFavorite(Object Airing) {
 
         String User = getLoggedinUser();
@@ -1062,7 +1136,6 @@ public class API {
      * @param Airing
      * @return
      */
-    @Deprecated
     public static boolean isWatched(Object Airing) {
 
         String User = getLoggedinUser();
@@ -1078,8 +1151,15 @@ public class API {
      * Invoke IN PLACE OF core API.
      * @param Airing
      */
-    @Deprecated
     public static void setWatched(Object Airing) {
+
+        List<String> secondaryUsers = UserAPI.getLoggedinSecondaryUsers();
+
+        for (String secondaryUser : secondaryUsers) {
+            Log.getInstance().write(Log.LOGLEVEL_TRACE, "setWatched: Setting for secondary user " + secondaryUser);
+            MultiAiring MA = new MultiAiring(secondaryUser, ensureIsAiring(Airing));
+            MA.setWatched();
+        }
 
         String User = getLoggedinUser();
 
@@ -1104,8 +1184,15 @@ public class API {
      * Invoke IN PLACE OF core API.
      * @param Airing
      */
-    @Deprecated
     public static void clearWatched(Object Airing) {
+
+        List<String> secondaryUsers = UserAPI.getLoggedinSecondaryUsers();
+
+        for (String secondaryUser : secondaryUsers) {
+            Log.getInstance().write(Log.LOGLEVEL_TRACE, "clearWatched: Clearing for secondary user " + secondaryUser);
+            MultiAiring MA = new MultiAiring(secondaryUser, ensureIsAiring(Airing));
+            MA.clearWatched();
+        }
 
         String User = getLoggedinUser();
 
@@ -1127,7 +1214,6 @@ public class API {
      * @param Airing
      * @return
      */
-    @Deprecated
     public static long getRealWatchedStartTime(Object Airing) {
         String User = getLoggedinUser();
 
@@ -1154,7 +1240,6 @@ public class API {
      * @param Airing
      * @return
      */
-    @Deprecated
     public static long getRealWatchedEndTime(Object Airing) {
         String User = getLoggedinUser();
 
@@ -1181,7 +1266,6 @@ public class API {
      * @param Airing
      * @return
      */
-    @Deprecated
     public static long getWatchedDuration(Object Airing) {
         String User = getLoggedinUser();
 
@@ -1208,7 +1292,6 @@ public class API {
      * @param Airing
      * @return
      */
-    @Deprecated
     public static long getWatchedStartTime(Object Airing) {
         String User = getLoggedinUser();
 
@@ -1235,7 +1318,6 @@ public class API {
      * @param Airing
      * @return
      */
-    @Deprecated
     public static long getWatchedEndTime(Object Airing) {
         String User = getLoggedinUser();
 
@@ -1266,7 +1348,6 @@ public class API {
      * @param Airing
      * @return
      */
-    @Deprecated
     public static long getAiringDuration(Object Airing) {
         return sagex.api.AiringAPI.GetAiringDuration(Airing);
     }
@@ -1284,7 +1365,6 @@ public class API {
      * Invoke IN PLACE OF core API.
      * @return
      */
-    @Deprecated
     public static Object[] getFavorites() {
 
         String User = getLoggedinUser();
@@ -1300,8 +1380,15 @@ public class API {
      * Invoke IN PLACE OF core API.
      * @param Favorite
      */
-    @Deprecated
     public static void removeFavorite(Object Favorite) {
+
+        List<String> secondaryUsers = UserAPI.getLoggedinSecondaryUsers();
+
+        for (String secondaryUser : secondaryUsers) {
+            Log.getInstance().write(Log.LOGLEVEL_TRACE, "removeFavorite: Removing for secondary user " + secondaryUser);
+            MultiFavorite MF = new MultiFavorite(secondaryUser, Favorite);
+            MF.removeFavorite();
+        }
 
         String User = getLoggedinUser();
 
@@ -1320,7 +1407,6 @@ public class API {
      * Invoke right after Core API.
      * @param Favorite
      */
-    @Deprecated
     public static void addFavorite(Object Favorite) {
 
         String U = getLoggedinUser();
@@ -1338,6 +1424,14 @@ public class API {
             return;
         }
 
+        List<String> secondaryUsers = UserAPI.getLoggedinSecondaryUsers();
+
+        for (String secondaryUser : secondaryUsers) {
+            Log.getInstance().write(Log.LOGLEVEL_TRACE, "addFavorite: Adding for secondary user " + secondaryUser);
+            MultiFavorite MF = new MultiFavorite(secondaryUser, Favorite);
+            MF.addFavorite();
+        }
+
         MultiFavorite MF = new MultiFavorite(U, Favorite);
         MF.addFavorite();
         return;
@@ -1348,7 +1442,6 @@ public class API {
      * @param UserID
      * @param Favorite
      */
-    @Deprecated
     public static void addFavorite(String UserID, Object Favorite) {
 
         if (UserID==null || UserID.equalsIgnoreCase(Plugin.SUPER_USER)) {
@@ -1375,7 +1468,6 @@ public class API {
      * @param Airing
      * @return
      */
-    @Deprecated
     public static Object getFavoriteForAiring(Object Airing) {
 
         String User = getLoggedinUser();
@@ -1389,7 +1481,6 @@ public class API {
     }
 
     // Not in the default STV, but put here as a placeholder.
-    @Deprecated
     private static int getFavoriteID(Object Favorite) {
         return 0;
     }
@@ -1399,7 +1490,6 @@ public class API {
      * @param Favorite
      * @return
      */
-    @Deprecated
     public static List<String> GetUsersForFavorite(Object Favorite) {
 
         List<String> TheList = new ArrayList<String>();
@@ -1428,7 +1518,6 @@ public class API {
      * @param UserID
      * @return true if the user exists in the database, false otherwise.
      */
-    @Deprecated
     public static boolean userExists(String UserID) {
 
         if (UserID == null) {
@@ -1447,7 +1536,6 @@ public class API {
      * @param Password The password can't be null.
      * @return true for success, false otherwise.
      */
-    @Deprecated
     public static boolean createNewUser(String UserID, String Password) {
         if (UserID==null || Password==null || UserID.isEmpty() || Password.isEmpty()) {
             Log.getInstance().write(Log.LOGLEVEL_WARN, "createNewUser: Bad parameters " + UserID + ":" + Password);
@@ -1470,7 +1558,6 @@ public class API {
      * @param UserID
      * @return true if success, false otherwise.
      */
-    @Deprecated
     public static boolean removeUser(String UserID) {
         if (UserID==null || UserID.isEmpty()) {
             Log.getInstance().write(Log.LOGLEVEL_WARN, "removeUser: Bad parameters " + UserID);
@@ -1487,7 +1574,6 @@ public class API {
      * @param UserID
      * @return The user password.
      */
-    @Deprecated
     public static String getUserPassword(String UserID) {
         User user = new User(UserID);
         return user.getPassword();
@@ -1499,7 +1585,6 @@ public class API {
      * @param UserID The user to initialize.
      * @param MediaFileOrAiring The MediaFile or Airing to initialize.
      */
-    @Deprecated
     public static void addUserToMediaFile(String UserID, Object MediaFileOrAiring) {
 
         if (UserID==null || MediaFileOrAiring==null) {
@@ -1531,7 +1616,6 @@ public class API {
      * @param UserID
      * @param MediaFile
      */
-    @Deprecated
     public static void removeUserFromMediaFile(String UserID, Object MediaFile) {
         User user = new User(UserID);
         user.removeFromMediaFile(MediaFile);
@@ -1540,7 +1624,6 @@ public class API {
     /**
      * Removes the information of all users from the MediaFile or Airing.
      */
-    @Deprecated
     public static void removeAllUsersFromMediaFile(Object MediaFile) {
         List<String> Users = User.getAllUsers();
 
@@ -1553,7 +1636,6 @@ public class API {
      * Get a List of all users in the database including "Admin".
      * @return
      */
-    @Deprecated
     public static List<String> getAllDefinedUsers() {
         return User.getAllUsers();
     }
@@ -1563,7 +1645,6 @@ public class API {
      * @param includeAdmin true to include "Admin" in the returned List, false otherwise.
      * @return
      */
-    @Deprecated
     public static List<String> getAllDefinedUsers(boolean includeAdmin) {
         return User.getAllUsers(includeAdmin);
     }
@@ -1573,7 +1654,6 @@ public class API {
      * @param UserID
      * @return true if success, false otherwise.
      */
-    @Deprecated
     public static boolean removeUserFromDatabase(String UserID) {
 
         if (UserID==null || UserID.isEmpty()) {
@@ -1589,7 +1669,6 @@ public class API {
      * Initializes the user in the database.
      * @param UserID
      */
-    @Deprecated
     public static void addUserToDatabase(String UserID) {
 
         if (UserID==null || UserID.isEmpty()) {
@@ -1606,7 +1685,6 @@ public class API {
     /**
      * Removes all user information from the user database, leaves the other databases intact.
      */
-    @Deprecated
     public static void clearUserDatabase() {
         UserRecordAPI.DeleteAllUserRecords(User.STORE);
     }
@@ -1615,7 +1693,6 @@ public class API {
      * Resets all user information (Watched, Like/Don't Like, watched times, etc.)
      * in the MediaFile database.
      */
-    @Deprecated
     public static void resetMediaFileDatabase() {
         List<String> AllUsers = User.getAllUsers();
         
@@ -1628,7 +1705,6 @@ public class API {
         }
     }
 
-    @Deprecated
     public static boolean isShowImports(String U) {
 
         if (U==null || U.equalsIgnoreCase(Plugin.SUPER_USER)) {
@@ -1639,7 +1715,6 @@ public class API {
         return user.isShowImports();
     }
 
-    @Deprecated
     public static void setShowImports(String U, boolean Show) {
 
         if (U==null || U.equalsIgnoreCase(Plugin.SUPER_USER)) {
@@ -1888,7 +1963,7 @@ public class API {
 
                 // See if there are any users in the flag that are not defined. 
                 //  Ignore the Key flag.
-                if(!flag.equalsIgnoreCase(MultiObject.KEY) && !allUsers.containsAll(usersInFlag)) {
+                if(!flag.equalsIgnoreCase(DatabaseRecord.KEY) && !allUsers.containsAll(usersInFlag)) {
                     Log.getInstance().write(Log.LOGLEVEL_TRACE, "scanFlagsForOrpanedUserData: Found flag with undefined user " + flag + ":" + usersInFlag);
 
                     // Create a working List because delimitedStringToList returns a non-mutable List.
@@ -2054,6 +2129,10 @@ public class API {
                 Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "ensureIsMediaFile: Found unknown Object " + sagex.api.AiringAPI.PrintAiringShort(SageObject));
             return SageObject;
         }
+    }
+
+    static boolean isNullOrEmpty(List<String> UserList) {
+        return UserList==null || UserList.isEmpty();
     }
 
     /*

@@ -21,6 +21,7 @@ public class MultiFavorite extends MultiObject {
      * Favorite defined.
      */
     public static final String     FAVORITE_USERS  = "AllowedUsers";
+    
     static final String[]   FLAGS = {FAVORITE_USERS};
 
     private Object          sageFavorite = null;
@@ -45,7 +46,7 @@ public class MultiFavorite extends MultiObject {
 
         allowedUsers = new ArrayList<String>();
 
-        String userString = getRecordData(FAVORITE_USERS);
+        String userString = database.getRecordData(FAVORITE_USERS);
 
         if (userString == null || userString.isEmpty()) {
             Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "MultiFavorite: No AllowedUsers.");
@@ -67,7 +68,7 @@ public class MultiFavorite extends MultiObject {
         }
 
         allowedUsers.add(userID);
-        addDataToFlag(FAVORITE_USERS, userID);
+        database.addDataToFlag(FAVORITE_USERS, userID);
         Log.getInstance().write(Log.LOGLEVEL_TRACE, "addFavorite: Users for Favorite " +  sagex.api.FavoriteAPI.GetFavoriteDescription(sageFavorite) + ":" + allowedUsers);
     }
 
@@ -85,7 +86,7 @@ public class MultiFavorite extends MultiObject {
         if (allowedUsers.contains(userID))
             allowedUsers.remove(userID);
 
-        DelimitedString DS = removeDataFromFlag(FAVORITE_USERS, userID);
+        DelimitedString DS = database.removeDataFromFlag(FAVORITE_USERS, userID);
         Log.getInstance().write(Log.LOGLEVEL_TRACE, "removeFavorite: Users for Favorite " + sagex.api.FavoriteAPI.GetFavoriteDescription(sageFavorite) + ":" + allowedUsers);
 
         if (DS==null || DS.isEmpty()) {
@@ -116,7 +117,7 @@ public class MultiFavorite extends MultiObject {
         if (allowedUsers.contains(userID))
             allowedUsers.remove(userID);
 
-        removeDataFromFlag(FAVORITE_USERS, userID);
+        database.removeDataFromFlag(FAVORITE_USERS, userID);
     }
 
     /**
@@ -128,7 +129,7 @@ public class MultiFavorite extends MultiObject {
         if (!isValid)
             return false;
 
-        List<String> users = DelimitedString.delimitedStringToList(getRecordData(FAVORITE_USERS), Plugin.LIST_SEPARATOR);
+        List<String> users = DelimitedString.delimitedStringToList(database.getRecordData(FAVORITE_USERS), Plugin.LIST_SEPARATOR);
         return users.contains(userID);
     }
 
@@ -171,7 +172,7 @@ public class MultiFavorite extends MultiObject {
      */
     @Deprecated
     public void initializeUser() {
-        addDataToFlag(FAVORITE_USERS, userID);
+        database.addDataToFlag(FAVORITE_USERS, userID);
     }
 
     /**

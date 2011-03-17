@@ -17,7 +17,7 @@ public class User {
 
     static final String STORE      = "MultiUser.User"; // Record Key is UserID.
 
-    private static final String KEY           = "Key";
+    //private static final String KEY           = "Key";
     private static final String KEY_USERID    = "UserID";
     private static final String KEY_PASSWORD  = "Password";
     private static final String KEY_IR        = "IntelligentRecording";
@@ -26,8 +26,9 @@ public class User {
     private static final String KEY_WATCHING  = "Watching";
 
     private String  user    = null;
-    private Object  record  = null;
+    //private Object  record  = null;
     private boolean isValid = true;
+    private DatabaseRecord  database = null;
     //private String  UIContext = null;
 
     public User(String UserID) {
@@ -45,26 +46,18 @@ public class User {
         }
 
         user = UserID;
-        record = UserRecordAPI.GetUserRecord(STORE, user);
-/*
-        UIContext = Global.GetUIContextName();
+        database = new DatabaseRecord(STORE, user);
+        //record = UserRecordAPI.GetUserRecord(STORE, user);
 
-        if (UIContext==null || UIContext.isEmpty()) {
-            Log.getInstance().write(Log.LOGLEVEL_WARN, "User: null UIContextName.");
-            isValid = false;
-        }
- * 
- */
-
-        if (record==null) {
-            Log.getInstance().write(Log.LOGLEVEL_WARN, "User: null record.");
-        }
+        //if (record==null) {
+            //Log.getInstance().write(Log.LOGLEVEL_WARN, "User: null record.");
+        //}
     }
 
     void logOn() {
-        Log.getInstance().write(Log.LOGLEVEL_TRACE, "logOn: Logged on user " + user);
         SageUtil.setUIProperty(Plugin.PROPERTY_LAST_LOGGEDIN_USER, user);
         SageUtil.setUIProperty(Plugin.PROPERTY_LAST_LOGGEDIN_CONTEXT_NAME, Global.GetUIContextName(UIContext.getCurrentContext()));
+        Log.getInstance().write(Log.LOGLEVEL_TRACE, "logOn: Logged on user " + user);
     }
 
     void logOff() {
@@ -74,7 +67,7 @@ public class User {
     }
 
     boolean exists() {
-        return isValid && record != null;
+        return database.exists();
     }
 
     boolean create(String Password) {
@@ -82,26 +75,37 @@ public class User {
             return false;
 
         // Delete the old Record if it exists.
-        Object OldRecord = UserRecordAPI.GetUserRecord(STORE, user);
-        if (OldRecord != null) {
-            Log.getInstance().write(Log.LOGLEVEL_WARN, "create: Removing existing User record.");
-            UserRecordAPI.DeleteUserRecord(OldRecord);
-        }
+        database.delete();
 
-        record = UserRecordAPI.AddUserRecord(STORE, user);
+        //Object OldRecord = UserRecordAPI.GetUserRecord(STORE, user);
+        //if (OldRecord != null) {
+            //Log.getInstance().write(Log.LOGLEVEL_WARN, "create: Removing existing User record.");
+            //UserRecordAPI.DeleteUserRecord(OldRecord);
+        //}
 
-        if (record==null) {
-            Log.getInstance().write(Log.LOGLEVEL_ERROR, "create: null Record." + user);
-            return false;
-        }
+        database = new DatabaseRecord(STORE, user);
 
-        UserRecordAPI.SetUserRecordData(record, KEY, user);
-        UserRecordAPI.SetUserRecordData(record, KEY_USERID, user);
-        UserRecordAPI.SetUserRecordData(record, KEY_PASSWORD, Password);
-        UserRecordAPI.SetUserRecordData(record, KEY_SHOW_IMPORTS, "true");
-        
+        //record = UserRecordAPI.AddUserRecord(STORE, user);
+
+        //if (record==null) {
+            //Log.getInstance().write(Log.LOGLEVEL_ERROR, "create: null Record." + user);
+            //return false;
+        //}
+
+        database.setRecordData(KEY_USERID, user);
+        database.setRecordData(KEY_PASSWORD, Password);
+        database.setRecordData(KEY_SHOW_IMPORTS, "true");
+
         Boolean Intelligent = Configuration.IsIntelligentRecordingDisabled();
-        UserRecordAPI.SetUserRecordData(record, KEY_IR, Intelligent.toString());
+        database.setRecordData(KEY_IR, Intelligent.toString());
+
+        //UserRecordAPI.SetUserRecordData(record, KEY, user);
+        //UserRecordAPI.SetUserRecordData(record, KEY_USERID, user);
+        //UserRecordAPI.SetUserRecordData(record, KEY_PASSWORD, Password);
+        //UserRecordAPI.SetUserRecordData(record, KEY_SHOW_IMPORTS, "true");
+        
+        //Boolean Intelligent = Configuration.IsIntelligentRecordingDisabled();
+        //UserRecordAPI.SetUserRecordData(record, KEY_IR, Intelligent.toString());
 
         Log.getInstance().write(Log.LOGLEVEL_TRACE, "create: Created user " + user);
         return true;
@@ -109,16 +113,16 @@ public class User {
 
     boolean destroy() {
 
-        if (!isValid || record==null) {
+        if (!isValid) {
             Log.getInstance().write(Log.LOGLEVEL_WARN, "destroy: null Record.");
             return false;
         }
 
-        return UserRecordAPI.DeleteUserRecord(record);
+        return database.delete();
     }
 
     String getPassword() {
-        String password = isValid ? UserRecordAPI.GetUserRecordData(record, KEY_PASSWORD) : null;
+        String password = isValid ? database.getRecordData(KEY_PASSWORD) : null;
         Log.getInstance().write(Log.LOGLEVEL_TRACE, "getPassword: Password " + password + ":" + isValid);
         return password;
     }
@@ -127,17 +131,17 @@ public class User {
 
         if (!isValid || Password==null || Password.isEmpty()) {
             Log.getInstance().write(Log.LOGLEVEL_WARN, "setPassword: null Password, setting to " + user);
-            UserRecordAPI.SetUserRecordData(record, KEY_PASSWORD, user);
+            database.setRecordData(KEY_PASSWORD, user);
             return;
         }
 
         Log.getInstance().write(Log.LOGLEVEL_TRACE, "setPassword: Password " + Password);
-        UserRecordAPI.SetUserRecordData(record, KEY_PASSWORD, Password);
+        database.setRecordData(KEY_PASSWORD, Password);
         return;
     }
 
     String getShowImports() {
-        return UserRecordAPI.GetUserRecordData(record, KEY_SHOW_IMPORTS);
+        return database.getRecordData(KEY_SHOW_IMPORTS);
     }
 
     void setShowImports(Boolean Show) {
@@ -153,14 +157,14 @@ public class User {
 
         if (Show==null || Show.isEmpty()) {
             Log.getInstance().write(Log.LOGLEVEL_WARN, "setShowImports: null parameter, setting to true.");
-            UserRecordAPI.SetUserRecordData(record, KEY_SHOW_IMPORTS, "true");
+            database.setRecordData(KEY_SHOW_IMPORTS, "true");
             return;
         }
 
         String setting = Show.equalsIgnoreCase("true") ? "true" : "false";
 
         Log.getInstance().write(Log.LOGLEVEL_TRACE, "setShowImports: Setting to " + setting);
-        UserRecordAPI.SetUserRecordData(record, KEY_SHOW_IMPORTS, setting);
+        database.setRecordData(KEY_SHOW_IMPORTS, setting);
         return;
     }
 
@@ -170,7 +174,7 @@ public class User {
     }
 
     String getUIContext() {
-        return isValid ? UserRecordAPI.GetUserRecordData(record, KEY_UICONTEXT) : null;
+        return isValid ? database.getRecordData(KEY_UICONTEXT) : null;
     }
 
     private void setUIContext() {
@@ -182,7 +186,7 @@ public class User {
         }
 
         Log.getInstance().write(Log.LOGLEVEL_TRACE, "setUIContext: UIContext for user is " + UIContextName);
-        UserRecordAPI.SetUserRecordData(record, KEY_UICONTEXT, UIContextName);
+        database.setRecordData(KEY_UICONTEXT, UIContextName);
         return;
     }
     
@@ -240,16 +244,16 @@ public class User {
         }
 
         Integer ID = sagex.api.MediaFileAPI.GetMediaFileID(MF);
-        UserRecordAPI.SetUserRecordData(record, KEY_WATCHING, ID.toString());
+        database.setRecordData(KEY_WATCHING, ID.toString());
         return;
     }
 
     void clearWatching() {
-        UserRecordAPI.SetUserRecordData(record, KEY_WATCHING, null);
+        database.setRecordData(KEY_WATCHING, null);
     }
 
     String getWatching() {
-        return UserRecordAPI.GetUserRecordData(record, KEY_WATCHING);
+        return database.getRecordData(KEY_WATCHING);
     }
 
 
@@ -446,7 +450,7 @@ public class User {
             return Configuration.IsIntelligentRecordingDisabled();
         }
 
-        return (UserRecordAPI.GetUserRecordData(record, KEY_IR).toString().equalsIgnoreCase("true") ? true : false);
+        return (database.getRecordData(KEY_IR).toString().equalsIgnoreCase("true") ? true : false);
     }
 
     void setIntelligentRecordingDisabled(boolean value) {
@@ -457,7 +461,7 @@ public class User {
         }
 
         Boolean Value = value;
-        UserRecordAPI.SetUserRecordData(record, KEY_IR, Value.toString());
+        database.setRecordData(KEY_IR, Value.toString());
         return;
     }
 
@@ -467,6 +471,8 @@ public class User {
      */
 
     public static List<String> getAllUsers() {
+        return DatabaseRecord.getDataFromAllStores(STORE, KEY_USERID);
+        /*
         List<String> Users = new ArrayList<String>();
 
         Object[] Records = UserRecordAPI.GetAllUserRecords(STORE);
@@ -488,9 +494,25 @@ public class User {
         }
 
         return Users;
+         */
     }
 
     public static List<String> getAllUsers(boolean includeAdmin) {
+
+        if (includeAdmin)
+            return DatabaseRecord.getDataFromAllStores(STORE, KEY_USERID);
+
+        List<String> Users = new ArrayList<String>();
+
+        for (String User : DatabaseRecord.getDataFromAllStores(STORE, KEY_USERID)) {
+            if (!User.equalsIgnoreCase(Plugin.SUPER_USER)) {
+                Users.add(User);
+            }
+        }
+
+        return Users;
+
+        /*
         List<String> Users = new ArrayList<String>();
 
         Object[] Records = UserRecordAPI.GetAllUserRecords(STORE);
@@ -509,6 +531,8 @@ public class User {
         }
 
         return Users;
+         *
+         */
     }
 
     static boolean isIntelligentRecordingEnabledForAnyUsers() {
@@ -539,12 +563,12 @@ public class User {
     }
 
     static void wipeDatabase() {
-
-        Object[] AllUserRecords = UserRecordAPI.GetAllUserRecords(User.STORE);
-        Log.getInstance().write(Log.LOGLEVEL_WARN, "wipeDatabase: Begin wipe of User Store " + AllUserRecords.length);
-        for (Object Record : AllUserRecords)
-            UserRecordAPI.DeleteUserRecord(Record);
-        Log.getInstance().write(Log.LOGLEVEL_WARN, "wipeDatabase: DataStore wiped.");
+        DatabaseRecord.wipeAllRecords(STORE);
+        //Object[] AllUserRecords = UserRecordAPI.GetAllUserRecords(User.STORE);
+        //Log.getInstance().write(Log.LOGLEVEL_WARN, "wipeDatabase: Begin wipe of User Store " + AllUserRecords.length);
+        //for (Object Record : AllUserRecords)
+            //UserRecordAPI.DeleteUserRecord(Record);
+        //Log.getInstance().write(Log.LOGLEVEL_WARN, "wipeDatabase: DataStore wiped.");
     }
 
     static String getUserForContext(String UIContextName) {
@@ -563,24 +587,25 @@ public class User {
         return null;
     }
 
-    static String getUserWatchingID(Integer ID) {
-        return getUserWatchingID(ID.toString());
+    static List<String> getUsersWatchingID(Integer ID) {
+        return getUsersWatchingID(ID.toString());
     }
 
-    static String getUserWatchingID(String ID) {
+    static List<String> getUsersWatchingID(String ID) {
 
-        List<String> UserIDs = getAllUsers();
+        //List<String> UserIDs = getAllUsers();
+        List<String> usersWatching = new ArrayList<String>();
 
-        for (String UserID : UserIDs) {
+        for (String UserID : getAllUsers()) {
             User user = new User(UserID);
             String ThisID = user.getWatching();
             if (ThisID!=null && ThisID.equalsIgnoreCase(ID)) {
                 Log.getInstance().write(Log.LOGLEVEL_TRACE, "getUserWatchingID: Found user " + UserID);
-                return UserID;
+                usersWatching.add(UserID);
             }
         }
 
-        Log.getInstance().write(Log.LOGLEVEL_TRACE, "getUserForContext: No userID found for ID " + ID);
-        return null;
+        //Log.getInstance().write(Log.LOGLEVEL_TRACE, "getUserForContext: No userID found for ID " + ID);
+        return usersWatching;
     }
 }

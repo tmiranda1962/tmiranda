@@ -14,7 +14,7 @@ public class Plugin implements sage.SageTVPlugin, SageTVEventListener {
     /**
      * The current Plugin version.
      */
-    public static final String  VERSION = "0.08 03.11.2011";
+    public static final String  VERSION = "0.09 03.16.2011";
 
     /*
      * Constants used throughout the Plugin.
@@ -50,7 +50,7 @@ public class Plugin implements sage.SageTVPlugin, SageTVEventListener {
      */
     public static final String PROPERTY_LOGIN_LAST_USER   = "mus/LoginLastUser";    // LOCAL setting.
 
-     
+   
     /**
      * Property used to store if passwords are in use.
      */
@@ -71,6 +71,12 @@ public class Plugin implements sage.SageTVPlugin, SageTVEventListener {
      */
     public static final String PROPERTY_LAST_LOGGEDIN_USER = "mus/LastLoggedinUser";    // LOCAL setting.
     public static final String PROPERTY_LAST_LOGGEDIN_CONTEXT_NAME = "mus/LastLoggedinContext";
+
+    /**
+     * Property used to store a delimited string of secondary users.
+     */
+    public static final String PROPERTY_SECONDARY_USERS = "mus/SecondaryUsers"; // LOCAL property.
+    public static final String PROPERTY_LOGIN_SECONDARY_USERS = "mus/LoginSecondaryUsers";
 
     private sage.SageTVPluginRegistry   registry;
     private sage.SageTVEventListener    listener;
@@ -113,7 +119,7 @@ public class Plugin implements sage.SageTVPlugin, SageTVEventListener {
             Log.getInstance().write(Log.LOGLEVEL_TRACE, "start: User " + u);
             User user = new User(u);
             Log.getInstance().write(Log.LOGLEVEL_TRACE, "start:   Password " + user.getPassword());
-            Log.getInstance().write(Log.LOGLEVEL_TRACE, "start:   IR " + user.isIntelligentRecordingDisabled());
+            Log.getInstance().write(Log.LOGLEVEL_TRACE, "start:   IR Disabled " + user.isIntelligentRecordingDisabled());
             Log.getInstance().write(Log.LOGLEVEL_TRACE, "start:   UserID " + user.getUserID());
             Log.getInstance().write(Log.LOGLEVEL_TRACE, "start:   Show Imported Videos " + user.isShowImports());
         }
@@ -314,6 +320,9 @@ public class Plugin implements sage.SageTVPlugin, SageTVEventListener {
             return;
         }
 
+        /*
+         * Get data needed throughout event handler.
+         */
         Log.getInstance().write(Log.LOGLEVEL_TRACE, "sageEvent: Received event = " + eventName);
 
         Object MediaFile = eventVars.get("MediaFile");
@@ -327,6 +336,9 @@ public class Plugin implements sage.SageTVPlugin, SageTVEventListener {
 
         Integer MediaFileID = sagex.api.MediaFileAPI.GetMediaFileID(MediaFile);
 
+        //
+        // MediaFileRemoved.
+        //
         // If the core just removed the MediaFile make sure the record is also deleted.
         // It's possible that the API did not remove the MediaFile so we need to catch it here.
         if (eventName.startsWith("MediaFileRemoved")) {
@@ -351,6 +363,9 @@ public class Plugin implements sage.SageTVPlugin, SageTVEventListener {
             Log.getInstance().write(Log.LOGLEVEL_WARN, "sageEvent: null Airing.");
         }
 
+        //
+        // RecordingStarted.
+        //
         // If a recording has started hide it from all users except the one that created the Manual
         // or Favorite.  This will have the side effect of hiding IR's from users that have IR
         // enabled, but we will take care of that when the recording stops.
@@ -365,7 +380,7 @@ public class Plugin implements sage.SageTVPlugin, SageTVEventListener {
                     user.addToMediaFile(MediaFile);
                     if (Airing!=null)
                         user.addToAiring(Airing);
-                    MA.removeDataFromFlag(MultiAiring.MANUAL_IN_PROGRESS, ThisUser);
+                    MA.clearManualRecordFlag();
                     Log.getInstance().write(Log.LOGLEVEL_TRACE, "sageEvent: Added Manual or Favorite to user " + ThisUser);
                 } else {
                     MultiMediaFile MMF = new MultiMediaFile(ThisUser, MediaFile);
@@ -378,18 +393,21 @@ public class Plugin implements sage.SageTVPlugin, SageTVEventListener {
             return;
         }
 
+        //
+        // PlaybackStarted and PlaybackStopped.
+        //
         if (eventName.startsWith("PlaybackStarted") || eventName.startsWith("PlaybackStopped") || eventName.startsWith("PlaybackFinished")) {
 
-            String UserID = User.getUserWatchingID(MediaFileID);
+            List<String> UserIDs = User.getUsersWatchingID(MediaFileID);
 
             // Check for Admin or user that is not logged in. If either one of these users are doing the watching
             // we do not have to mess with any of the data.
-            if (UserID==null) {
-                Log.getInstance().write(Log.LOGLEVEL_TRACE, "sageEvent: No user for MediaFileID " + MediaFileID);
+            if (UserIDs==null || UserIDs.isEmpty()) {
+                Log.getInstance().write(Log.LOGLEVEL_TRACE, "sageEvent: No users for MediaFileID " + MediaFileID);
                 return;
             }
 
-            Log.getInstance().write(Log.LOGLEVEL_TRACE, "sageEvent: User watching this Airing " + UserID);
+            Log.getInstance().write(Log.LOGLEVEL_TRACE, "sageEvent: Users watching this Airing " + UserIDs);
 
             // Fetch the data from the Map.
             //   MediaTime = Time playback ended relative to the actual time the Airing was recorded.
@@ -412,21 +430,24 @@ public class Plugin implements sage.SageTVPlugin, SageTVEventListener {
                                    
             // Playback has stopped, maybe because the user manually stopped it or maybe
             // because the end of file has been reached.
-            MultiMediaFile MMF = new MultiMediaFile(UserID, MediaFile);
-            //MMF.setMediaTime(MediaTime);
-            MMF.setWatchedDuration(MediaTime - sagex.api.AiringAPI.GetAiringStartTime(MediaFile));
-            MMF.setChapterNum(ChapterNum);
-            MMF.setTitleNum(TitleNum);
-            MMF.setRealWatchedEndTime(Utility.Time());
-            MMF.setWatchedEndTime(MediaTime);
 
-            if (eventName.startsWith("PlaybackFinished")) {
-                MMF.setWatched();
+            for (String UserID : UserIDs) {
+                MultiMediaFile MMF = new MultiMediaFile(UserID, MediaFile);
+                //MMF.setMediaTime(MediaTime);
+                MMF.setWatchedDuration(MediaTime - sagex.api.AiringAPI.GetAiringStartTime(MediaFile));
+                MMF.setChapterNum(ChapterNum);
+                MMF.setTitleNum(TitleNum);
+                MMF.setRealWatchedEndTime(Utility.Time());
+                MMF.setWatchedEndTime(MediaTime);
+
+                if (eventName.startsWith("PlaybackFinished")) {
+                    MMF.setWatched();
+                }
+
+                // The user is no longer watching this MediaFile.
+                User user = new User(UserID);
+                user.clearWatching();
             }
-
-            // The user is no longer watching this MediaFile.
-            User user = new User(UserID);
-            user.clearWatching();
 
             return;
 
@@ -481,7 +502,7 @@ public class Plugin implements sage.SageTVPlugin, SageTVEventListener {
                 user.addToMediaFile(MediaFile);
                 if (Airing!=null)
                     user.addToAiring(Airing);
-                MA.removeDataFromFlag(MultiAiring.MANUAL_IN_PROGRESS, ThisUser);
+                MA.clearManualRecordFlag();
                 Log.getInstance().write(Log.LOGLEVEL_TRACE, "sageEvent: Added Manual or Favorite to user " + ThisUser);
             } else {
                 MultiMediaFile MMF = new MultiMediaFile(ThisUser, MediaFile);
