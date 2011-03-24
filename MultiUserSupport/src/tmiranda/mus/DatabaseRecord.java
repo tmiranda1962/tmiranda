@@ -48,6 +48,17 @@ public class DatabaseRecord {
             // Set the key so we can generate a keyset.  There is no UserRecordAPI method to
             // get the keyset so we need to keep track of the keys here.
             setRecordData(KEY, Key);
+
+        } else {
+
+            // Check to make sure this record has a key.  Older versions of the plugin did not
+            // set this value so we need to check here and update as necessary.
+            String currentKey = getRecordData(KEY);
+
+            if (currentKey==null || !currentKey.equals(Key)) {
+                Log.getInstance().write(Log.LOGLEVEL_TRACE, "DatabaseRecord: Setting key for previously initialized record " + Key + ":" + currentKey);
+                setRecordData(KEY, Key);
+            }
         }
     }
 
@@ -94,7 +105,7 @@ public class DatabaseRecord {
 
 
     /**
-     * Get the keyset for all of the database records.
+     * Get the keyset for all of the database records in the store.
      * @return
      */
     public List<String> keySet() {
@@ -112,6 +123,14 @@ public class DatabaseRecord {
         }
 
         return keySet;
+    }
+
+    /**
+     * Return the key for this specific database record.
+     * @return
+     */
+    public String key() {
+        return getRecordData(KEY);
     }
 
     /**
@@ -142,8 +161,14 @@ public class DatabaseRecord {
     DelimitedString addDataToFlag(String Flag, String Data) {
         Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "addFlag: Adding " + Data + " to " + Flag);
         DelimitedString DS = new DelimitedString(getRecordData(Flag), Plugin.LIST_SEPARATOR);
-        DS.addUniqueElement(Data);
-        setRecordData(Flag, DS.toString());
+
+        if (Data.equals(Plugin.SUPER_USER)) {
+            Log.getInstance().write(Log.LOGLEVEL_TRACE, "addFlag: Attempt to add Admin ignored for " + Flag);
+        }  else {
+            DS.addUniqueElement(Data);
+            setRecordData(Flag, DS.toString());
+        }
+
         return DS;
     }
 
@@ -167,7 +192,7 @@ public class DatabaseRecord {
      * @param User
      * @return
      */
-    final boolean containsFlag(String Flag, String User) {
+    final boolean containsFlagData(String Flag, String User) {
         DelimitedString DS = new DelimitedString(getRecordData(Flag), Plugin.LIST_SEPARATOR);
         return (DS.contains(User));
     }
@@ -211,7 +236,7 @@ public class DatabaseRecord {
         for (String U : allUsers) {
             User user = new User(U);
 
-            if (!user.isIntelligentRecordingDisabled() && containsFlag(Flag, U)) {
+            if (!user.isIntelligentRecordingDisabled() && containsFlagData(Flag, U)) {
                 Log.getInstance().write(Log.LOGLEVEL_TRACE, "containsFlagAnyIRUsers: Found IR user " + U);
                 return true;
             }
@@ -246,4 +271,15 @@ public class DatabaseRecord {
         return hash;
     }
 
+    public boolean isValid() {
+        return isValid;
+    }
+
+    public String getKey() {
+        return key;
+    }
+
+    public String getStore() {
+        return store;
+    }
 }

@@ -14,7 +14,7 @@ public class Plugin implements sage.SageTVPlugin, SageTVEventListener {
     /**
      * The current Plugin version.
      */
-    public static final String  VERSION = "0.09 03.16.2011";
+    public static final String  VERSION = "0.12 03.XX.2011";
 
     /*
      * Constants used throughout the Plugin.
@@ -371,6 +371,11 @@ public class Plugin implements sage.SageTVPlugin, SageTVEventListener {
         // enabled, but we will take care of that when the recording stops.
         if (eventName.startsWith("RecordingStarted")) {
 
+            if (Airing==null) {
+                Log.getInstance().write(Log.LOGLEVEL_WARN, "sageEvent: Can't process Recording because there is no Airing.");
+                return;
+            }
+
             for (String ThisUser : Users) {
 
                 MultiAiring MA = new MultiAiring(ThisUser, Airing);
@@ -380,7 +385,7 @@ public class Plugin implements sage.SageTVPlugin, SageTVEventListener {
                     user.addToMediaFile(MediaFile);
                     if (Airing!=null)
                         user.addToAiring(Airing);
-                    MA.clearManualRecordFlag();
+                    MA.clearManualInProgressFlag();
                     Log.getInstance().write(Log.LOGLEVEL_TRACE, "sageEvent: Added Manual or Favorite to user " + ThisUser);
                 } else {
                     MultiMediaFile MMF = new MultiMediaFile(ThisUser, MediaFile);
@@ -502,7 +507,7 @@ public class Plugin implements sage.SageTVPlugin, SageTVEventListener {
                 user.addToMediaFile(MediaFile);
                 if (Airing!=null)
                     user.addToAiring(Airing);
-                MA.clearManualRecordFlag();
+                MA.clearManualInProgressFlag();
                 Log.getInstance().write(Log.LOGLEVEL_TRACE, "sageEvent: Added Manual or Favorite to user " + ThisUser);
             } else {
                 MultiMediaFile MMF = new MultiMediaFile(ThisUser, MediaFile);
@@ -538,7 +543,7 @@ public class Plugin implements sage.SageTVPlugin, SageTVEventListener {
             }
 
         } else {
-            Log.getInstance().write(Log.LOGLEVEL_TRACE, "sageEvent: It's not a Manual or Favorite, and IR is disabled.");
+            Log.getInstance().write(Log.LOGLEVEL_TRACE, "sageEvent: It's Manual or Favorite, or IR is disabled.");
         }
 
         Log.getInstance().write(Log.LOGLEVEL_TRACE, "sageEvent: Processing complete.");

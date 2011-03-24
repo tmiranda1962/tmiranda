@@ -19,9 +19,9 @@ public class MultiAiring extends MultiObject {
     static final String AIRING_STORE        = "MultiUser.Airing";
     static final String MANUAL_IN_PROGRESS  = "ManualInProgress";
     static final String MANUAL              = "Manual";
-    static final String WATCHEDTIME         = "WatchedTime";
+    //static final String WATCHEDTIME         = "WatchedTime";
 
-    static final String[]   FLAGS = {MANUAL, MANUAL_IN_PROGRESS, INITIALIZED};
+    static final String[]   FLAGS = {MANUAL, MANUAL_IN_PROGRESS};
  
     private Object sageAiring       = null;
 
@@ -46,9 +46,75 @@ public class MultiAiring extends MultiObject {
 
         if (!isInitialized) {
             Log.getInstance().write(Log.LOGLEVEL_TRACE, "MultiAiring: Initializing user " + userID + ":" + sagex.api.AiringAPI.GetAiringTitle(Airing));
-            initializeUser();
-            database.addDataToFlag(INITIALIZED, userID);
+            initializeCurrentUser();
         }
+    }
+
+    // Initialize this user for the Airing by setting values to match core:
+    //  - DONTLIKE
+    //  - MANUAL
+    //  - MANUAL_IN_PROGRESS (clear)
+    //  - DELETED (clear)
+    //  - WATCHED
+    final void initializeCurrentUser() {
+
+        if (sagex.api.AiringAPI.IsDontLike(sageAiring))
+            database.addDataToFlag(DONTLIKE, userID);
+        else
+            database.removeDataFromFlag(DONTLIKE, userID);
+
+        if (sagex.api.AiringAPI.IsManualRecord(sageAiring))
+            database.addDataToFlag(MANUAL, userID);
+        else
+            database.removeDataFromFlag(MANUAL, userID);
+        
+        if (sagex.api.AiringAPI.IsWatched(sageAiring))
+            database.addDataToFlag(WATCHED, userID);
+        else
+            database.removeDataFromFlag(WATCHED, userID);
+
+        database.removeDataFromFlag(MANUAL_IN_PROGRESS, userID);
+        database.removeDataFromFlag(DELETED, userID);
+
+        database.addDataToFlag(INITIALIZED, userID);
+        isInitialized = true;
+        return;
+    }
+
+    private void initializeUser(String user) {
+
+        if (sagex.api.AiringAPI.IsDontLike(sageAiring))
+            database.addDataToFlag(DONTLIKE, user);
+        else
+            database.removeDataFromFlag(DONTLIKE, user);
+
+        if (sagex.api.AiringAPI.IsManualRecord(sageAiring))
+            database.addDataToFlag(MANUAL, user);
+        else
+            database.removeDataFromFlag(MANUAL, user);
+
+        if (sagex.api.AiringAPI.IsWatched(sageAiring))
+            database.addDataToFlag(WATCHED, user);
+        else
+            database.removeDataFromFlag(WATCHED, user);
+
+        database.removeDataFromFlag(MANUAL_IN_PROGRESS, user);
+        database.removeDataFromFlag(DELETED, user);
+        database.addDataToFlag(INITIALIZED, user);
+        return;
+    }
+
+    private void initializeAllUninitializedUsers() {
+        List<String> allUsers = User.getAllUsers();
+
+        if (allUsers==null || allUsers.isEmpty())
+            return;
+
+        for (String u : allUsers)
+            if(!database.containsFlagData(INITIALIZED, u))
+                initializeUser(u);
+
+        return;
     }
 
     // Record related methods must be resolved to an Airing in the API because only
@@ -59,7 +125,7 @@ public class MultiAiring extends MultiObject {
         if (!isValid) {
             return sagex.api.AiringAPI.IsManualRecord(sageAiring);
         } else
-            return database.containsFlag(MANUAL, userID);
+            return database.containsFlagData(MANUAL, userID);
     }
 
     // The API invokes the Sage core to start the recording.
@@ -69,10 +135,14 @@ public class MultiAiring extends MultiObject {
         else {
             database.addDataToFlag(MANUAL, userID);
             database.addDataToFlag(MANUAL_IN_PROGRESS, userID);
+
+            // Initialize all users because if we do not they will see this recording as a manual
+            // (because it will be marked as a manual in the core when they do initialize.)
+            initializeAllUninitializedUsers();
         }
     }
 
-    void clearManualRecordFlag() {
+    void clearManualInProgressFlag() {
         database.removeDataFromFlag(MANUAL_IN_PROGRESS, userID);
     }
 
@@ -156,33 +226,6 @@ public class MultiAiring extends MultiObject {
     }
 
 
-    // Initialize this user for the Airing.
-    final void initializeUser() {
-
-        if (sagex.api.AiringAPI.IsDontLike(sageAiring))
-            database.addDataToFlag(DONTLIKE, userID);
-        else
-            database.removeDataFromFlag(DONTLIKE, userID);
-
-        if (sagex.api.AiringAPI.IsManualRecord(sageAiring))
-            database.addDataToFlag(MANUAL, userID);
-        else
-            database.removeDataFromFlag(MANUAL, userID);
-
-        database.removeDataFromFlag(MANUAL_IN_PROGRESS, userID);
-        database.removeDataFromFlag(DELETED, userID);
-
-        //setRealWatchedStartTime(AiringAPI.GetRealWatchedStartTime(sageAiring));
-        //setRealWatchedEndTime(AiringAPI.GetRealWatchedEndTime(sageAiring));
-
-        //setWatchedStartTime(AiringAPI.GetWatchedStartTime(sageAiring));
-        //setWatchedEndTime(AiringAPI.GetWatchedEndTime(sageAiring));
-
-        database.addDataToFlag(INITIALIZED, userID);
-        isInitialized = true;
-        return;
-    }
-
     // Remove this user from the Airing.
     void clearUserFromFlags() {
         clearUser(userID, FLAGS);
@@ -202,7 +245,7 @@ public class MultiAiring extends MultiObject {
             if (userID.equalsIgnoreCase(Plugin.SUPER_USER)) {
                theList.add(flag + database.getRecordData(flag));
             } else {   
-               if (database.containsFlag(flag, userID))
+               if (database.containsFlagData(flag, userID))
                    theList.add("Contains " + flag);
                else
                    theList.add("!Contains " + flag);

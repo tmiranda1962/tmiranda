@@ -11,7 +11,6 @@ import sagex.api.*;
 public class MultiObject {
 
     boolean             isValid         = true;
-    //Object              record          = null;
     private String      store           = null;
     boolean             isInitialized   = false;
     String              userID          = null;
@@ -44,7 +43,7 @@ public class MultiObject {
     static final String DONTLIKE    = "DontLike";
     static final String DELETED     = "Deleted";
 
-    static final String[]   OBJECT_FLAGS = {DELETED, DONTLIKE, WATCHED, KEEPER, DatabaseRecord.KEY, INITIALIZED};
+    static final String[]   OBJECT_FLAGS = {DELETED, DONTLIKE, WATCHED, KEEPER, INITIALIZED};
 
     static final String REALWATCHEDSTARTTIME_PREFIX = "RealWatchedStartTime_";
     static final String REALWATCHEDENDTIME_PREFIX   = "RealWatchedEndTime_";
@@ -88,28 +87,10 @@ public class MultiObject {
         String key = keyInt.toString();
         Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "MultiObject: Key is " + key);
 
-        //record = UserRecordAPI.GetUserRecord(store, key);
         database = new DatabaseRecord(store, keyInt);
 
-        /*
-        if (record == null) {
+        isInitialized = database.containsFlagData(INITIALIZED, userID);
 
-            Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "MultiObject: Creating new userRecord.");
-
-            record = UserRecordAPI.AddUserRecord(store, key);
-
-            if (record==null) {
-                Log.getInstance().write(Log.LOGLEVEL_ERROR, "MultiObject: Error creating userRecord for Store:Key " + store + ":" + key);
-                isValid = false;
-                return;
-            }
-
-            setRecordData(KEY, key);
-        }
-         * 
-         */
-
-        isInitialized = database.containsFlag(INITIALIZED, userID);
         return;
     }
 
@@ -360,7 +341,7 @@ public class MultiObject {
         if (!isValid)
             return false;
         else
-            return database.containsFlag(WATCHED, userID);
+            return database.containsFlagData(WATCHED, userID);
     }
 
     void setWatched() {
@@ -374,7 +355,7 @@ public class MultiObject {
             MO.setWatched();
         }
 
-        if (database.containsFlagAllUsers(WATCHED))
+        if (database.containsFlagAllUsers(WATCHED)) {
             Log.getInstance().write(Log.LOGLEVEL_TRACE, "setWatched: Setting physical file watched.");
             Object sageObject = sagex.api.MediaFileAPI.GetMediaFileForID(keyInt);
 
@@ -391,6 +372,7 @@ public class MultiObject {
 
             if (sageObject!=null)
                 sagex.api.AiringAPI.SetWatched(sageObject);
+        }
 
         return;
     }
@@ -428,7 +410,6 @@ public class MultiObject {
             if (sageObject!=null)
                 sagex.api.AiringAPI.ClearWatched(sageObject);
         }
-
     }
 
 
@@ -437,7 +418,7 @@ public class MultiObject {
         if (!isValid)
             return false;
         else
-            return database.containsFlag(DONTLIKE, userID);
+            return database.containsFlagData(DONTLIKE, userID);
     }
 
     void setDontLike() {
@@ -449,6 +430,25 @@ public class MultiObject {
         if (altKey != null && altKey != 0 && altKey != null) {
             MultiObject MO = new MultiObject(userID, altStore, altKey, 0, null);
             MO.setDontLike();
+        }
+
+        if (database.containsFlagAllUsers(DONTLIKE)) {
+            Log.getInstance().write(Log.LOGLEVEL_TRACE, "setDontLike: Setting physical file don't like.");
+            Object sageObject = sagex.api.MediaFileAPI.GetMediaFileForID(keyInt);
+
+            if (sageObject!=null) {
+                Log.getInstance().write(Log.LOGLEVEL_TRACE, "setDontLike: Found MediaFile.");
+            } else {
+                sageObject = sagex.api.AiringAPI.GetAiringForID(keyInt);
+                if (sageObject!=null) {
+                    Log.getInstance().write(Log.LOGLEVEL_TRACE, "setDontLike: Found Airing.");
+                } else {
+                    Log.getInstance().write(Log.LOGLEVEL_TRACE, "setDontLike: MediaFile or Airing does not exist.");
+                }
+            }
+
+            if (sageObject!=null)
+                sagex.api.AiringAPI.SetDontLike(sageObject);
         }
 
         return;
@@ -464,10 +464,31 @@ public class MultiObject {
             MultiObject MO = new MultiObject(userID, altStore, altKey, 0, null);
             MO.clearDontLike();
         }
+
+        if (!database.containsFlagAnyData(DONTLIKE)) {
+            Log.getInstance().write(Log.LOGLEVEL_TRACE, "clearDontLike: Setting physical file don't like.");
+            Object sageObject = sagex.api.MediaFileAPI.GetMediaFileForID(keyInt);
+
+            if (sageObject!=null) {
+                Log.getInstance().write(Log.LOGLEVEL_TRACE, "clearDontLike: Found MediaFile.");
+            } else {
+                sageObject = sagex.api.AiringAPI.GetAiringForID(keyInt);
+                if (sageObject!=null) {
+                    Log.getInstance().write(Log.LOGLEVEL_TRACE, "clearDontLike: Found Airing.");
+                } else {
+                    Log.getInstance().write(Log.LOGLEVEL_TRACE, "clearDontLike: MediaFile or Airing does not exist.");
+                }
+            }
+
+            if (sageObject!=null)
+                sagex.api.AiringAPI.ClearDontLike(sageObject);
+        }
+
     }
 
+
     boolean isDeleted() {
-        return (isValid ? database.containsFlag(DELETED, userID) : false);
+        return (isValid ? database.containsFlagData(DELETED, userID) : false);
     }
 
     boolean delete(boolean WithoutPrejudice) {
@@ -594,21 +615,68 @@ public class MultiObject {
 
         List<String> theList = new ArrayList<String>();
 
-       for (String flag : OBJECT_FLAGS)
+        theList.add("Key=" + database.key());
+
+        for (String flag : OBJECT_FLAGS) {
 
             if (userID.equalsIgnoreCase(Plugin.SUPER_USER)) {
                theList.add(flag + database.getRecordData(flag));
             } else {
-               if (database.containsFlag(flag, userID))
+               if (database.containsFlagData(flag, userID))
                    theList.add("Contains " + flag);
                else
                    theList.add("!Contains " + flag);
-           }
+            }
+        }
 
         for (String prefix : OBJECT_FLAG_PREFIXES)
             theList.add(prefix + "=" + database.getRecordData(prefix+userID));
 
         return theList;
+    }
+
+    public String getKey() {
+        return database.key();
+    }
+
+    public String getRecordKey() {
+        return database.getKey();
+    }
+
+    public String getRecordStore() {
+        return database.getStore();
+    }
+
+    public boolean isRecordValid() {
+        return database.isValid();
+    }
+
+    public Integer getAltKey() {
+        return altKey;
+    }
+
+    public String getAltStore() {
+        return altStore;
+    }
+
+    public boolean isInitialized() {
+        return isInitialized;
+    }
+
+    public boolean isValid() {
+        return isValid;
+    }
+
+    public Integer getKeyInt() {
+        return keyInt;
+    }
+
+    public String getStore() {
+        return store;
+    }
+
+    public String getUserID() {
+        return userID;
     }
 
 }

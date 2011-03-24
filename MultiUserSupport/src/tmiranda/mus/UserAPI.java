@@ -10,6 +10,47 @@ import sagex.UIContext;
  */
 public class UserAPI {
 
+    public static void setPassword(String User, String Password) {
+
+        if (User==null || User.isEmpty()) {
+            Log.getInstance().write(Log.LOGLEVEL_TRACE, "setPassword: null user.");
+            return;
+        }
+
+        if (Password==null || Password.isEmpty()) {
+            Log.getInstance().write(Log.LOGLEVEL_TRACE, "setPassword: null password.");
+            return;
+        }
+
+        Log.getInstance().write(Log.LOGLEVEL_TRACE, "setPassword: Setting Password to " + Password + ":" + User);
+        User u = new User(User);
+        u.setPassword(Password);
+        return;
+    }
+
+    public static void setShowImports(String User, Boolean setting) {
+
+        if (User==null || User.isEmpty()) {
+            Log.getInstance().write(Log.LOGLEVEL_TRACE, "setShowImports: null user.");
+            return;
+        }
+
+        Log.getInstance().write(Log.LOGLEVEL_TRACE, "setShowImports: Setting Show Imports to " + setting + ":" + User);
+        User u = new User(User);
+        u.setShowImports(setting);
+        return;
+    }
+
+    public static boolean isShowImports(String U) {
+
+        if (U==null || U.equalsIgnoreCase(Plugin.SUPER_USER)) {
+            return true;
+        }
+
+        User user = new User(U);
+        return user.isShowImports();
+    }
+
     /**
      * Logs on the specified secondary user.
      * @param UserID
@@ -60,7 +101,7 @@ public class UserAPI {
      */
     public static List<String> getLoggedinSecondaryUsers() {
         String userString = SageUtil.getUIProperty(Plugin.PROPERTY_SECONDARY_USERS, null);
-        Log.getInstance().write(Log.LOGLEVEL_TRACE, "getLoggedinSecondaryUsers: Users " + userString);
+        Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "getLoggedinSecondaryUsers: Users " + userString);
         return (userString==null || userString.isEmpty()) ? new ArrayList<String>() : DelimitedString.delimitedStringToList(userString, Plugin.LIST_SEPARATOR);
     }
 

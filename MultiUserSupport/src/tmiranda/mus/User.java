@@ -67,7 +67,7 @@ public class User {
     }
 
     boolean exists() {
-        return database.exists();
+        return database.exists() && database.getRecordData(KEY_USERID).equals(user);
     }
 
     boolean create(String Password) {
@@ -77,35 +77,16 @@ public class User {
         // Delete the old Record if it exists.
         database.delete();
 
-        //Object OldRecord = UserRecordAPI.GetUserRecord(STORE, user);
-        //if (OldRecord != null) {
-            //Log.getInstance().write(Log.LOGLEVEL_WARN, "create: Removing existing User record.");
-            //UserRecordAPI.DeleteUserRecord(OldRecord);
-        //}
-
+        // Create a new record.
         database = new DatabaseRecord(STORE, user);
 
-        //record = UserRecordAPI.AddUserRecord(STORE, user);
-
-        //if (record==null) {
-            //Log.getInstance().write(Log.LOGLEVEL_ERROR, "create: null Record." + user);
-            //return false;
-        //}
-
+        // Initialize it.
         database.setRecordData(KEY_USERID, user);
         database.setRecordData(KEY_PASSWORD, Password);
         database.setRecordData(KEY_SHOW_IMPORTS, "true");
 
         Boolean Intelligent = Configuration.IsIntelligentRecordingDisabled();
         database.setRecordData(KEY_IR, Intelligent.toString());
-
-        //UserRecordAPI.SetUserRecordData(record, KEY, user);
-        //UserRecordAPI.SetUserRecordData(record, KEY_USERID, user);
-        //UserRecordAPI.SetUserRecordData(record, KEY_PASSWORD, Password);
-        //UserRecordAPI.SetUserRecordData(record, KEY_SHOW_IMPORTS, "true");
-        
-        //Boolean Intelligent = Configuration.IsIntelligentRecordingDisabled();
-        //UserRecordAPI.SetUserRecordData(record, KEY_IR, Intelligent.toString());
 
         Log.getInstance().write(Log.LOGLEVEL_TRACE, "create: Created user " + user);
         return true;
@@ -177,19 +158,6 @@ public class User {
         return isValid ? database.getRecordData(KEY_UICONTEXT) : null;
     }
 
-    private void setUIContext() {
-        String UIContextName = Global.GetUIContextName();
-
-        if (!isValid || UIContextName==null || UIContextName.isEmpty()) {
-            Log.getInstance().write(Log.LOGLEVEL_WARN, "setUIContext: null UIContextName.");
-            return;
-        }
-
-        Log.getInstance().write(Log.LOGLEVEL_TRACE, "setUIContext: UIContext for user is " + UIContextName);
-        database.setRecordData(KEY_UICONTEXT, UIContextName);
-        return;
-    }
-    
     void initializeInDataBase() {
 
         if (!isValid) {
@@ -268,7 +236,7 @@ public class User {
         }
 
         MultiMediaFile MMF = new MultiMediaFile(user, MediaFile);
-        MMF.initializeUser();
+        MMF.initializeCurrentUser();
         return;
     }
 
@@ -338,7 +306,7 @@ public class User {
         }
 
         MultiAiring MA = new MultiAiring(user, Airing);
-        MA.initializeUser();
+        MA.initializeCurrentUser();
     }
 
     void removeFromAiring(Object Airing) {

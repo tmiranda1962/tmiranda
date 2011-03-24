@@ -21,7 +21,7 @@ public class MultiMediaFile extends MultiObject {
     // These Flags will contain a comma delimited string of userIDs.
     static final String ARCHIVED        = "Archived";
 
-    static final String[]   FLAGS = {ARCHIVED, INITIALIZED};
+    static final String[]   FLAGS = {ARCHIVED};
 
     // These Flags+userId will contain the user watched times for the MediaFile.
     //static final String MEDIATIME_PREFIX    = "MediaTime_";
@@ -51,24 +51,38 @@ public class MultiMediaFile extends MultiObject {
 
         if (!isInitialized) {
             Log.getInstance().write(Log.LOGLEVEL_TRACE, "MultiMediaFile: Initializing user " + userID + ":" + sagex.api.MediaFileAPI.GetMediaTitle(MediaFile));
-            initializeUser();
-            database.addDataToFlag(INITIALIZED, userID);
+            initializeCurrentUser();
+            //database.addDataToFlag(INITIALIZED, userID);
         }
     }
 
 
     void setArchived() {
-        if (!isValid)
+        if (!isValid) {
             sagex.api.MediaFileAPI.MoveFileToLibrary(sageMediaFile);
-        else
-            database.addDataToFlag(ARCHIVED, userID);
+            return;
+        }
+
+        database.addDataToFlag(ARCHIVED, userID);
+
+        if (database.containsFlagAllUsers(ARCHIVED)) {
+            Log.getInstance().write(Log.LOGLEVEL_TRACE, "setArchived: Setting physical file archived.");
+            sagex.api.MediaFileAPI.MoveFileToLibrary(sageMediaFile);
+        }
     }
     
     void clearArchived() {
-        if (!isValid)
+        if (!isValid) {
             sagex.api.MediaFileAPI.MoveTVFileOutOfLibrary(sageMediaFile);
-        else
-            database.removeDataFromFlag(ARCHIVED, userID);
+            return;
+        }
+
+        database.removeDataFromFlag(ARCHIVED, userID);
+
+        if (!database.containsFlagAnyData(ARCHIVED)) {
+            Log.getInstance().write(Log.LOGLEVEL_TRACE, "clearArchived: Setting physical file unarchived.");
+            sagex.api.MediaFileAPI.MoveTVFileOutOfLibrary(sageMediaFile);
+        }
     }
 
     boolean isArchived() {
@@ -76,7 +90,7 @@ public class MultiMediaFile extends MultiObject {
         if (!isValid)
             return sagex.api.MediaFileAPI.IsLibraryFile(sageMediaFile);
         else
-            return database.containsFlag(ARCHIVED, userID);
+            return database.containsFlagData(ARCHIVED, userID);
     }
 
 
@@ -125,7 +139,7 @@ public class MultiMediaFile extends MultiObject {
 
 
     // Initialize MediaFile for this user.
-    final void initializeUser() {
+    final void initializeCurrentUser() {
 
         if (sagex.api.MediaFileAPI.IsLibraryFile(sageMediaFile))
             database.addDataToFlag(ARCHIVED, userID);
@@ -138,12 +152,6 @@ public class MultiMediaFile extends MultiObject {
         //setMediaTime(null);
         setChapterNum(null);
         setTitleNum(null);
-
-        //setRealWatchedStartTime(AiringAPI.GetRealWatchedStartTime(sageMediaFile));
-        //setRealWatchedEndTime(AiringAPI.GetRealWatchedEndTime(sageMediaFile));
-        
-        //setWatchedStartTime(AiringAPI.GetWatchedStartTime(sageMediaFile));
-        //setWatchedEndTime(AiringAPI.GetWatchedEndTime(sageMediaFile));
 
         database.addDataToFlag(INITIALIZED, userID);
         isInitialized = true;
@@ -195,7 +203,7 @@ public class MultiMediaFile extends MultiObject {
             if (userID.equalsIgnoreCase(Plugin.SUPER_USER)) {
                theList.add(flag + database.getRecordData(flag));
             } else {
-               if (database.containsFlag(flag, userID))
+               if (database.containsFlagData(flag, userID))
                    theList.add("Contains " + flag);
                else
                    theList.add("!Contains " + flag);

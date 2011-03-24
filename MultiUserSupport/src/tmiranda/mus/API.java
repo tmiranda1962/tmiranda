@@ -418,6 +418,23 @@ public class API {
         return !MMF.isDeleted();
     }
 
+    /**
+     * Checks to see if the specified MediaFile or Airing should be displayed for the currently logged
+     * on user.  This method should be used in conjunction with the FilterByBoolMethod()
+     * method to filter out those MediaFiles and Airings that should not be displayed.
+     * @param MediaFile
+     * @return true if the MediaFile or Airing should be displayed for the currently logged on
+     * user, false otherwise.
+     */
+    public static boolean isMediaFileForUser(String UserID, Object MediaFile) {
+
+        if (UserID == null || UserID.equalsIgnoreCase(Plugin.SUPER_USER) || MediaFile==null)
+            return true;
+
+        MultiMediaFile MMF = new MultiMediaFile(UserID, ensureIsMediaFile(MediaFile));
+        return !MMF.isDeleted();
+    }
+
     public static Object[] filterMediaFilesNotForLoggedOnUser(Object[] MediaFiles) {
         List<Object> theList = new ArrayList<Object>();
 
@@ -558,6 +575,20 @@ public class API {
             Log.getInstance().write(Log.LOGLEVEL_TRACE, "deleteMediaFile: Deleting for secondary user " + secondaryUser);
             MultiMediaFile MMF = new MultiMediaFile(secondaryUser, ensureIsMediaFile(MediaFile));
             MMF.delete(false);
+        }
+
+        MultiMediaFile MMF = new MultiMediaFile(User, ensureIsMediaFile(MediaFile));
+        return MMF.delete(false);
+    }
+
+    public static boolean deleteMediaFileForUser(String User, Object MediaFile) {
+
+        // If the MediaFile is removed make sure we remove the corresponding record.
+        if (User==null || User.equalsIgnoreCase(Plugin.SUPER_USER)) {
+            Log.getInstance().write(Log.LOGLEVEL_TRACE, "deleteMediaFile: Deleting file and removing DB record.");
+            MultiMediaFile MMF = new MultiMediaFile(Plugin.SUPER_USER, MediaFile);
+            MMF.removeRecord();
+            return sagex.api.MediaFileAPI.DeleteFile(MediaFile);
         }
 
         MultiMediaFile MMF = new MultiMediaFile(User, ensureIsMediaFile(MediaFile));
@@ -827,13 +858,23 @@ public class API {
             MA.setManualRecord();
         }
 
-        String User = getLoggedinUser();
+        String user = getLoggedinUser();
 
-        if (User==null || User.equalsIgnoreCase(Plugin.SUPER_USER)) {
+        // If the null user or Admin requests a manual record, mark it as a manual for all
+        // users.  If we do not the first user to remove the manual will remove it
+        // for all users.
+        if (user==null || user.equalsIgnoreCase(Plugin.SUPER_USER)) {
+
+            List<String> allUsers = User.getAllUsers(false);
+            for (String u : allUsers) {
+                MultiAiring MA = new MultiAiring(u, ensureIsAiring(Airing));
+                MA.setManualRecord();
+            }
+
             return sagex.api.AiringAPI.Record(Airing);
         }
 
-        MultiAiring MA = new MultiAiring(User, ensureIsAiring(Airing));
+        MultiAiring MA = new MultiAiring(user, ensureIsAiring(Airing));
         MA.setManualRecord();
         return sagex.api.AiringAPI.Record(Airing);
     }
@@ -911,7 +952,7 @@ public class API {
      * Invoke IN PLACE OF core API.
      * @param Airing
      */
-     public static void cancelRecord(Object Airing) {
+    public static void cancelRecord(Object Airing) {
 
         List<String> secondaryUsers = UserAPI.getLoggedinSecondaryUsers();
 
@@ -1403,11 +1444,8 @@ public class API {
         return;
     }
 
-    /**
-     * Invoke right after Core API.
-     * @param Favorite
-     */
-    public static void addFavorite(Object Favorite) {
+
+    private static void addFavorite(Object Favorite) {
 
         String U = getLoggedinUser();
 
@@ -1435,6 +1473,29 @@ public class API {
         MultiFavorite MF = new MultiFavorite(U, Favorite);
         MF.addFavorite();
         return;
+    }
+
+    public static Object addFavorite(   String Title,
+                                        boolean FirstRuns,
+                                        boolean ReRuns,
+                                        String Category,
+                                        String SubCategory,
+                                        String Person,
+                                        String RollForPerson,
+                                        String Rated,
+                                        String Year,
+                                        String ParentalRating,
+                                        String Network,
+                                        String ChannelCallSign,
+                                        String Timeslot,
+                                        String Keyword)
+    {
+        Object Favorite = sagex.api.FavoriteAPI.AddFavorite(Title, FirstRuns, ReRuns, Category, SubCategory, Person, RollForPerson, Rated, Year, ParentalRating, Network, ChannelCallSign, Timeslot, Keyword);
+
+        if (Favorite!=null)
+            addFavorite(Favorite);
+
+        return Favorite;
     }
 
     /**
@@ -1481,8 +1542,8 @@ public class API {
     }
 
     // Not in the default STV, but put here as a placeholder.
-    private static int getFavoriteID(Object Favorite) {
-        return 0;
+    public static int getFavoriteID(Object Favorite) {
+        return sagex.api.FavoriteAPI.GetFavoriteID(Favorite);
     }
 
     /**
@@ -1703,27 +1764,6 @@ public class API {
             Log.getInstance().write(Log.LOGLEVEL_TRACE, "resetMediaFileDatabase: Adding " + User);
             addUserToDatabase(User);
         }
-    }
-
-    public static boolean isShowImports(String U) {
-
-        if (U==null || U.equalsIgnoreCase(Plugin.SUPER_USER)) {
-            return true;
-        }
-
-        User user = new User(U);
-        return user.isShowImports();
-    }
-
-    public static void setShowImports(String U, boolean Show) {
-
-        if (U==null || U.equalsIgnoreCase(Plugin.SUPER_USER)) {
-            return;
-        }
-
-        User user = new User(U);
-        user.setShowImports(Show);
-        return;
     }
 
     /*
@@ -2072,19 +2112,19 @@ public class API {
         Log.getInstance().SetLogLevel(NewLevel);
     }
 
-    public static boolean multiUserfySTV(String ContextName, Object[] ExistingWidgets, Object[] ImportedWidgets) {
+    public static int multiUserfySTV(String ContextName, boolean showOnly) {
         System.out.println("MUS: Begin multiuserfication process for context " + ContextName);
 
         if (ContextName==null || ContextName.isEmpty()) {
             System.out.println("MUS: null of empty ContextName " + ContextName);
-            return false;
+            return 0;
         }
 
-        MultiSTV MSTV = new MultiSTV(ContextName, ExistingWidgets, ImportedWidgets);
-        int numChanges = MSTV.modifyWidgets(false);
+        MultiSTV MSTV = new MultiSTV(ContextName);
+        int numChanges = MSTV.modifyWidgets(showOnly);
 
         System.out.println("MUS: End multiuserfication process for context " + ContextName + ":" + numChanges);
-        return true;
+        return numChanges;
     }
 
     /*
@@ -2138,6 +2178,7 @@ public class API {
     /*
      * Debug stuff.
      */
+    @Deprecated
     public static List<String> getFlagsForMediaFile(Object MediaFile) {
         List<String> TheList = new ArrayList<String>();
 
@@ -2181,7 +2222,116 @@ public class API {
         return TheList;
     }
 
-    public static List<String> getFlagsForUser(Object MediaFile) {
+    public static List<String> getRawFlagsForMediaFile(Object MediaFile) {
+        List<String> TheList = new ArrayList<String>();
+
+        if (MediaFile==null) {
+            return TheList;
+        }
+
+        MultiMediaFile MMF = new MultiMediaFile(getLoggedinUser(), ensureIsMediaFile(MediaFile));
+
+        TheList.add("Key=" + MMF.getKey());
+
+        for (String Flag : MultiMediaFile.FLAGS)
+            TheList.add(Flag + "=" + MMF.getFlagString(Flag));
+
+        for (String Flag : MultiObject.OBJECT_FLAGS)
+            TheList.add(Flag + "=" + MMF.getFlagString(Flag));
+
+        TheList.add("MultiObject isValid=" + MMF.isValid());
+        TheList.add("MultiObject isInitialized=" + MMF.isInitialized());
+        TheList.add("MultiObject UserID=" + MMF.getUserID());
+        TheList.add("MultiObject store=" + MMF.getStore());
+        TheList.add("MultiObject keyInt=" + MMF.getKeyInt());
+        TheList.add("MultiObject Alt store=" + MMF.getAltStore());
+        TheList.add("MultiObject Alt key=" + MMF.getAltKey());    
+
+        TheList.add("Record isValid=" + MMF.isRecordValid());
+        TheList.add("Record key=" + MMF.getRecordKey());
+        TheList.add("Record store=" + MMF.getRecordStore());
+
+        Object Favorite = sagex.api.FavoriteAPI.GetFavoriteForAiring(MediaFile);
+
+        if (Favorite!=null) {
+            MultiFavorite MF = new MultiFavorite(getLoggedinUser(), Favorite);
+            for (String Flag : MultiFavorite.FLAGS)
+                TheList.add(Flag + "=" + MF.getFlagString(Flag));
+        }
+
+        for (String prefix : MultiMediaFile.FLAG_PREFIXES) {
+            TheList.addAll(MultiMediaFile.GetFlagsStartingWith(prefix));
+        }
+
+        for (String prefix : MultiObject.OBJECT_FLAG_PREFIXES) {
+            TheList.addAll(MultiMediaFile.GetFlagsStartingWith(prefix));
+        }
+
+        Boolean IsArchived = sagex.api.MediaFileAPI.IsLibraryFile(MediaFile);
+        Boolean DontLike = sagex.api.AiringAPI.IsDontLike(MediaFile);
+        Boolean Manual = sagex.api.AiringAPI.IsManualRecord(MediaFile);
+        Boolean IsFavorite = sagex.api.AiringAPI.IsFavorite(MediaFile);
+        TheList.add("Core: Archived=" + IsArchived.toString() + " DontLike=" + DontLike.toString() + " Manual=" + Manual.toString() + " Favorite=" + IsFavorite.toString());
+
+        return TheList;
+    }
+
+    public static List<String> getRawFlagsForAiring(Object Airing) {
+        List<String> TheList = new ArrayList<String>();
+
+        if (Airing==null) {
+            return TheList;
+        }
+
+        MultiAiring MA = new MultiAiring(getLoggedinUser(), ensureIsAiring(Airing));
+
+        TheList.add("Key=" + MA.getKey());
+
+        for (String Flag : MultiAiring.FLAGS)
+            TheList.add(Flag + "=" + MA.getFlagString(Flag));
+
+        for (String Flag : MultiObject.OBJECT_FLAGS)
+            TheList.add(Flag + "=" + MA.getFlagString(Flag));
+
+        TheList.add("MultiObject isValid=" + MA.isValid());
+        TheList.add("MultiObject isInitialized=" + MA.isInitialized());
+        TheList.add("MultiObject UserID=" + MA.getUserID());
+        TheList.add("MultiObject store=" + MA.getStore());
+        TheList.add("MultiObject keyInt=" + MA.getKeyInt());
+        TheList.add("MultiObject Alt store=" + MA.getAltStore());
+        TheList.add("MultiObject Alt key=" + MA.getAltKey());
+
+        TheList.add("Record isValid=" + MA.isRecordValid());
+        TheList.add("Record key=" + MA.getRecordKey());
+        TheList.add("Record store=" + MA.getRecordStore());
+
+        Object Favorite = sagex.api.FavoriteAPI.GetFavoriteForAiring(Airing);
+
+        if (Favorite!=null) {
+            MultiFavorite MF = new MultiFavorite(getLoggedinUser(), Favorite);
+            for (String Flag : MultiFavorite.FLAGS)
+                TheList.add(Flag + "=" + MF.getFlagString(Flag));
+        }
+
+        for (String prefix : MultiObject.OBJECT_FLAG_PREFIXES) {
+            TheList.addAll(MultiMediaFile.GetFlagsStartingWith(prefix));
+        }
+
+        Boolean IsArchived = sagex.api.MediaFileAPI.IsLibraryFile(Airing);
+        Boolean DontLike = sagex.api.AiringAPI.IsDontLike(Airing);
+        Boolean Manual = sagex.api.AiringAPI.IsManualRecord(Airing);
+        Boolean IsFavorite = sagex.api.AiringAPI.IsFavorite(Airing);
+        TheList.add("Core: Archived=" + IsArchived.toString() + " DontLike=" + DontLike.toString() + " Manual=" + Manual.toString() + " Favorite=" + IsFavorite.toString());
+
+        return TheList;
+    }
+
+    /**
+     * Gets the flag data for the specified MediaFile for the currently logged on user.
+     * @param MediaFile
+     * @return
+     */
+    public static List<String> getMediaFileFlags(Object MediaFile) {
 
         List<String> TheList = new ArrayList<String>();
 
@@ -2189,12 +2339,25 @@ public class API {
             return TheList;
         }
 
-        if (sagex.api.MediaFileAPI.IsMediaFileObject(MediaFile)) {
-            MultiMediaFile MMF = new MultiMediaFile(getLoggedinUser(), MediaFile);
-            return MMF.getFlagsForUser();
-        } else {
-            MultiAiring MA = new MultiAiring(getLoggedinUser(), MediaFile);
-            return MA.getFlagsForUser();
+        MultiMediaFile MMF = new MultiMediaFile(getLoggedinUser(), ensureIsMediaFile(MediaFile));
+        return MMF.getFlagsForUser();
+
+    }
+
+    /**
+     * Gets the flag data for the specified Airing for the currently logged on user.
+     * @param Airing
+     * @return
+     */
+    public static List<String> getAiringFlags(Object Airing) {
+
+        List<String> TheList = new ArrayList<String>();
+
+        if (Airing==null) {
+            return TheList;
         }
+
+        MultiAiring MA = new MultiAiring(getLoggedinUser(), ensureIsAiring(Airing));
+        return MA.getFlagsForUser();
     }
 }
