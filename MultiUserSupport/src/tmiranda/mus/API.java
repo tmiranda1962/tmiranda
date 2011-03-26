@@ -526,6 +526,18 @@ public class API {
         return;
     }
 
+    public static void clearArchivedForUser(String User, Object MediaFile) {
+
+        if (User==null || User.equalsIgnoreCase(Plugin.SUPER_USER)) {
+            sagex.api.MediaFileAPI.MoveTVFileOutOfLibrary(MediaFile);
+            return;
+        }
+
+        MultiMediaFile MMF = new MultiMediaFile(User, ensureIsMediaFile(MediaFile));
+        MMF.clearArchived();
+        return;
+    }
+
     /**
      * Replaces the core API MoveFileToLibrary().  (setArchived is a more intuitive name.)
      * @param MediaFile
@@ -541,6 +553,18 @@ public class API {
         }
 
         String User = getLoggedinUser();
+
+        if (User==null || User.equalsIgnoreCase(Plugin.SUPER_USER)) {
+            sagex.api.MediaFileAPI.MoveFileToLibrary(MediaFile);
+            return;
+        }
+
+        MultiMediaFile MMF = new MultiMediaFile(User, ensureIsMediaFile(MediaFile));
+        MMF.setArchived();
+        return;
+    }
+
+    public static void setArchivedForUser(String User, Object MediaFile) {
 
         if (User==null || User.equalsIgnoreCase(Plugin.SUPER_USER)) {
             sagex.api.MediaFileAPI.MoveFileToLibrary(MediaFile);
@@ -647,6 +671,18 @@ public class API {
             MultiMediaFile MMF = new MultiMediaFile(secondaryUser, ensureIsMediaFile(MediaFile));
             MMF.delete(true);
         } 
+
+        MultiMediaFile MMF = new MultiMediaFile(User, ensureIsMediaFile(MediaFile));
+        return MMF.delete(true);
+    }
+
+    public static boolean deleteMediaFileWithoutPrejudiceForUser(String User, Object MediaFile) {
+
+        if (User==null || User.equalsIgnoreCase(Plugin.SUPER_USER)) {
+            MultiMediaFile MMF = new MultiMediaFile(Plugin.SUPER_USER, MediaFile);
+            MMF.removeRecord();
+            return sagex.api.MediaFileAPI.DeleteFileWithoutPrejudice(MediaFile);
+        }
 
         MultiMediaFile MMF = new MultiMediaFile(User, ensureIsMediaFile(MediaFile));
         return MMF.delete(true);
@@ -1054,6 +1090,21 @@ public class API {
         return;
     }
 
+    public static void setDontLikeForUser(String User, Object Airing) {
+
+        if (User==null || User.equalsIgnoreCase(Plugin.SUPER_USER)) {
+            sagex.api.AiringAPI.SetDontLike(Airing);
+            return;
+        }
+
+        if (SageUtil.GetBoolProperty(Plugin.PROPERTY_UPDATE_IR, true) && isIntelligentRecordingEnabled())
+            sagex.api.AiringAPI.SetDontLike(Airing);
+
+        MultiAiring MA = new MultiAiring(User, ensureIsAiring(Airing));
+        MA.setDontLike();
+        return;
+    }
+
     /**
      * Invoke IN PLACE OF core API.
      * @param Airing
@@ -1069,6 +1120,21 @@ public class API {
         }
 
         String User = getLoggedinUser();
+
+        if (User==null || User.equalsIgnoreCase(Plugin.SUPER_USER)) {
+            sagex.api.AiringAPI.ClearDontLike(Airing);
+            return;
+        }
+
+        if (SageUtil.GetBoolProperty(Plugin.PROPERTY_UPDATE_IR, true) && isIntelligentRecordingEnabled())
+            sagex.api.AiringAPI.ClearDontLike(Airing);
+
+        MultiAiring MA = new MultiAiring(User, ensureIsAiring(Airing));
+        MA.clearDontLike();
+        return;
+    }
+
+    public static void clearDontLikeForUser(String User, Object Airing) {
 
         if (User==null || User.equalsIgnoreCase(Plugin.SUPER_USER)) {
             sagex.api.AiringAPI.ClearDontLike(Airing);
@@ -1221,6 +1287,25 @@ public class API {
         return;
     }
 
+    public static void setWatchedForUser(String User, Object Airing) {
+
+        if (User==null || User.equalsIgnoreCase(Plugin.SUPER_USER)) {
+            sagex.api.AiringAPI.SetWatched(Airing);
+            return;
+        }
+
+        // If we mark the Airing ad Watched here we run the risk of having the Airing removed
+        // by the Sage core before all users have a chance to watch it.  When the Airing is
+        // deleted we check to see if all Users have Watched it.
+
+        //if (SageUtil.GetBoolProperty(Plugin.PROPERTY_UPDATE_IR, true) && isIntelligentRecordingEnabled())
+            //AiringAPI.SetWatched(Airing);
+
+        MultiAiring MA = new MultiAiring(User, ensureIsAiring(Airing));
+        MA.setWatched();
+        return;
+    }
+
     /**
      * Invoke IN PLACE OF core API.
      * @param Airing
@@ -1236,6 +1321,21 @@ public class API {
         }
 
         String User = getLoggedinUser();
+
+        if (User==null || User.equalsIgnoreCase(Plugin.SUPER_USER)) {
+            sagex.api.AiringAPI.ClearWatched(Airing);
+            return;
+        }
+
+        if (SageUtil.GetBoolProperty(Plugin.PROPERTY_UPDATE_IR, true) && isIntelligentRecordingEnabled())
+            sagex.api.AiringAPI.ClearWatched(Airing);
+
+        MultiAiring MA = new MultiAiring(User, ensureIsAiring(Airing));
+        MA.clearWatched();
+        return;
+    }
+
+    public static void clearWatchedForUser(String User, Object Airing) {
 
         if (User==null || User.equalsIgnoreCase(Plugin.SUPER_USER)) {
             sagex.api.AiringAPI.ClearWatched(Airing);

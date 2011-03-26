@@ -26,7 +26,7 @@ import sagex.UIContext;
  */
 public class MultiSTV {
 
-    private final static String    PROPERTIES_FILENAME = "MultiUser.properties";
+    private final static String    PROPERTIES_FILENAME = "STVs" + File.separator + "SageTV7" + File.separator + "MultiUser.properties";
 
     private final static String WIDGET_TYPE_ATTRIBUTE  = "Attribute";
     private final static String WIDGET_PROPERTY_VALUE  = "Value";
@@ -63,7 +63,7 @@ public class MultiSTV {
         try {
             fis = new FileInputStream(PROPERTIES_FILENAME);
         } catch (Exception e) {
-            Log.getInstance().write(Log.LOGLEVEL_ERROR, "MultiSTV: Exception opening properties file. "  + e.getMessage());
+            Log.getInstance().write(Log.LOGLEVEL_ERROR, "MultiSTV: Exception opening properties file. "  + PROPERTIES_FILENAME + " " + e.getMessage());
             isValid = false;
             return;
         }

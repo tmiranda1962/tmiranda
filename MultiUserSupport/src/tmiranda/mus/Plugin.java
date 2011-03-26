@@ -14,7 +14,7 @@ public class Plugin implements sage.SageTVPlugin, SageTVEventListener {
     /**
      * The current Plugin version.
      */
-    public static final String  VERSION = "0.12 03.XX.2011";
+    public static final String  VERSION = "0.12 03.26.2011";
 
     /*
      * Constants used throughout the Plugin.

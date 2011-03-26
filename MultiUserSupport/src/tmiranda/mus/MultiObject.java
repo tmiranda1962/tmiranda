@@ -519,6 +519,7 @@ public class MultiObject {
                     Log.getInstance().write(Log.LOGLEVEL_TRACE, "delete: Found Airing.");
                 } else {
                     Log.getInstance().write(Log.LOGLEVEL_TRACE, "delete: MediaFile or Airing already deleted.");
+                    removeRecord();
                 }
             }
 
