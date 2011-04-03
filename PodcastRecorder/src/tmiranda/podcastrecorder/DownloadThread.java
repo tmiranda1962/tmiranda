@@ -15,11 +15,10 @@ import sage.media.rss.*;
  */
 public class DownloadThread extends Thread {
 
-    private boolean stop;
-    //private DownloadManager DM;
+    private boolean                         stop;
     private BlockingQueue<RecordingEpisode> RecordingMaps;
-    private RecordingEpisode CurrentlyRecording;
-    private boolean AbortCurrent;
+    private RecordingEpisode                CurrentlyRecording;
+    private boolean                         AbortCurrent;
 
     /*
      * Constructor.
@@ -125,9 +124,14 @@ public class DownloadThread extends Thread {
             CurrentlyRecording.abortCurrentDownload();
     }
 
+    void showCurrentlyRecording(RecordingEpisode currentlyRecording) {
+        currentlyRecording.show();
+    }
+
     /**
      * The main thread that does all of the downloading.
      */
+    @Override
     public void run() {
         Log.getInstance().write(Log.LOGLEVEL_TRACE, "DT: Starting.");
 
@@ -143,6 +147,8 @@ public class DownloadThread extends Thread {
             }
 
             Log.getInstance().write(Log.LOGLEVEL_TRACE, "DT: Have work to do.");
+
+            showCurrentlyRecording(CurrentlyRecording);
 
             // Make sure we have enough parameters.
             if (!CurrentlyRecording.isComplete()) {
@@ -163,7 +169,7 @@ public class DownloadThread extends Thread {
 
             Log.getInstance().write(Log.LOGLEVEL_TRACE, "DT: Found episodes for podcast = " + RSSItems.size());
 
-            if (RSSItems.size()==0) {
+            if (RSSItems.isEmpty()) {
                 Log.getInstance().write(Log.LOGLEVEL_ERROR, "DT: No RSSItems.");
                 CurrentlyRecording.failed();
                 continue;
@@ -197,15 +203,22 @@ public class DownloadThread extends Thread {
                 continue;
             }
 
+            //Check for 0 size download.
+            if (CurrentlyRecording.isZeroSizeDownload()) {
+                Log.getInstance().write(Log.LOGLEVEL_WARN, "DT: File is 0 bytes long.");
+                CurrentlyRecording.failed();
+                continue;
+            }
+
             // Move the tempfile to the final location and rename it to the final name.
             if (!CurrentlyRecording.moveToFinalLocation()) {
-                Log.getInstance().write(Log.LOGLEVEL_ERROR, "DT: mobeToFinalLocation failed.");
+                Log.getInstance().write(Log.LOGLEVEL_ERROR, "DT: moveToFinalLocation failed.");
                 CurrentlyRecording.failed();
                 continue;
             }
 
             // Import the episode into the Sage database as an imported media file.
-            if (!CurrentlyRecording.importAsMediaFile()) {
+            if (CurrentlyRecording.importAsAiring() == null) {
                 Log.getInstance().write(Log.LOGLEVEL_ERROR, "DT: importAsMediaFile failed.");
                 CurrentlyRecording.failed();
                 continue;

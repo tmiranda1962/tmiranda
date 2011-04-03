@@ -1,7 +1,3 @@
-/*
- * To change this template, choose Tools | Templates
- * and open the template in the editor.
- */
 
 package tmiranda.podcastrecorder;
 
@@ -9,8 +5,9 @@ import java.util.*;
 import sagex.api.*;
 
 /**
- *
- * @author Tom Miranda
+ * This class is responsible for downloading Podcasts that have been defined as Favorites. It
+ * enforces all recording limits
+ * @author Tom Miranda.
  */
 public class RecordManager extends TimerTask {
 
@@ -21,12 +18,15 @@ public class RecordManager extends TimerTask {
     /**
      * This is the thread that looks for new Episodes to record.
      */
+    @Override
     public void run() {
 
         try {
 
             Thread.currentThread().setName("RecordManager");
             Log.getInstance().write(Log.LOGLEVEL_TRACE, "SRM: Starting RecordManager thread.");
+
+            showDatabaseInfo("thread start");
 
             if (isRunning) {
                 Log.getInstance().write(Log.LOGLEVEL_WARN, "SRM: Terminating because RecordManager is already running.");
@@ -37,13 +37,16 @@ public class RecordManager extends TimerTask {
             DownloadManager.getInstance().setRecMgrStatus(isRunning);
 
             // Update the database with any manual recordings that were made since the last run.
-            DownloadManager.getInstance().updateDatabase();
+            //DownloadManager.getInstance().updateDatabase();
 
-            // Get the Podcast keys from the database.
-            List<PodcastKey> podcastKeys = Podcast.getAllPodcastKeys();
+            showDatabaseInfo("after updateDatabase");
+
+            // Get the Podcasts from the database.
+            List<Podcast> podcasts = DataStore.getAllPodcasts();
+            //List<PodcastKey> podcastKeys = DataStore.getAllPodcastKeys();
 
             // Nothing to do if there are no favorites.
-            if (podcastKeys == null || podcastKeys.isEmpty()) {
+            if (podcasts == null || podcasts.isEmpty()) {
                 Log.getInstance().write(Log.LOGLEVEL_TRACE, "SRM: No Favorite podcasts defined.");
                 isRunning = false;
                 DownloadManager.getInstance().setRecMgrStatus(isRunning);
@@ -54,13 +57,10 @@ public class RecordManager extends TimerTask {
             dummy.dumpFavorites();
 
             // Loop through all of the Podcast objects.
-            for (PodcastKey key : podcastKeys) {
-
-                // Read the podcast from disk.
-                Podcast podcast = Podcast.readPodcast(key);
+            for (Podcast podcast : podcasts) {
 
                 if (podcast==null) {
-                    Log.getInstance().write(Log.LOGLEVEL_ERROR, "SRM: Error reading Podcast " + key.getOVT() + ":" + key.getOVI());
+                    Log.getInstance().write(Log.LOGLEVEL_ERROR, "SRM: Error reading Podcast.");
                     continue;
                 }
 
@@ -69,13 +69,15 @@ public class RecordManager extends TimerTask {
                 // There may already be too many episodes, but we will ignore that.
 
                 // See if we need to check for new episodes on the server.
-                if (podcast.isRecordNew() && podcast.isIsFavorite()) {
+                if (podcast.isRecordNew() && podcast.isFavorite()) {
+
+                    showDatabaseInfo("record new for Favorite");
 
                     Log.getInstance().write(Log.LOGLEVEL_TRACE, "SRM: Podcast is set to record new episodes.");
 
                     // Set lastchecked to now.
                     Long t = Utility.Time();
-                    podcast.setLastCheckedInDatabase(t);
+                    podcast.setLastChecked(t);
 
                     // See if we need to delete duplcates.
                     if (podcast.isDeleteDuplicates()) {
@@ -85,6 +87,12 @@ public class RecordManager extends TimerTask {
                         Log.getInstance().write(Log.LOGLEVEL_TRACE, "SRM: Podcast is not set to delete duplicates.");
                     }
 
+                    showDatabaseInfo("before getEpisodesOnWebServer");
+
+                    // Update the Podcast with the latest info from the Web.
+                    Log.getInstance().write(Log.LOGLEVEL_TRACE, "SRM: Updating with latest Episode information.");
+                    podcast.updateEpisodesOnWebServerAndEverRecorded();
+
                     // Get the Episodes for this podcast that are on the web server.
                     Set<UnrecordedEpisode> EpisodesOnServer = podcast.getEpisodesOnWebServer();
 
@@ -93,6 +101,8 @@ public class RecordManager extends TimerTask {
                         EpisodesOnServer = new HashSet<UnrecordedEpisode>();
                     }
 
+                    showDatabaseInfo("after getEpisodesOnWebServer");
+
                     Log.getInstance().write(Log.LOGLEVEL_TRACE, "SRM: Found Episodes on web server = " + EpisodesOnServer.size());
 
                     for (UnrecordedEpisode episode : EpisodesOnServer)
@@ -100,6 +110,8 @@ public class RecordManager extends TimerTask {
 
                     // No need to continue if no episodes are available.
                     if (EpisodesOnServer.size() > 0) {
+
+                        showDatabaseInfo("still have spisodes");
 
                         // Do the preparation that will be needed if we have to delete
                         // episodes that are already recorded.  We need to get them ordered
@@ -114,6 +126,8 @@ public class RecordManager extends TimerTask {
                             RecordedEpisodes = new ArrayList<Episode>();
                         }
 
+                        showDatabaseInfo("after getEpisodesOnDisk");
+
                         Log.getInstance().write(Log.LOGLEVEL_TRACE, "SRM: Found episodes currently recorded = " + RecordedEpisodes.size());
                         for (Episode episode : RecordedEpisodes)
                             Log.getInstance().write(Log.LOGLEVEL_VERBOSE, episode.getShowTitle() + ":" + episode.getShowEpisode());
@@ -121,13 +135,15 @@ public class RecordManager extends TimerTask {
                         // Sort RecordedEpisodes from oldest to newest.
                         RecordedEpisodes = Episode.sortByDateRecorded(RecordedEpisodes, false);
 
+                        showDatabaseInfo("after soerByDateRecorded");
+
                         // Move all of the watched shows to the front.
                         List<Episode> WatchedEpisodes = Episode.filterByWatchedCompletely(RecordedEpisodes, true);
                         List<Episode> UnwatchedEpisodes = Episode.filterByWatchedCompletely(RecordedEpisodes, false);
 
                         RecordedEpisodes = WatchedEpisodes;
                         if (!UnwatchedEpisodes.isEmpty() && !RecordedEpisodes.addAll(UnwatchedEpisodes))
-                            Log.printStackTrace();
+                            Log.getInstance().write(Log.LOGLEVEL_ERROR, "SRM: Error adding all.");
 
                         Log.getInstance().write(Log.LOGLEVEL_TRACE, "SRM: Currently recorded after sort and filter = " + RecordedEpisodes.size());
                         for (Episode episode : RecordedEpisodes)
@@ -136,6 +152,8 @@ public class RecordManager extends TimerTask {
                         // Remove reference so the GC can do its thing as needed.
                         WatchedEpisodes = null;
                         UnwatchedEpisodes = null;
+
+                        showDatabaseInfo("before filterByOnDisk");
 
                         // Filter the episodes by unrecorded.
                         Set<UnrecordedEpisode> UnrecordedEpisodes = UnrecordedEpisode.filterByOnDisk(EpisodesOnServer, false);
@@ -157,6 +175,8 @@ public class RecordManager extends TimerTask {
                                 Log.getInstance().write(Log.LOGLEVEL_VERBOSE, episode.getEpisodeTitle());
                         }
 
+                        showDatabaseInfo("just before recording");
+
                         Log.getInstance().write(Log.LOGLEVEL_TRACE, "SRM: Start recording Episodes.");
 
                         // Start recording.
@@ -165,6 +185,8 @@ public class RecordManager extends TimerTask {
 
                         while (UnrecordedEpisodes.size() > 0 && podcast.canRecordNew()) {
 
+                            showDatabaseInfo("can record new");
+
                             Log.getInstance().write(Log.LOGLEVEL_TRACE, "SRM: Getting Episode from list.");
 
                             // Get the first one in the unrecorded list.
@@ -172,12 +194,17 @@ public class RecordManager extends TimerTask {
 
                             UnrecordedEpisode EpisodeToRecord = i.next();
 
-                            if (!UnrecordedEpisodes.remove(EpisodeToRecord)) Log.printStackTrace();
+                            if (!UnrecordedEpisodes.remove(EpisodeToRecord))
+                                Log.getInstance().write(Log.LOGLEVEL_ERROR, "SRM: Error removing.");
 
                             Log.getInstance().write(Log.LOGLEVEL_WARN,"SRM: Record Episode " + EpisodeToRecord.getEpisodeTitle());
 
+                            showDatabaseInfo("before record");
+
                             // Record it.
                             Episode NewEpisode = EpisodeToRecord.record();
+
+                            showDatabaseInfo("after record");
 
                             // Make sure it recorded OK.
                             if (NewEpisode != null) {
@@ -225,25 +252,37 @@ public class RecordManager extends TimerTask {
                 }
 
                 // See if there are more episodes on the web server for this favorite.
-                if (podcast.isIsFavorite() && SageUtil.GetBoolProperty(Plugin.PROPERTY_MESSAGE_IF_NEW_AVAIL, false)) {
-                    Log.getInstance().write(Log.LOGLEVEL_TRACE, "SRM: Favorite Podcast is not set to record new episodes. Checking for new Episodes.");
+                if (podcast.isFavorite() && SageUtil.GetBoolProperty(Plugin.PROPERTY_MESSAGE_IF_NEW_AVAIL, false)) {
+                    Log.getInstance().write(Log.LOGLEVEL_TRACE, "SRM: Checking for new Episodes to see if a system message should be sent.");
 
                     if (podcast.hasUnrecordedEpisodes()) {
                         SystemMessageAPI.PostSystemMessage(1204, 1, "New Podcasts are available for " + podcast.getShowTitle(), null);
                     }
                 }
-
             }
         } catch (Exception e) {
-            Log.getInstance().write(Log.LOGLEVEL_ERROR, "SRM: Terminating because of exception " + e.toString());
+            Log.getInstance().write(Log.LOGLEVEL_ERROR, "SRM: Terminating because of exception " + e.getMessage());
             isRunning = false;
             DownloadManager.getInstance().setRecMgrStatus(isRunning);
             return;
         } finally {
-            Log.getInstance().write(Log.LOGLEVEL_TRACE, "SRM: Terminating normally.");
+            Log.getInstance().write(Log.LOGLEVEL_TRACE, "SRM: Terminating.");
             isRunning = false;
             DownloadManager.getInstance().setRecMgrStatus(isRunning);
             return;
+        }
+    }
+
+    private void showDatabaseInfo(String place) {
+        Log.getInstance().write(Log.LOGLEVEL_TRACE, "RecordManager.showDatabaseInfo: Examining sizes " + place);
+
+        List<Podcast> podcasts = DataStore.getAllPodcasts();
+
+        for (Podcast p : podcasts) {
+            Log.getInstance().write(Log.LOGLEVEL_TRACE, "RecordManager.showDatabaseInfo: Show " + p.getShowTitle());
+            int onWeb = p.getEpisodesOnWebServerSize();
+            int everRecorded = p.getEpisodesEverRecordedSize();
+            Log.getInstance().write(Log.LOGLEVEL_TRACE, "RecordManager.showDatabaseInfo: OnWeb : EverRecorded " + onWeb + ":" + everRecorded);
         }
     }
 }

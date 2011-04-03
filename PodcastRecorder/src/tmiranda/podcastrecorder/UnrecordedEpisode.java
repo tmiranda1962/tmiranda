@@ -1,7 +1,3 @@
-/*
- * To change this template, choose Tools | Templates
- * and open the template in the editor.
- */
 
 package tmiranda.podcastrecorder;
 
@@ -12,10 +8,11 @@ import sage.media.rss.*;
 import sagex.api.*;
 
 /**
- *
- * @author Tom Miranda
- *
  * This class represents podcast episodes that are still on the internet and have not been recorded.
+ *
+ * @author Tom Miranda.
+ *
+
  */
  public class UnrecordedEpisode extends Episode implements Serializable {
 
@@ -29,12 +26,14 @@ import sagex.api.*;
     public UnrecordedEpisode(Podcast p, RSSItem Item) {
         super(p, RSSHelper.makeID(Item));
         ChanItem = Item;
+        Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "UnrecordedEpisode: FeedContext=" + podcast.getFeedContext());
     }
 
     public UnrecordedEpisode(Podcast p, UnrecordedEpisodeData e) {
         super(p,RSSHelper.makeID(e.ChanItem));
         ChanItem = e.ChanItem;
         SPRRequestID = e.SPRRequestID;
+        Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "UnrecordedEpisode: FeedContext=" + podcast.getFeedContext());
     }
 
     /*
@@ -67,11 +66,11 @@ import sagex.api.*;
         RSSEnclosure Enclosure = ChanItem.getEnclosure();
 
         if (Enclosure == null) {
-            Log.getInstance().write(Log.LOGLEVEL_TRACE, "setDefaultVideoURL: null Enclosure.");
+            Log.getInstance().write(Log.LOGLEVEL_TRACE, "UnrecordedEpisode.setDefaultVideoURL: null Enclosure.");
         } else {
             String Type = Enclosure.getType();
             if (Type!=null && Type.toLowerCase().contains("sagetv")) {
-                Log.getInstance().write(Log.LOGLEVEL_ERROR, "setDefaultVideoURL: Error - Found SageTV custom Enclosure.");
+                Log.getInstance().write(Log.LOGLEVEL_ERROR, "UnrecordedEpisode.setDefaultVideoURL: Error - Found SageTV custom Enclosure.");
                 return URLs;
             }
         }
@@ -79,43 +78,43 @@ import sagex.api.*;
         if (OVT.startsWith("xPodcast")) {
 
             if (OVI.endsWith("_GOO")) {
-                Log.getInstance().write(Log.LOGLEVEL_TRACE, "setDefaultVideoURL: Found xPodcast _GOO.");
+                Log.getInstance().write(Log.LOGLEVEL_TRACE, "UnrecordedEpisode.setDefaultVideoURL: Found xPodcast _GOO.");
                 URLs = handleGoogle();
             } else if (OVI.endsWith("_YTV")) {
-                Log.getInstance().write(Log.LOGLEVEL_TRACE, "setDefaultVideoURL: Found xPodcast _YTV.");
+                Log.getInstance().write(Log.LOGLEVEL_TRACE, "UnrecordedEpisode.setDefaultVideoURL: Found xPodcast _YTV.");
                 URLs = handleYouTube();
             } else if (OVI.endsWith("_YTC")) {
-                Log.getInstance().write(Log.LOGLEVEL_TRACE, "setDefaultVideoURL: Found xPodcast _YTC.");
+                Log.getInstance().write(Log.LOGLEVEL_TRACE, "UnrecordedEpisode.setDefaultVideoURL: Found xPodcast _YTC.");
                 URLs = handleYouTubeChannel();
             } else {
 
                 // Handle a video podcast link.
 
-                Log.getInstance().write(Log.LOGLEVEL_TRACE, "setDefaultVideoURL: Found xPodcast " + OVT);
+                Log.getInstance().write(Log.LOGLEVEL_TRACE, "UnrecordedEpisode.setDefaultVideoURL: Found xPodcast " + OVT);
                 String URL = (Enclosure==null ? ChanItem.getLink() : Enclosure.getUrl());
 
                 if (URL!=null && !URL.isEmpty()) {
                     if (!URLs.add(URL))
                         Log.printStackTrace();
-                    Log.getInstance().write(Log.LOGLEVEL_TRACE, "setDefaultVideoURL: found for xPodcast = " + URL);
+                    Log.getInstance().write(Log.LOGLEVEL_TRACE, "UnrecordedEpisode.setDefaultVideoURL: found for xPodcast = " + URL);
                     return URLs;
                 } else {
-                    Log.getInstance().write(Log.LOGLEVEL_ERROR, "setDefaultVideoURL: null URL for xPodcast.");
+                    Log.getInstance().write(Log.LOGLEVEL_ERROR, "UnrecordedEpisode.setDefaultVideoURL: null URL for xPodcast.");
                 }
 
             }
 
         } else if (OVT.startsWith("xYouTube")) {
-            Log.getInstance().write(Log.LOGLEVEL_TRACE, "setDefaultVideoURL: Found YouTube " + OVT);
+            Log.getInstance().write(Log.LOGLEVEL_TRACE, "UnrecordedEpisode.setDefaultVideoURL: Found YouTube " + OVT);
             URLs = handleYouTube();
         } else if (OVT.startsWith("xYouTubeChannels")) {
-            Log.getInstance().write(Log.LOGLEVEL_TRACE, "setDefaultVideoURL: Found YouTube Channel " + OVT);
+            Log.getInstance().write(Log.LOGLEVEL_TRACE, "UnrecordedEpisode.setDefaultVideoURL: Found YouTube Channel " + OVT);
             URLs = handleYouTubeChannel();
         } else if (OVT.startsWith("xChannelsDotCom")) {
-            Log.getInstance().write(Log.LOGLEVEL_TRACE, "setDefaultVideoURL: Found Channels.com " + OVT);
+            Log.getInstance().write(Log.LOGLEVEL_TRACE, "UnrecordedEpisode.setDefaultVideoURL: Found Channels.com " + OVT);
             URLs = handleChannelsDotCom(OVI);
         } else {
-            Log.getInstance().write(Log.LOGLEVEL_TRACE, "setDefaultVideoURL: Found Google " + OVT);
+            Log.getInstance().write(Log.LOGLEVEL_TRACE, "UnrecordedEpisode.setDefaultVideoURL: Found Google " + OVT);
             URLs = handleGoogle();
         }
 
@@ -124,12 +123,12 @@ import sagex.api.*;
 
     private List<String> handleChannelsDotCom(String OVI) {
 
-        Log.getInstance().write(Log.LOGLEVEL_TRACE, "setDefaultVideoURL: Found Channels.com " + OVI);
+        Log.getInstance().write(Log.LOGLEVEL_TRACE, "UnrecordedEpisode.handleChannelsDotCom: Found Channels.com " + OVI);
 
         List<String> URLs = new ArrayList<String>();
 
         if (OVI.startsWith("xChannelsDotComCatList") || OVI.startsWith("xChannelsDotComList")) {
-            Log.getInstance().write(Log.LOGLEVEL_ERROR, "setDefaultVideoURL: Error - Unexpectedly found ChannelsDotComCatList " + OVI);
+            Log.getInstance().write(Log.LOGLEVEL_ERROR, "UnrecordedEpisode.handleChannelsDotCom: Error - Unexpectedly found ChannelsDotComCatList " + OVI);
             return URLs;
 
         }
@@ -137,9 +136,9 @@ import sagex.api.*;
         // VideoURL = sage_media_rss_RSSItem_getLink(RSSItem)
 
         String VideoURL = ChanItem.getLink();
-        Log.getInstance().write(Log.LOGLEVEL_TRACE, "setDefaultVideoURL: Found VideoURL from link " + OVI + ":" + VideoURL);
+        Log.getInstance().write(Log.LOGLEVEL_TRACE, "UnrecordedEpisode.handleChannelsDotCom: Found VideoURL from link " + OVI + ":" + VideoURL);
         if (VideoURL==null || VideoURL.isEmpty()) {
-            Log.getInstance().write(Log.LOGLEVEL_ERROR, "setDefaultVideoURL: null VideoURL from xChannelsDotComFeedContent.");
+            Log.getInstance().write(Log.LOGLEVEL_ERROR, "UnrecordedEpisode.handleChannelsDotCom: null VideoURL from xChannelsDotComFeedContent.");
             return URLs;
         }
 
@@ -159,24 +158,24 @@ import sagex.api.*;
         if (Enclosure==null) {
             VideoID = ytGetVideoIDFromLink();
             if (VideoID==null) {
-                Log.getInstance().write(Log.LOGLEVEL_ERROR, "handleYouTube: null VideoID after null Enclosure.");
+                Log.getInstance().write(Log.LOGLEVEL_ERROR, "UnrecordedEpisode.handleYouTube: null VideoID after null Enclosure.");
                 return URLs;
             }
         } else {
             String URL = Enclosure.getUrl();
             if (URL==null) {
-                Log.getInstance().write(Log.LOGLEVEL_TRACE, "handleYouTube: null URL from Enclosure.");
+                Log.getInstance().write(Log.LOGLEVEL_TRACE, "UnrecordedEpisode.handleYouTube: null URL from Enclosure.");
                 return URLs;
             }
 
             VideoID = URL.substring(URL.lastIndexOf("/")+1, URL.lastIndexOf("."));
-            Log.getInstance().write(Log.LOGLEVEL_TRACE, "handleYouTube: VideoID = " + VideoID);
+            Log.getInstance().write(Log.LOGLEVEL_TRACE, "UnrecordedEpisode.handleYouTube: VideoID = " + VideoID);
             // VideoID = Substring(EnclosureURL, StringLastIndexOf(EnclosureURL, "/") + 1, StringLastIndexOf(EnclosureURL, "."))
 
             if (VideoID==null || VideoID.isEmpty()) {
                 VideoID = ytGetVideoIDFromLink();
                 if (VideoID==null) {
-                    Log.getInstance().write(Log.LOGLEVEL_ERROR, "handleYouTube: null VideoID.");
+                    Log.getInstance().write(Log.LOGLEVEL_ERROR, "UnrecordedEpisode.handleYouTube: null VideoID.");
                     return URLs;
                 }
             }
@@ -184,21 +183,21 @@ import sagex.api.*;
 
         Properties Props = loadProperties();
         if (Props==null) {
-            Log.getInstance().write(Log.LOGLEVEL_ERROR, "handleYouTube: null Props.");
+            Log.getInstance().write(Log.LOGLEVEL_ERROR, "UnrecordedEpisode.handleYouTube: null Props.");
             return URLs;
         }
 
         String VideoFinderLineStart = Props.getProperty("xYouTube/VideoLinkFinder/LineStart");
         String VideoFinderLinkStart = Props.getProperty("xYouTube/VideoLinkFinder/LinkStart");
         String VideoFinderLinkEnd = Props.getProperty("xYouTube/VideoLinkFinder/LinkEnd");
-        Log.getInstance().write(Log.LOGLEVEL_TRACE, "handleYouTube: VideoFinders = " + VideoFinderLineStart + "|" + VideoFinderLinkStart + "|" + VideoFinderLinkEnd);
+        Log.getInstance().write(Log.LOGLEVEL_TRACE, "UnrecordedEpisode.handleYouTube: VideoFinders = " + VideoFinderLineStart + "|" + VideoFinderLinkStart + "|" + VideoFinderLinkEnd);
 
         // PageURL = new_java_net_URL("http://www.youtube.com/watch?v=" + VideoID)
         URL PageURL = null;
         try {
             PageURL = new URL("http://www.youtube.com/watch?v=" + VideoID);
         } catch (MalformedURLException e) {
-            Log.getInstance().write(Log.LOGLEVEL_ERROR, "handleYouTube: malformedURLException " + "http://www.youtube.com/watch?v=" + VideoID);
+            Log.getInstance().write(Log.LOGLEVEL_ERROR, "UnrecordedEpisode.handleYouTube: malformedURLException " + "http://www.youtube.com/watch?v=" + VideoID);
             return URLs;
         }
 
@@ -208,7 +207,7 @@ import sagex.api.*;
         try {
             is = PageURL.openStream();
         } catch (IOException e) {
-            Log.getInstance().write(Log.LOGLEVEL_ERROR, "handleYouTube: IOException on openStream " + e.getMessage());
+            Log.getInstance().write(Log.LOGLEVEL_ERROR, "UnrecordedEpisode.handleYouTube: IOException on openStream " + e.getMessage());
             return URLs;
         }
 
@@ -221,7 +220,7 @@ import sagex.api.*;
         try {
             while ((Currline=URLReader.readLine())!=null && tstring==null) {
 
-                Log.getInstance().write(Log.LOGLEVEL_ALL, "handleYouTube: Currline = " + Currline);
+                Log.getInstance().write(Log.LOGLEVEL_ALL, "UnrecordedEpisode.handleYouTube: Currline = " + Currline);
 
                 // playerswfidx = StringIndexOf(CurrLine, VideoFinderLineStart)
                 int playerswfidx = Currline.indexOf(VideoFinderLineStart);
@@ -241,12 +240,12 @@ import sagex.api.*;
                 }
             }
         } catch (IOException e) {
-            Log.getInstance().write(Log.LOGLEVEL_ERROR, "handleYouTube: IOException on readLine " + e.getMessage());
+            Log.getInstance().write(Log.LOGLEVEL_ERROR, "UnrecordedEpisode.handleYouTube: IOException on readLine " + e.getMessage());
             return URLs;
         }
 
         if (tstring==null) {
-            Log.getInstance().write(Log.LOGLEVEL_ERROR, "handleYouTube: Failed to find tstring.");
+            Log.getInstance().write(Log.LOGLEVEL_ERROR, "UnrecordedEpisode.handleYouTube: Failed to find tstring.");
             return URLs;
         }
 
@@ -255,15 +254,15 @@ import sagex.api.*;
         try {
             ResString = URLDecoder.decode(tstring, "UTF-8");
         } catch (UnsupportedEncodingException e) {
-            Log.getInstance().write(Log.LOGLEVEL_ERROR, "handleYouTube: Exception decoding tstring " + tstring);
+            Log.getInstance().write(Log.LOGLEVEL_ERROR, "UnrecordedEpisode.handleYouTube: Exception decoding tstring " + tstring);
             return URLs;
         }
 
-        Log.getInstance().write(Log.LOGLEVEL_TRACE, "handleYouTube: ResString = " + ResString);
+        Log.getInstance().write(Log.LOGLEVEL_TRACE, "UnrecordedEpisode.handleYouTube: ResString = " + ResString);
 
         // ResList = DataUnion(java_lang_String_split(ResString,","))
         List<String> ResList = Arrays.asList(ResString.split(","));
-        Log.getInstance().write(Log.LOGLEVEL_TRACE, "handleYouTube: ResList = " + ResList.toArray());
+        Log.getInstance().write(Log.LOGLEVEL_TRACE, "UnrecordedEpisode.handleYouTube: ResList = " + ResList.toArray());
 
 
         // GetProperty("online_video/YouTube/default_quality2","xHD1080")
@@ -283,17 +282,17 @@ import sagex.api.*;
             if (!ResSkipList.add("18")) Log.printStackTrace();
         }
 
-        Log.getInstance().write(Log.LOGLEVEL_TRACE, "handleYouTube: ResSkipList = " + ResSkipList.toArray());
+        Log.getInstance().write(Log.LOGLEVEL_TRACE, "UnrecordedEpisode.handleYouTube: ResSkipList = " + ResSkipList.toArray());
 
         // "REM Convert URL resolution list to URLs, skipping those not to be used."
         for (String ThisRes : ResList) {
             int SepPos = ThisRes.indexOf("|");
             String ThisResNum = ThisRes.substring(0, SepPos);
             String ThisResURL = ThisRes.substring(SepPos+1);
-            Log.getInstance().write(Log.LOGLEVEL_TRACE, "handleYouTube: ThisResNum and ThisResURL = " + ThisResNum + ":" + ThisResURL);
+            Log.getInstance().write(Log.LOGLEVEL_TRACE, "UnrecordedEpisode.handleYouTube: ThisResNum and ThisResURL = " + ThisResNum + ":" + ThisResURL);
 
             if (!ResSkipList.contains(ThisResNum)) {
-                Log.getInstance().write(Log.LOGLEVEL_TRACE, "handleYouTube: Adding URL = " + ThisResURL);
+                Log.getInstance().write(Log.LOGLEVEL_TRACE, "UnrecordedEpisode.handleYouTube: Adding URL = " + ThisResURL);
                 if (!URLs.add(ThisResURL))
                     Log.printStackTrace();
             }
@@ -309,14 +308,14 @@ import sagex.api.*;
     private Properties loadProperties() {
 
         File STVFile = WidgetAPI.GetDefaultSTVFile();
-        Log.getInstance().write(Log.LOGLEVEL_TRACE, "loadProperties: STVFile = " + STVFile.toString());
+        Log.getInstance().write(Log.LOGLEVEL_TRACE, "UnrecordedEpisode.loadProperties: STVFile = " + STVFile.toString());
 
         File STV = Utility.GetPathParentDirectory(STVFile);
         String STVString = STV.getAbsolutePath();
-        Log.getInstance().write(Log.LOGLEVEL_TRACE, "loadProperties: STVString = " + STVString);
+        Log.getInstance().write(Log.LOGLEVEL_TRACE, "UnrecordedEpisode.loadProperties: STVString = " + STVString);
 
         String PropFilePath = STVString + File.separator + "OnlineVideos" + File.separator + "OnlineVideoLinks.properties";
-        Log.getInstance().write(Log.LOGLEVEL_TRACE, "loadProperties: Loading " + PropFilePath);
+        Log.getInstance().write(Log.LOGLEVEL_TRACE, "UnrecordedEpisode.loadProperties: Loading " + PropFilePath);
 
         File PropFile = new File(PropFilePath);
 
@@ -326,7 +325,7 @@ import sagex.api.*;
         try {
             fis = new FileInputStream(PropFile);
         } catch (FileNotFoundException e) {
-            Log.getInstance().write(Log.LOGLEVEL_ERROR, "loadProperties: Property file not found " + PropFile);
+            Log.getInstance().write(Log.LOGLEVEL_ERROR, "UnrecordedEpisode.loadProperties: Property file not found " + PropFile);
             return null;
         }
 
@@ -337,22 +336,22 @@ import sagex.api.*;
         try {
             Props.load(bis);
         } catch (IOException e) {
-            Log.getInstance().write(Log.LOGLEVEL_ERROR, "loadProperties: IO Exception " + e.getMessage());
+            Log.getInstance().write(Log.LOGLEVEL_ERROR, "UnrecordedEpisode.loadProperties: IO Exception " + e.getMessage());
         }
 
-        try {bis.close();} catch (IOException e) {Log.getInstance().write(Log.LOGLEVEL_ERROR, "loadProperties: Error bis on close " + e.getMessage());}
-        try {fis.close();} catch (IOException e) {Log.getInstance().write(Log.LOGLEVEL_ERROR, "loadProperties: Error fis on close " + e.getMessage());}
+        try {bis.close();} catch (IOException e) {Log.getInstance().write(Log.LOGLEVEL_ERROR, "UnrecordedEpisode.loadProperties: Error bis on close " + e.getMessage());}
+        try {fis.close();} catch (IOException e) {Log.getInstance().write(Log.LOGLEVEL_ERROR, "UnrecordedEpisode.loadProperties: Error fis on close " + e.getMessage());}
         return Props;
     }
 
     private String ytGetVideoIDFromLink() {
         String URLLink = ChanItem.getLink();
         if (URLLink==null) {
-            Log.getInstance().write(Log.LOGLEVEL_ERROR, "ytGetVideoIDFromLink: null URLLink.");
+            Log.getInstance().write(Log.LOGLEVEL_ERROR, "UnrecordedEpisode.ytGetVideoIDFromLink: null URLLink.");
             return null;
         }
 
-        Log.getInstance().write(Log.LOGLEVEL_TRACE, "ytGetVideoIDFromLink: URLLink = " + URLLink);
+        Log.getInstance().write(Log.LOGLEVEL_TRACE, "UnrecordedEpisode.ytGetVideoIDFromLink: URLLink = " + URLLink);
 
         String VideoID = null;
 
@@ -361,7 +360,7 @@ import sagex.api.*;
         if (IDidx != -1) {
             String URLLink2 = URLLink.substring(IDidx+2);
             if (URLLink2==null) {
-                Log.getInstance().write(Log.LOGLEVEL_ERROR, "ytGetVideoIDFromLink: null URLLink2.");
+                Log.getInstance().write(Log.LOGLEVEL_ERROR, "UnrecordedEpisode.ytGetVideoIDFromLink: null URLLink2.");
                 return null;
             }
             int Endidx = URLLink2.indexOf("&");
@@ -370,7 +369,7 @@ import sagex.api.*;
             VideoID = URLLink.substring(URLLink.lastIndexOf("="));
         }
 
-        Log.getInstance().write(Log.LOGLEVEL_TRACE, "ytGetVideoIDFromLink: VideoID = " + VideoID);
+        Log.getInstance().write(Log.LOGLEVEL_TRACE, "UnrecordedEpisode.ytGetVideoIDFromLink: VideoID = " + VideoID);
         return VideoID;
     }
 
@@ -379,13 +378,13 @@ import sagex.api.*;
 
         RSSMediaGroup MediaGroup = ChanItem.getMediaGroup();
         if (MediaGroup==null) {
-            Log.getInstance().write(Log.LOGLEVEL_ERROR, "handleGoogle: null MediaGroup.");
+            Log.getInstance().write(Log.LOGLEVEL_ERROR, "UnrecordedEpisode.handleGoogle: null MediaGroup.");
             return URLs;
         }
 
         Vector ContentsVector = MediaGroup.getContent();
         if (ContentsVector==null) {
-            Log.getInstance().write(Log.LOGLEVEL_ERROR, "handleGoogle: null ContentsVector.");
+            Log.getInstance().write(Log.LOGLEVEL_ERROR, "UnrecordedEpisode.handleGoogle: null ContentsVector.");
             return URLs;
         }
 
@@ -395,7 +394,7 @@ import sagex.api.*;
             RSSMediaContent ShockWaveObject = ((RSSMediaContent[])FilteredContents)[0];
             String URL = ShockWaveObject.getUrl();
             if (URL==null) {
-                Log.getInstance().write(Log.LOGLEVEL_ERROR, "handleGoogle: null URL from ShockWaveObject.");
+                Log.getInstance().write(Log.LOGLEVEL_ERROR, "UnrecordedEpisode.handleGoogle: null URL from ShockWaveObject.");
                 return URLs;
             }
 
@@ -447,17 +446,17 @@ import sagex.api.*;
         Set<UnrecordedEpisode> ReturnedEpisodes = new HashSet<UnrecordedEpisode>();
 
         if (episodes==null || episodes.isEmpty()) {
-            Log.getInstance().write(Log.LOGLEVEL_ALL, "filterByOnDisk: null or 0 size episodes.");
+            Log.getInstance().write(Log.LOGLEVEL_ALL, "UnrecordedEpisode.filterByOnDisk: null or 0 size episodes.");
             return null;
         }
 
         // Add those that are currently on the filesystem.
         for (UnrecordedEpisode episode : episodes) {
             if (episode.getID()==null) {
-                Log.getInstance().write(Log.LOGLEVEL_ERROR, "filterByOnDisk: null ID.");
+                Log.getInstance().write(Log.LOGLEVEL_ERROR, "UnrecordedEpisode.filterByOnDisk: null ID.");
             } else if (episode.isOnDisk() == onDisk) {
                 if (!ReturnedEpisodes.add(episode))
-                    Log.getInstance().write(Log.LOGLEVEL_TRACE, "Element already in set.");
+                    Log.getInstance().write(Log.LOGLEVEL_TRACE, "UnrecordedEpisode.filterByOnDisk Element already in set.");
             }
         }
 
@@ -482,7 +481,7 @@ import sagex.api.*;
         for (UnrecordedEpisode episode : episodes) {
             if (episode.hasBeenRecorded() == everRecorded) {
                 if (!FilteredEpisodes.add(episode))
-                    Log.getInstance().write(Log.LOGLEVEL_TRACE, "Element already in set.");
+                    Log.getInstance().write(Log.LOGLEVEL_TRACE, "UnrecordedEpisode.filterByEverRecorded: Element already in set.");
             }
         }
 
@@ -491,18 +490,18 @@ import sagex.api.*;
 
     private boolean hasBeenRecorded() {
 
-        Podcast podcast = getPodcast();
+        Podcast p = getPodcast();
 
-        Set<Episode> recorded = podcast.getEpisodesEverRecorded();
+        Set<Episode> recorded = p.getEpisodesEverRecorded();
 
         if (recorded==null) {
             return false;
         }
 
-        String ID = RSSHelper.makeID(ChanItem);
+        String xID = RSSHelper.makeID(ChanItem);
 
         for (Episode e : recorded) {
-            if (ID.equals(e.getID())) {
+            if (xID.equals(e.getID())) {
                 return true;
             }
         }
@@ -552,11 +551,11 @@ import sagex.api.*;
         Log.getInstance().write(Log.LOGLEVEL_TRACE, "SRM record: Recording has completed.");
 
         // Create a new Episode and set its ID.
-        Podcast podcast = getPodcast();
+        Podcast p = getPodcast();
 
-        Episode episode = new Episode(podcast, getID());
+        Episode episode = new Episode(p, getID());
 
-        podcast.addEpisodeEverRecorded(episode);
+        p.addEpisodeEverRecorded(episode);
     
         return episode;
     }
@@ -571,14 +570,17 @@ import sagex.api.*;
 
          Podcast p = getPodcast();
 
-         Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "UNREEP FeedContext = " + p.getFeedContext());
+         Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "UnrecordedEpisode.startRecord: FeedContext = " + p.getFeedContext());
 
-         String ID = getNewSPRRequestID();
+         String xID = getNewSPRRequestID();
                 
          List<String> VideoURLs = setDefaultVideoURL(p.getOnlineVideoType(), p.getOnlineVideoItem());
 
-         RecordingEpisode episode = new RecordingEpisode(   ID,
+         RecordingEpisode episode = new RecordingEpisode(   xID,
                                                             p.getFeedContext(),
+                                                            p.getOnlineVideoType(),
+                                                            p.getOnlineVideoItem(),
+                                                            p.isFavorite(),
                                                             RSSHelper.makeID(ChanItem),
                                                             ChanItem,
                                                             p.getRecDir(),
@@ -589,15 +591,15 @@ import sagex.api.*;
                                                             VideoURLs);
 
          if (!episode.isComplete()) {
-            Log.getInstance().write(Log.LOGLEVEL_ERROR, "Incomplete recording map for " + ID);
+            Log.getInstance().write(Log.LOGLEVEL_ERROR, "UnrecordedEpisode.startRecord: Incomplete recording map for " + xID);
             return "Incomplete Data.";
          }
 
-         DownloadManager.getInstance().addRecording(ID, episode);   
-         DownloadManager.getInstance().addActiveDownloads(ID);
+         DownloadManager.getInstance().addRecording(xID, episode);
+         DownloadManager.getInstance().addActiveDownloads(xID);
          DownloadManager.getInstance().addItem(episode);
-         Log.getInstance().write(Log.LOGLEVEL_TRACE, "Queued to DownloadThread " + ID);
-         return ID;
+         Log.getInstance().write(Log.LOGLEVEL_TRACE, "UnrecordedEpisode.startRecord: Queued to DownloadThread " + xID);
+         return xID;
      }
 
     /**
@@ -629,7 +631,7 @@ import sagex.api.*;
      */
      private boolean recordedSuccessfully() {
          List<String> CompletedList = DownloadManager.getInstance().getCompletedDownloads();
-         Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "recorded successfully checking for " + SPRRequestID);
+         Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "UnrecordedEpisoderecordedSuccessfully: recorded successfully checking for " + SPRRequestID);
          return CompletedList.contains(this.SPRRequestID);
      }
  

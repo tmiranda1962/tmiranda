@@ -1,7 +1,3 @@
-/*
- * To change this template, choose Tools | Templates
- * and open the template in the editor.
- */
 
 package tmiranda.podcastrecorder;
 
@@ -27,11 +23,13 @@ import sagex.api.*;
     public Episode(Podcast OwningPodcast, String EpID) {
         podcast = OwningPodcast;
         ID = EpID;
+        Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "Episode: FeedContext=" + podcast.getFeedContext());
     }
 
     public Episode(EpisodeData e) {
         podcast = e.podcast;
         ID = e.ID;
+        Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "Episode: FeedContext=" + podcast.getFeedContext());
     }
 
     public Podcast getPodcast() {
@@ -46,7 +44,7 @@ import sagex.api.*;
     public String getShowTitle() {
         Object MF = this.getMediaFile();
         if (MF==null) {
-            Log.getInstance().write(Log.LOGLEVEL_WARN, "Episode getShowTitle: null MediaFile.");
+            Log.getInstance().write(Log.LOGLEVEL_WARN, "Episode.getShowTitle: null MediaFile.");
             return null;
         }
 
@@ -61,7 +59,7 @@ import sagex.api.*;
     public String getShowEpisode() {
         Object MF = this.getMediaFile();
         if (MF==null) {
-            Log.getInstance().write(Log.LOGLEVEL_WARN, "Episode getShowEpisode: null MediaFile.");
+            Log.getInstance().write(Log.LOGLEVEL_WARN, "Episode.getShowEpisode: null MediaFile.");
             return null;
         }
 
@@ -69,9 +67,10 @@ import sagex.api.*;
     }
 
 
-
     /**
-     * Checks to see if the Episode is physically on the disk.
+     * Checks to see if the Episode is physically on the disk. Note that if the file is successfully
+     * downloaded but it is 0 bytes long, getMediaFile() will return null.  We try to avoid this
+     * situation by not importing 0 length downloads into the Sage database.
      * <p>
      * @return true if the Episode is on the disk, false otherwise.
      */
@@ -139,7 +138,7 @@ import sagex.api.*;
     }
 
     public boolean isFavorite() {
-        return true;
+        return podcast.isFavorite();
     }
 
     public String getID() {
@@ -185,11 +184,11 @@ import sagex.api.*;
         Object MediaFile = this.getMediaFile();
 
         if (MediaFile == null) {
-            Log.getInstance().write(Log.LOGLEVEL_WARN, "Episode getDateRecorded: MediaFile not found.");
+            Log.getInstance().write(Log.LOGLEVEL_WARN, "Episode.getDateRecorded: MediaFile not found.");
             return 0L;
         }
 
-        Log.getInstance().write(Log.LOGLEVEL_ALL, "Episode getDateRecorded: Found MediaFile.");
+        Log.getInstance().write(Log.LOGLEVEL_ALL, "Episode.getDateRecorded: Found MediaFile.");
         return ShowAPI.GetOriginalAiringDate(MediaFile);
     }
 
@@ -209,7 +208,7 @@ import sagex.api.*;
         for (Episode episode : episodes) {
             if (episode.isWatchedCompletely() == watched) {
                 if (!FilteredEpisodes.add(episode))
-                    Log.getInstance().write(Log.LOGLEVEL_TRACE, "Element already in set.");
+                    Log.getInstance().write(Log.LOGLEVEL_TRACE, "Episode.getDateRecorded: Element already in set.");
             }
         }
 
@@ -241,7 +240,7 @@ import sagex.api.*;
         Object[] MediaFilesAll = MediaFileAPI.GetMediaFiles("VM");
 
         if (MediaFilesAll==null || MediaFilesAll.length==0) {
-            Log.getInstance().write(Log.LOGLEVEL_WARN, "Episode getMediaFile: null or 0 size MediaFilesAll.");
+            Log.getInstance().write(Log.LOGLEVEL_WARN, "Episode.getMediaFile: null or 0 size MediaFilesAll.");
             return null;
         }
 
@@ -265,7 +264,7 @@ import sagex.api.*;
 
         Object[] MediaFilesAll = MediaFileAPI.GetMediaFiles("VM");
 
-        Log.getInstance().write(Log.LOGLEVEL_TRACE, "Episode Dumping all Episodes:");
+        Log.getInstance().write(Log.LOGLEVEL_TRACE, "Episode: Dumping all Episodes:");
 
         for (Object MF : MediaFilesAll) {
             if (ShowAPI.GetShowExternalID(MF).startsWith("ONL")) {
@@ -311,6 +310,7 @@ import sagex.api.*;
  * @author Tom Miranda.
  */
 class DateRecorded implements Comparator<Episode> {
+    @Override
     public int compare(Episode Ep1, Episode Ep2) {
         long d1 = Ep1.getDateRecorded();
         long d2 = Ep2.getDateRecorded();

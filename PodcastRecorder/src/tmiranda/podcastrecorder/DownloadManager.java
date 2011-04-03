@@ -1,7 +1,3 @@
-/*
- * To change this template, choose Tools | Templates
- * and open the template in the editor.
- */
 
 package tmiranda.podcastrecorder;
 
@@ -10,16 +6,24 @@ import sagex.api.*;
 import sage.media.rss.*;
 
 /**
+ * Singleton that handles all various aspects of physically downloading Podcasts. When
+ * the first instance is created it will create and start a DownloadThread which monitors
+ * a queue for Podcasts to record.
+ *
+ * This class keeps track of various statistics regarding downloads such as:
+ * - how many downloads are in the queue.
+ * - how many downloads have completed.
+ * - how many downloads have failed.
  *
  * @author Tom Miranda.
  * <p>
- * Singleton that handles all aspects of downloading podcasts.
+
  */
 public class DownloadManager {
 
     private static final DownloadManager instance = new DownloadManager();
 
-    private MQDataGetter MQDataGetter;  // If any DownloadManager method is invoked from a client this will be
+    //private MQDataGetter MQDataGetter;  // If any DownloadManager method is invoked from a client this will be
                                         // used to get data from the server or invoke methods on the server.
     
     private static DownloadThread DT;
@@ -46,31 +50,29 @@ public class DownloadManager {
          */
         if (Global.IsClient()) {
             Log.getInstance().write(Log.LOGLEVEL_ERROR, "DownloadManager: Attempt to access Downloadmanager on SageClient.");
-            MQDataGetter = new MQDataGetter();
-            DefaultMQTimeout = SageUtil.GetLongProperty("podcastrecorder/default_mq_timeout", 1000L);
+            //MQDataGetter = new MQDataGetter();
+            //DefaultMQTimeout = SageUtil.GetLongProperty("podcastrecorder/default_mq_timeout", 1000L);
             return;
         }
 
         /*
          * Start the DownloadThread.
          */
-        Log.getInstance().write(Log.LOGLEVEL_TRACE, "DownloadManager: Starting DownloadThread.");
-        DT = new DownloadThread();
-        DT.start();
+        //Log.getInstance().write(Log.LOGLEVEL_TRACE, "DownloadManager: Starting DownloadThread.");
+        //DT = new DownloadThread();
+        //DT.start();
 
-        /*
-        if (t==null) {
-            Log.getInstance().write(Log.LOGLEVEL_ERROR, "DownloadManager: Error starting DownloadThread.");
-        } else {
-            Log.getInstance().write(Log.LOGLEVEL_TRACE, "DownloadManager: Starting DownloadThread.");
-            DT = t;
-        }
-        */
         Log.getInstance().write(Log.LOGLEVEL_TRACE, "DownloadManager: Initialization complete.");
     }
 
     public static DownloadManager getInstance() {
         return instance;
+    }
+
+    public void startDownloadThread() {
+        Log.getInstance().write(Log.LOGLEVEL_TRACE, "DownloadManager.startDownloadThread: Starting DownloadThread.");
+        DT = new DownloadThread();
+        DT.start();
     }
 
     public Object Clone() throws CloneNotSupportedException {
@@ -91,29 +93,28 @@ public class DownloadManager {
             DT.setStop(true);
             DT = null;
         }
-
     }
 
     /*
      * Active Dowloads. (In queue.)
      */
     public List<String> getActiveDownloads() {
-        Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "DownloadManager: getActiveDownloads.");
+        Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "DownloadManager.getActiveDownloads.");
         return ActiveDownloads;
     }
 
     public boolean addActiveDownloads(String ID) {
-        Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "AddActiveDownloads added " + ID + ":" + (ActiveDownloads.size()+1));
+        Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "DownloadManager.addActiveDownloads: Added " + ID + ":" + (ActiveDownloads.size()+1));
         return ActiveDownloads.add(ID);
     }
 
     public boolean removeActiveDownloads(String ID) {
-        Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "RemoveActiveDownloads removed " + ID + ":" + (ActiveDownloads.size()-1));
+        Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "DownloadManager.RemoveActiveDownloads: Removed " + ID + ":" + (ActiveDownloads.size()-1));
         return ActiveDownloads.remove(ID);
     }
 
     public void removeAllActiveDownloads() {
-        Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "DownloadManager: removeAllActiveDownloads.");
+        Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "DownloadManager.removeAllActiveDownloads.");
         ActiveDownloads = new ArrayList<String>();
     }
 
@@ -129,22 +130,22 @@ public class DownloadManager {
             RecordingEpisode episode = Recordings.get(ID);
 
             if (episode == null) {
-                Log.getInstance().write(Log.LOGLEVEL_ERROR, "Error in GetRSSItemsForActive.  Failed to find " + ID);
+                Log.getInstance().write(Log.LOGLEVEL_ERROR, "DownloadManager getRSSItemsForActive: Error in GetRSSItemsForActive.  Failed to find " + ID);
             } else {
                 RSSItem I = episode.getOrigChanItem();
-                Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "getRSSItemsForActive Adding Item " + I.getDescription());
+                Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "DownloadManager getRSSItemsForActive: Adding Item " + I.getDescription());
                 if (!ItemList.add(episode.getOrigChanItem()))
-                    Log.printStackTrace();
+                    Log.getInstance().write(Log.LOGLEVEL_ERROR, "DownloadManager getRSSItemsForActive: Error adding.");
             }
 
         }
 
-        Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "Found items = " + ItemList.size());
+        Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "DownloadManager getRSSItemsForActive: Found items = " + ItemList.size());
         return ItemList;
     }
 
     public int getSizeActive() {
-        Log.getInstance().write(Log.LOGLEVEL_TRACE, "GetSizeActive = " + ActiveDownloads.size());
+        Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "DownloadManger.getSizeActive = " + ActiveDownloads.size());
         return ActiveDownloads.size();
     }
 
@@ -160,14 +161,14 @@ public class DownloadManager {
             if (ID.equalsIgnoreCase(RSSHelper.makeID(ChanItem))) {
                 DT.removeItem(episode);                 // Remove from DownloadThread queue
                 if (!ActiveDownloads.remove(RequestID))
-                    Log.printStackTrace();// remove from DownloadManager queue
+                    Log.getInstance().write(Log.LOGLEVEL_ERROR, "DownloadManger.removeFromQueue: Error removing.");// remove from DownloadManager queue
                 Recordings.remove(RequestID);
 
                 return;
             }
         }
 
-        Log.getInstance().write(Log.LOGLEVEL_ERROR, "removeFromQueue: Failed to find RSSItem");
+        Log.getInstance().write(Log.LOGLEVEL_ERROR, "DownloadManger.removeFromQueue: Failed to find RSSItem");
         return;
     }
 
@@ -176,23 +177,23 @@ public class DownloadManager {
      * FailedDownloads.
      */
     public List<String> getFailedDownloads() {
-        Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "DownloadManager: getFailedDownloads.");
+        Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "DownloadManager.getFailedDownloads.");
         return FailedDownloads;
     }
 
     public boolean addFailedDownloads(String ID) {
-        Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "DownloadManager: addFailedDownloads.");
+        Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "DownloadManager.addFailedDownloads.");
         return FailedDownloads.add(ID);
     }
 
     public boolean removeFailedDownloads(String ID) {
-        Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "DownloadManager: removeFailedDownloads.");
+        Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "DownloadManager.removeFailedDownloads.");
         return FailedDownloads.remove(ID);
     }
 
     public List<RSSItem> getRSSItemsForFailed() {
 
-        Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "DownloadManager: GetRSSItemsforFailed.");
+        Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "DownloadManager.getRSSItemsforFailed.");
 
         List<RSSItem> ItemList = new ArrayList<RSSItem>();
 
@@ -201,21 +202,21 @@ public class DownloadManager {
             RecordingEpisode episode = Recordings.get(ID);
 
             if (episode == null) {
-                Log.getInstance().write(Log.LOGLEVEL_ERROR, "Error in GetRSSItemsForFailed.  Failed to find " + ID);
+                Log.getInstance().write(Log.LOGLEVEL_ERROR, "DownloadManager.getRSSItemsforFailed: Failed to find " + ID);
             } else {
-                Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "Adding Item.");
+                Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "DownloadManager.getRSSItemsforFailed: Adding Item.");
                 if (!ItemList.add(episode.getChanItem()))
-                    Log.printStackTrace();
+                    Log.getInstance().write(Log.LOGLEVEL_ERROR, "DownloadManager.getRSSItemsforFailed: Error adding.");
             }
 
         }
 
-        Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "Found items = " + ItemList.size());
+        Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "DownloadManager.getRSSItemsforFailed: Found items = " + ItemList.size());
         return ItemList;
     }
 
     public int getSizeFailed() {
-        Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "DownloadManager: GetSizeFailed = " + FailedDownloads.size());
+        Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "DownloadManagergetSizeFailed = " + FailedDownloads.size());
         return FailedDownloads.size();
     }
 
@@ -224,17 +225,17 @@ public class DownloadManager {
      * CompletedDownloads.
      */
     public List<String> getCompletedDownloads() {
-        Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "DownloadManager: getCompletedDownloads.");
+        Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "DownloadManager.getCompletedDownloads.");
         return CompletedDownloads;
     }
 
     public boolean addCompletedDownloads(String ID) {
-        Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "DownloadManager: AddCompletedDownloads added " + ID + ":" + (CompletedDownloads.size()+1));
+        Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "DownloadManager.AddCompletedDownloads: Added " + ID + ":" + (CompletedDownloads.size()+1));
         return CompletedDownloads.add(ID);
     }
 
     public boolean removeCompletedDownloads(String ID) {
-        Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "DownloadManager: removeCompletedDownloads.");
+        Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "DownloadManager.removeCompletedDownloads: Removed " + ID);
         return CompletedDownloads.remove(ID);
     }
 
@@ -249,21 +250,21 @@ public class DownloadManager {
             RecordingEpisode episode = Recordings.get(ID);
 
             if (episode == null) {
-                Log.getInstance().write(Log.LOGLEVEL_ERROR, "Error in GetRSSItemsForCompleted.  Failed to find " + ID);
+                Log.getInstance().write(Log.LOGLEVEL_ERROR, "DownloadManager GetRSSItemsForCompleted: Failed to find " + ID);
             } else {
-                Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "Adding Item.");
+                Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "DownloadManager GetRSSItemsForCompleted: Adding Item.");
                 if (!ItemList.add(episode.getChanItem()))
-                    Log.getInstance().write(Log.LOGLEVEL_TRACE, "Element already in set.");
+                    Log.getInstance().write(Log.LOGLEVEL_TRACE, "DownloadManager GetRSSItemsForCompleted: Element already in set.");
             }
 
         }
 
-        Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "Found items = " + ItemList.size());
+        Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "DownloadManager GetRSSItemsForCompleted: Found items = " + ItemList.size());
         return ItemList;
     }
 
     public int getSizeCompleted() {
-        Log.getInstance().write(Log.LOGLEVEL_TRACE, "DownloadManager: GetSizeCompleted = " + CompletedDownloads.size());
+        Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "DownloadManager.getSizeCompleted = " + CompletedDownloads.size());
         return CompletedDownloads.size();
     }
 
@@ -272,18 +273,18 @@ public class DownloadManager {
      * CurrentlyRecordingID.
      */
     public String getCurrentlyRecordingID() {
-        Log.getInstance().write(Log.LOGLEVEL_ALL, "DownloadManager: getCurrentlyRecordingID.");
+        Log.getInstance().write(Log.LOGLEVEL_ALL, "DownloadManager.getCurrentlyRecordingID.");
         return CurrentlyRecordingID;
     }
 
     public void setCurrentlyRecordingID(String ID) {
-        Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "DownloadManager: setCurrentlyRecordingID.");
+        Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "DownloadManager.setCurrentlyRecordingID " + ID);
         CurrentlyRecordingID = ID;
     }
 
     public List<RSSItem> getRSSItemsForCurrent() {
 
-        Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "DownloadManager: GetRSSItemsForCurrent.");
+        Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "DownloadManager.getRSSItemsForCurrent.");
 
         List<RSSItem> ItemList = new ArrayList<RSSItem>();
 
@@ -294,14 +295,14 @@ public class DownloadManager {
         RecordingEpisode episode = Recordings.get(CurrentlyRecordingID);
 
         if (episode == null) {
-            Log.getInstance().write(Log.LOGLEVEL_ERROR, "Error in GetRSSItemsForCurrent.  Failed to find " + CurrentlyRecordingID);
+            Log.getInstance().write(Log.LOGLEVEL_ERROR, "DownloadManager.getRSSItemsForCurrent: Failed to find " + CurrentlyRecordingID);
         } else {
-            Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "Adding Item.");
+            Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "DownloadManager.getRSSItemsForCurrent: Adding Item.");
             if (!ItemList.add(episode.getChanItem()))
-                Log.getInstance().write(Log.LOGLEVEL_TRACE, "Element already in set.");
+                Log.getInstance().write(Log.LOGLEVEL_TRACE, "DownloadManager.getRSSItemsForCurrent: Element already in set.");
         }
 
-        Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "Found items = " + ItemList.size());
+        Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "DownloadManager.getRSSItemsForCurrent: Found items = " + ItemList.size());
         return ItemList;
     }
 
@@ -310,22 +311,22 @@ public class DownloadManager {
      * be in ActiveDownloads, CompletedDownloads or FailedDownloads.
      */
     public HashMap<String, RecordingEpisode> getRecordings() {
-        Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "DownloadManager: getRecordings.");
+        Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "DownloadManager.getRecordings.");
         return Recordings;
     }
 
     public RecordingEpisode addRecording(String ID, RecordingEpisode episode) {
-        Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "DownloadManager: addRecordings.");
+        Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "DownloadManager.addRecording " + ID);
         return Recordings.put(ID, episode);
     }
 
     public RecordingEpisode getRecording(String ID) {
-        Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "DownloadManager: getRecordingID.");
+        Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "DownloadManager.getRecording " + ID);
         return Recordings.get(ID);
     }
 
     public RecordingEpisode removeRecording(String ID) {
-        Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "DownloadManager: removeRecording.");
+        Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "DownloadManager.removeRecording " + ID);
         return Recordings.remove(ID);
     }
 
@@ -335,44 +336,44 @@ public class DownloadManager {
 
     public long getCurrentDownloadSize() {
 
-        Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "DownloadManager: getCurrentDownloadSize.");
+        Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "DownloadManager.getCurrentDownloadSize.");
 
-        if (Global.IsClient())
-            return (Long)MQDataGetter.getDataFromServer(THIS_CLASS, "getCurrentDownloadSize", DefaultMQTimeout);
-        else
+        //if (Global.IsClient())
+            //return (Long)MQDataGetter.getDataFromServer(THIS_CLASS, "getCurrentDownloadSize", DefaultMQTimeout);
+        //else
             return DT.getCurrentDownloadSize();
     }
 
     public String getTitle() {
-        if (Global.IsClient()) {
-            return (String)MQDataGetter.getDataFromServer(THIS_CLASS, "getTitle", DefaultMQTimeout);
-        } else {
+        //if (Global.IsClient()) {
+            //return (String)MQDataGetter.getDataFromServer(THIS_CLASS, "getTitle", DefaultMQTimeout);
+        //} else {
             return DT.getTitle();
-        }
+        //}
     }
 
     public boolean getStop() {
-        if (Global.IsClient()) {
-            return (Boolean)MQDataGetter.getDataFromServer(THIS_CLASS, "getStop", DefaultMQTimeout);
-        } else {
+        //if (Global.IsClient()) {
+            //return (Boolean)MQDataGetter.getDataFromServer(THIS_CLASS, "getStop", DefaultMQTimeout);
+        //} else {
             return DT.getStop();
-        }
+        //}
     }
 
     public void setStop(boolean state) {
-        if (Global.IsClient()) {
-            Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "PR: Podcast: Removing all items on server.");
-            MQDataGetter.invokeMethodOnServer(THIS_CLASS, "setStop", new Object[] {state});
-        } else {
+        //if (Global.IsClient()) {
+            //Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "PR: Podcast: Removing all items on server.");
+            //MQDataGetter.invokeMethodOnServer(THIS_CLASS, "setStop", new Object[] {state});
+        //} else {
             DT.setStop(state);
-        }     
+        //}
     }
 
     public boolean addItem(RecordingEpisode episode) {
-        Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "DownloadManager: Adding item to download queue.");
+        Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "DownloadManager.addItem: Adding item to download queue.");
         
         if (episode==null) {
-            Log.getInstance().write(Log.LOGLEVEL_ERROR, "addItem: null episode");
+            Log.getInstance().write(Log.LOGLEVEL_ERROR, "DownloadManager.addItem: null episode");
             return false;
         }
 
@@ -381,104 +382,57 @@ public class DownloadManager {
 
     public void abortCurrentDownload() {
 
-        Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "DownloadManager: abortCurrentDownload.");
+        Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "DownloadManager.abortCurrentDownload.");
 
-        if (Global.IsClient()) {
-            Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "Aborting download on server.");
-            MQDataGetter.invokeMethodOnServer(THIS_CLASS, "abortCurrentDownload");
-        } else {
+        //if (Global.IsClient()) {
+            //Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "Aborting download on server.");
+            //MQDataGetter.invokeMethodOnServer(THIS_CLASS, "abortCurrentDownload");
+        //} else {
             DT.abortCurrentDownload();
-        }
+        //}
     }
 
     public Integer getNumberOfQueuedItems() {
-        if (Global.IsClient()) {
-            return (Integer)MQDataGetter.getDataFromServer(THIS_CLASS, "getNumberOfQueuedItems", DefaultMQTimeout);
-        } else {
+        //if (Global.IsClient()) {
+            //return (Integer)MQDataGetter.getDataFromServer(THIS_CLASS, "getNumberOfQueuedItems", DefaultMQTimeout);
+        //} else {
             return DT.getNumberOfQueuedItems();
-        }
+        //}
     }
 
     public boolean removeAllItems() {
 
-        if (Global.IsClient()) {
-            MQDataGetter.invokeMethodOnServer(THIS_CLASS, "removeAllItems");
-            return true;
-        } else {
+        //if (Global.IsClient()) {
+            //MQDataGetter.invokeMethodOnServer(THIS_CLASS, "removeAllItems");
+            //return true;
+        //} else {
             return DT.removeAllItems();
-        }
+        //}
     }
 
+    /**
+     * Fetches RSSItems (Episodes) from the web and updates Episodes that have ever been recorded.
+     *
+     * @return true if success, false if an error occurs.
+     */
     public synchronized boolean updateDatabase() {
 
-        List<Podcast> Podcasts = Podcast.readFavoritePodcasts();
-        if (Podcasts==null || Podcasts.isEmpty()) {
-            Log.getInstance().write(Log.LOGLEVEL_WARN, "updateDatabase: No favorite podcasts.");
+        List<Podcast> podcasts = DataStore.getAllPodcasts();
+
+        if (podcasts==null || podcasts.isEmpty()) {
+            Log.getInstance().write(Log.LOGLEVEL_WARN, "DownloadManager.updateDatabase: No favorite podcasts.");
             return true;
         }
 
-        Log.getInstance().write(Log.LOGLEVEL_TRACE, "updateDatabase: Scanning.");
+        Log.getInstance().write(Log.LOGLEVEL_TRACE, "DownloadManager.updateDatabase: Scanning.");
 
-        List<Podcast> newPodcasts = new ArrayList<Podcast>();
-
-        for (Podcast podcast : Podcasts) {
-            newPodcasts.add(updatePodcast(podcast));
+        for (Podcast podcast : podcasts) {
+            podcast.updateEpisodesOnWebServerAndEverRecorded();
         }
 
-        Podcasts = null;
-
-        if (!Podcast.writeFavoritePodcasts(newPodcasts)) {
-            Log.getInstance().write(Log.LOGLEVEL_ERROR, "updateDatabase: Error writing favorite podcasts.");
-            return false;
-        }
-
-        Log.getInstance().write(Log.LOGLEVEL_TRACE, "updateDatabase: Done.");
+        Log.getInstance().write(Log.LOGLEVEL_TRACE, "DownloadManager.updateDatabase: Done.");
         return true;
     }
-    
-    private Podcast updatePodcast(Podcast podcast) {
 
-        // Clone the current Podcast.
-        Podcast newPodcast = new Podcast(podcast);
-
-        Set<UnrecordedEpisode> EpisodesOnWebServer = newPodcast.getEpisodesOnWebServer();
-
-        if (EpisodesOnWebServer==null || EpisodesOnWebServer.isEmpty()) {
-            Log.getInstance().write(Log.LOGLEVEL_TRACE, "updatePodcast: No Episodes on Web.");
-            return newPodcast;
-        }
-
-        Log.getInstance().write(Log.LOGLEVEL_TRACE, "updatePodcast: Found Episodes on Web " + EpisodesOnWebServer.size());
-
-        // Scan all MediaFiles to see if any match.
-        for (UnrecordedEpisode episode : EpisodesOnWebServer) {
-
-            // Make sure this UnrecordedEpisode is remembered.
-            newPodcast.addEpisodesOnServer(episode);
-
-            RSSItem ChanItem = episode.getChanItem();
-
-            // Try to find a matching MediaFile
-            Object MediaFile = RSSHelper.getMediaFileForRSSItem(ChanItem);
-
-            // If we found one, see if it's already in the database.
-            if (MediaFile != null) {
-
-                Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "updatePodcast: Found recorded episode " + episode.getEpisodeTitle());
-                
-                Episode newEpisode = new Episode(newPodcast, RSSHelper.makeID(ChanItem));
-                
-                // If it's not already in the database, add it.
-                if (!newPodcast.hasEpisodeEverBeenRecorded(newEpisode)) {
-                    Log.getInstance().write(Log.LOGLEVEL_TRACE, "updatePodcast: Adding recorded episode to database.");
-                    newPodcast.addEpisodesEverRecorded(newEpisode);
-                }
-
-            }
-        }
-
-        Log.getInstance().write(Log.LOGLEVEL_TRACE, "updatePodcast: Done.");
-        return newPodcast;
-    }
-
+ 
 }

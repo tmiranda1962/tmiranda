@@ -1,11 +1,6 @@
-/*
- * To change this template, choose Tools | Templates
- * and open the template in the editor.
- */
 
 package tmiranda.podcastrecorder;
 
-import java.util.*;
 
 /**
  *
@@ -18,11 +13,11 @@ public class MQAPI {
     }
 
     public static String GetNoParameters() {
-System.out.println("MQAPI WAS INVOKED");
+        System.out.println("MQAPI WAS INVOKED");
         return "!!!DATA FROM MQAPI!!!";
     }
 
-    public static int GetOneParamters(int i) {
+    public static int GetOneParameters(int i) {
         return i+1;
     }
 

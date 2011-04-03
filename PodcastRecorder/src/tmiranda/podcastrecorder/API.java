@@ -1,7 +1,3 @@
-/*
- * To change this template, choose Tools | Templates
- * and open the template in the editor.
- */
 
 package tmiranda.podcastrecorder;
 
@@ -11,11 +7,16 @@ import sage.media.rss.*;
 import sagex.api.*;
 
 /**
+ * This class presents the API that can be used in a STV.
  *
- * @author Tom Miranda
+ * For performance reasons a cache of all Podcasts is kept for each instance of the API, which
+ * equates to each UI instance.
+ *
+ * @author Tom Miranda.
  */
 public class API {
 
+    // Singleton.
     private static final API instance = new API();
 
     /*
@@ -24,9 +25,13 @@ public class API {
      */
     private MQDataGetter MQDataGetter;
 
+    private static final String VERSION = Plugin.VERSION;
+
     private static final String THIS_CLASS = "tmiranda.podcastrecorder.API";
-    private static final long   DEFAULT_TIMEOUT = 5000L;
-    private static final long   TEN_SECOND_TIMEOUT = 10000L;
+    private static final long   DEFAULT_TIMEOUT     = 5000L;
+    private static final long   TEN_SECOND_TIMEOUT  = 10000L;
+    //private static final long   HALF_SECOND_TIMEOUT = 500L;
+    //private static final long   ONE_SECOND_TIMEOUT  = 1000L;
 
     /*
      * This is a cache that is kept on the local SageClient to increase performance.
@@ -40,11 +45,6 @@ public class API {
      * target filesystem (i.e. the Sage server) is Linux.
      */
 
-    /**
-     * The class provides the Sage STV all of the functionality needed to:
-     * - Manually record one or more podcasts.
-     * - Define Favorite podcasts that may be automatically downloaded as new episodes become available.
-     */
     private API() {
         MQDataGetter = new MQDataGetter();
     }
@@ -58,13 +58,19 @@ public class API {
     }
 
     /**
-     * Gets the MQDataGetter instance for this API instance.  This method should not be called directly by
-     * the Sage STV.
+     * Gets the MQDataGetter instance for this API instance.  This method should not be called 
+     * directly by the Sage STV.
      */
     private static MQDataGetter GetMQDataGetter() {
         return API.getInstance().MQDataGetter;
     }
 
+    /**
+     * Checks to see if the Sage server is alive and the PodcastRecorder Plugin is loaded.
+     *
+     * @return true if the Sage server is responding and has the PodcastRecorder plugin installed,
+     * false otherwise.
+     */
     public static boolean IsServerAlive() {
         if (Global.IsClient()) {
             Object RC = GetMQDataGetter().getDataFromServer(THIS_CLASS, "IsServerAlive", DEFAULT_TIMEOUT);
@@ -74,9 +80,34 @@ public class API {
         }
     }
 
+    /**
+     * Checks to see if the Plugin on the server and the Plugin on the Client are the same
+     * version.  Generally speaking, the Plugin will not work correctly if the two versions
+     * are not the same.
+     *
+     * @return true if the Plugins are the same version, false otherwise.
+     */
+    public static boolean IsPluginCorrectVersion() {
+        return GetAPIVersion().equals(GetServerVersion());
+    }
+
+    public static String GetServerVersion() {
+
+        if (Global.IsClient()) {
+            Object RC = GetMQDataGetter().getDataFromServer(THIS_CLASS, "GetServerVersion", new Object[] {}, DEFAULT_TIMEOUT);
+            return (RC==null || !(RC instanceof String) ? "ERROR" : (String)RC);
+        } else {
+            return Plugin.VERSION;
+        }
+    }
+
+    public static String GetAPIVersion() {
+        return API.VERSION;
+    }
+
     public static String MakeHuluOVI(String SearchURL) {
 
-        Log.Write(Log.LOGLEVEL_VERBOSE, "MakeHuluOVI from " + SearchURL);
+        Log.Write(Log.LOGLEVEL_VERBOSE, "MakeHuluOVI: Making from " + SearchURL);
 
         String OVI = null;
 
@@ -115,11 +146,11 @@ public class API {
                     Log.Write(Log.LOGLEVEL_ERROR, "MakeHuluOVI: Failed to find path.");
 
                 } else {
-                    Log.Write(Log.LOGLEVEL_ERROR, "MakeHuluOVI Bad FeedParam.");
+                    Log.Write(Log.LOGLEVEL_ERROR, "MakeHuluOVI: Bad FeedParam.");
                 }
                 break;
             default:
-                Log.Write(Log.LOGLEVEL_ERROR, "MakeHuluOVI Found bad SearchURL.");
+                Log.Write(Log.LOGLEVEL_ERROR, "MakeHuluOVI: Found bad SearchURL.");
                 break;
         }
 
@@ -128,15 +159,16 @@ public class API {
 
     public static void ShowRSSItem(RSSItem Item) {
         if (Item == null) {
-            Log.Write(Log.LOGLEVEL_ERROR, "ShowRSSItem null Item.");
+            Log.Write(Log.LOGLEVEL_ERROR, "ShowRSSItem: null Item.");
             return;
         }
-        System.out.println("PR: Showing RSSItem " + Item.getTitle() + ":" + Item.getCleanDescription() + ":" + Item.getLink());
+
+        System.out.println("ShowRSSItem: Showing RSSItem " + Item.getTitle() + ":" + Item.getCleanDescription() + ":" + Item.getLink());
     }
 
     public static void ShowRSSItems(List<RSSItem> Items) {
         if (Items == null) {
-            Log.Write(Log.LOGLEVEL_ERROR, "ShowRSSItems null Items.");
+            Log.Write(Log.LOGLEVEL_ERROR, "ShowRSSItems: null Items.");
             return;
         }
 
@@ -152,7 +184,7 @@ public class API {
      * favorite.
      */
     public static void RecordManagerManualRun() {
-        Log.Write(Log.LOGLEVEL_TRACE, "Manually running RecordManager.");
+        Log.Write(Log.LOGLEVEL_TRACE, "RecordManagerManualRun: Running RecordManager.");
         if (Global.IsClient()) {
             GetMQDataGetter().invokeMethodOnServer(THIS_CLASS, "RecordManagerManualRun");
         } else {
@@ -163,22 +195,22 @@ public class API {
     public static boolean IsDynamicSubCat(String OVT, String OVI, RSSItem ChanItem) {
 
         if (OVI != null && OVT.startsWith("xChannelsDotCom") && OVI.startsWith("xChannelsDotComCatList")) {
-            Log.Write(Log.LOGLEVEL_VERBOSE, "IsDynamicSubCat ChannelsDotCom List. Returning true. " + OVI);
+            Log.Write(Log.LOGLEVEL_VERBOSE, "IsDynamicSubCat: ChannelsDotCom List. Returning true. " + OVI);
             return true;
         }
 
         RSSEnclosure Enclosure = ChanItem.getEnclosure();
 
         if (Enclosure==null) {
-            Log.Write(Log.LOGLEVEL_VERBOSE, "IsDynamicSubCat found null Enclosure. Returning false.");
+            Log.Write(Log.LOGLEVEL_VERBOSE, "IsDynamicSubCat: found null Enclosure. Returning false.");
             return false;
         }
 
         String Type = Enclosure.getType().toLowerCase();
-        Log.Write(Log.LOGLEVEL_VERBOSE, "IsDynamicSubCat type is " + Type);
+        Log.Write(Log.LOGLEVEL_VERBOSE, "IsDynamicSubCat: Type is " + Type);
 
         if (Type!=null && Type.contains("sagetv")) {
-            Log.Write(Log.LOGLEVEL_VERBOSE, "IsDynamicSubCat found sagetv Enclosure. Returning true.");
+            Log.Write(Log.LOGLEVEL_VERBOSE, "IsDynamicSubCat: Found sagetv Enclosure. Returning true.");
             return true;
         }
 
@@ -187,7 +219,7 @@ public class API {
     
     public static String GetFeedName(RSSItem ChanItem) {
         if (ChanItem == null) {
-            Log.Write(Log.LOGLEVEL_ERROR, "GetFeedName null Item.");
+            Log.Write(Log.LOGLEVEL_ERROR, "GetFeedName: null Item.");
             return null;
         }
 
@@ -213,7 +245,7 @@ public class API {
      */
     public static Object GetMediaFileForRSSItem(RSSItem Item) {
         if (Item==null) {
-            Log.Write(Log.LOGLEVEL_ERROR, "Null RSSItem passed to GetMediaFileForRSSItem");
+            Log.Write(Log.LOGLEVEL_ERROR, "GetMediaFileForRSSItem: null RSSItem.");
             return false;
         }
 
@@ -223,10 +255,10 @@ public class API {
             return RSSHelper.getMediaFileForRSSItem(Item);
         }
     }
-    
+
     public static boolean DeleteMediaFileForRSSItem(RSSItem Item) {
         if (Item==null) {
-            Log.Write(Log.LOGLEVEL_ERROR, "Null RSSItem passed to DeleteMediaFileForRSSItem");
+            Log.Write(Log.LOGLEVEL_ERROR, "DeleteMediaFileForRSSItem: null RSSItem.");
             return false;
         }
 
@@ -236,7 +268,7 @@ public class API {
         } else {
             Object MediaFile = RSSHelper.getMediaFileForRSSItem(Item);
             if (MediaFile==null) {
-                Log.getInstance().write(Log.LOGLEVEL_ERROR, "Null MediaFile for RSSItem.");
+                Log.getInstance().write(Log.LOGLEVEL_ERROR, "DeleteMediaFileForRSSItem: null MediaFile for RSSItem.");
                 return false;           
             } else {
                 return MediaFileAPI.DeleteFile(MediaFile);
@@ -246,7 +278,7 @@ public class API {
 
     public static boolean IsRSSItemOnDisk(RSSItem Item) {
         if (Item==null) {
-            Log.Write(Log.LOGLEVEL_ERROR, "Null RSSItem passed to IsRSSItemOnDisk");
+            Log.Write(Log.LOGLEVEL_ERROR, "IsRSSItemOnDisk: null RSSItem.");
             return false;
         }
 
@@ -325,17 +357,17 @@ public class API {
 
     public static boolean IsRecordingNow(RSSItem RSSItem) {
         if (RSSItem==null) {
-            Log.Write(Log.LOGLEVEL_ERROR, "Null RSSItem passed to IsRecordingNow");
+            Log.Write(Log.LOGLEVEL_ERROR, "IsRecordingNow: null RSSItem.");
             return false;
         }
 
         if (Global.IsClient()) {
             Object RC = GetMQDataGetter().getDataFromServer(THIS_CLASS, "IsRecordingNow", new Object[] {RSSItem}, DEFAULT_TIMEOUT);
-            Log.Write(Log.LOGLEVEL_VERBOSE, "IsRecordingNow returning " + RC);
+            Log.Write(Log.LOGLEVEL_VERBOSE, "IsRecordingNow: Returning " + RC);
             return (RC==null || !(RC instanceof Boolean) ? false : (Boolean)RC);
         } else {
             List<RSSItem> Items = DownloadManager.getInstance().getRSSItemsForCurrent();
-            Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "IsRecordingNow returning " + RSSHelper.RSSListContains(Items, RSSItem));
+            Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "IsRecordingNow: Returning " + RSSHelper.RSSListContains(Items, RSSItem));
             return RSSHelper.RSSListContains(Items, RSSItem);
         }
     }
@@ -373,24 +405,24 @@ public class API {
 
     public static boolean IsInQueue(RSSItem RSSItem) {
         if (RSSItem == null) {
-            Log.Write(Log.LOGLEVEL_ERROR, "IsInQueue null Item.");
+            Log.Write(Log.LOGLEVEL_ERROR, "IsInQueue: null RSSItem.");
             return false;
         }
 
         if (Global.IsClient()) {
             Object RC = GetMQDataGetter().getDataFromServer(THIS_CLASS, "IsInQueue", new Object[] {RSSItem}, DEFAULT_TIMEOUT);
-            Log.Write(Log.LOGLEVEL_VERBOSE, "IsInQueue returning " + RC);
+            Log.Write(Log.LOGLEVEL_VERBOSE, "IsInQueue: Returning " + RC);
             return (RC==null || !(RC instanceof Boolean) ? false : (Boolean)RC);
         } else {
             List<RSSItem>Items = DownloadManager.getInstance().getRSSItemsForActive();
-            Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "IsInQueue returning " + RSSHelper.RSSListContains(Items, RSSItem));
+            Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "IsInQueue: Returning " + RSSHelper.RSSListContains(Items, RSSItem));
             return RSSHelper.RSSListContains(Items, RSSItem);
         }
     }
 
     public static void RemoveFromQueue(RSSItem RSSItem) {
         if (RSSItem == null) {
-            Log.Write(Log.LOGLEVEL_ERROR, "RemoveFromQueue null Item.");
+            Log.Write(Log.LOGLEVEL_ERROR, "RemoveFromQueue: null Item.");
             return;
         }
 
@@ -478,21 +510,21 @@ public class API {
 
         if (podcast.startsWith("ez")) {
             Text = properties.getProperty(podcast+"/Name", null);
-            Log.Write(Log.LOGLEVEL_VERBOSE, "GetTextForPodcast ez returning " + Text);
+            Log.Write(Log.LOGLEVEL_VERBOSE, "GetTextForPodcast: ez returning " + Text);
             return (Text == null ? podcast : Text);
         } else {
             Text = properties.getProperty("Source/" + podcast + "/LongName", null);
             if (Text!=null) {
-                Log.Write(Log.LOGLEVEL_VERBOSE, "GetTextForPodcast Source/LongName returning " + Text);
+                Log.Write(Log.LOGLEVEL_VERBOSE, "GetTextForPodcast: Source/LongName returning " + Text);
                 return Text;
             } else {
                 Text = properties.getProperty("Category/" + podcast + "/FullName", null);
                 if (Text!=null) {
-                    Log.Write(Log.LOGLEVEL_VERBOSE, "GetTextForPodcast FullName returning " + Text);
+                    Log.Write(Log.LOGLEVEL_VERBOSE, "GetTextForPodcast: FullName returning " + Text);
                     return Text;
                 } else {
                     Text = properties.getProperty("Category/" + podcast + "/LongName", null);
-                    Log.Write(Log.LOGLEVEL_VERBOSE, "GetTextForPodcast LongName returning " + Text);
+                    Log.Write(Log.LOGLEVEL_VERBOSE, "GetTextForPodcast: LongName returning " + Text);
                     return (Text==null ? podcast : Text);
                 }
             }
@@ -504,14 +536,14 @@ public class API {
      */
     public static List<String> GetAllFavoritePodcasts() {
 
-        Log.Write(Log.LOGLEVEL_VERBOSE, "GetAllFavoritePodcasts.");
+        Log.Write(Log.LOGLEVEL_VERBOSE, "GetAllFavoritePodcasts: Begin.");
 
         List<Podcast> favoritePodcasts;
 
         if (Global.IsClient()) {
             favoritePodcasts = getFavoritePodcastsFromServer();
         } else {
-            favoritePodcasts = Podcast.readFavoritePodcasts();
+            favoritePodcasts = DataStore.getAllPodcasts();
         }
 
         if (favoritePodcasts == null) {
@@ -521,9 +553,9 @@ public class API {
         List<String> names = new ArrayList<String>();
 
         for (Podcast p : favoritePodcasts) {
-            if (p.isIsFavorite())
+            if (p.isFavorite())
                 if (!names.add(p.getOnlineVideoItem()))
-                    Log.getInstance().write(Log.LOGLEVEL_ERROR, "GetAllFavoritePodcasts failed to add.");
+                    Log.getInstance().write(Log.LOGLEVEL_ERROR, "GetAllFavoritePodcasts: Failed to add.");
         }
         return names;
     }
@@ -574,6 +606,7 @@ public class API {
         return SortPodcastsByName(properties, UP);
     }
 
+    /**
     public static synchronized List<String> IncreasePodcastPriority(String OVI) {
         Log.Write(Log.LOGLEVEL_VERBOSE, "IncreasePodcastPriority.");
 
@@ -582,14 +615,14 @@ public class API {
         if (Global.IsClient()) {
             favoritePodcasts = getFavoritePodcastsFromServer();
         } else {
-            favoritePodcasts = Podcast.readFavoritePodcasts();
+            favoritePodcasts = DataStore.getAllPodcasts();
         }
 
         if (favoritePodcasts == null) {
             return null;
         }
 
-        // This will be the new list of OnlineVideoItems. (Podcasst for the STV.)
+        // This will be the new list of OnlineVideoItems. (Podcast for the STV.)
         List<String> OVIs = new ArrayList<String>();
 
         // Handle special case of only having 1 Favorite.
@@ -638,7 +671,7 @@ public class API {
         }
 
         // Write the new List out to disk.
-        if (!Podcast.writeFavoritePodcasts(newPodcastList)) {
+        if (!DataStore.writeFavoritePodcasts(newPodcastList)) {
             Log.Write(Log.LOGLEVEL_ERROR, "Error writing favorite Podcasts.");
         }
 
@@ -659,7 +692,7 @@ public class API {
         if (Global.IsClient()) {
             favoritePodcasts = getFavoritePodcastsFromServer();
         } else {
-            favoritePodcasts = Podcast.readFavoritePodcasts();
+            favoritePodcasts = DataStore.readFavoritePodcasts();
         }
 
         if (favoritePodcasts == null) {
@@ -722,14 +755,14 @@ public class API {
         }
 
         // Write the new List out to disk.
-        if (!Podcast.writeFavoritePodcasts(newPodcastList)) {
+        if (!DataStore.writeFavoritePodcasts(newPodcastList)) {
             Log.Write(Log.LOGLEVEL_ERROR, "Error writing favorite Podcasts.");
         }
 
         // Create the List of OVIs.
         for (Podcast p : newPodcastList) {
             if (!OVIs.add(p.getOnlineVideoItem()))
-                Log.printStackTrace();
+                Log.Write(Log.LOGLEVEL_ERROR, "Error adding favorite Podcasts.");
         }
 
         return OVIs;
@@ -758,13 +791,14 @@ public class API {
 
         return newList;
     }
+     */
 
     public static String GetOVTforPodcast(String OVI) {
 
-        Log.Write(Log.LOGLEVEL_VERBOSE, "GetOVTforPodcast.");
+        Log.Write(Log.LOGLEVEL_VERBOSE, "GetOVTforPodcast: Begin.");
 
         if (SageUtil.isNull(OVI)) {
-            Log.Write(Log.LOGLEVEL_ERROR, "null parameter 3.");
+            Log.Write(Log.LOGLEVEL_ERROR, "GetOVTforPodcast: null parameter.");
             return null;
         }
 
@@ -773,7 +807,7 @@ public class API {
         if (Global.IsClient()) {
             favoritePodcasts = getFavoritePodcastsFromServer();
         } else {
-            favoritePodcasts = Podcast.readFavoritePodcasts();
+            favoritePodcasts = DataStore.getAllPodcasts();
         }
 
         if (favoritePodcasts == null) {
@@ -786,7 +820,7 @@ public class API {
             }
         }
 
-        Log.Write(Log.LOGLEVEL_VERBOSE, "GetOVTforPodcast did not find match for " + OVI);
+        Log.Write(Log.LOGLEVEL_VERBOSE, "GetOVTforPodcast: Did not find match for " + OVI);
         return null;
     }
 
@@ -794,28 +828,30 @@ public class API {
         return GetOVTforPodcast(OVI);
     }
 
+    /**
+     * Retrieves the specified Podcast.
+     * - Does not lock the Podcast for update.
+     * - Always fetches the Podcast from the server.
+     *
+     * @param OVT
+     * @param OVI
+     * @return
+     */
     public static Podcast GetPodcast(String OVT, String OVI) {
 
-        Log.Write(Log.LOGLEVEL_ALL, "GetPodcast.");
+        Log.Write(Log.LOGLEVEL_ALL, "GetPodcast: Begin");
 
         if (SageUtil.isNull(OVT, OVI)) {
-            Log.Write(Log.LOGLEVEL_ERROR, "null parameter 4.");
+            Log.Write(Log.LOGLEVEL_ERROR, "GetPodcast: null parameter " + OVT + ":" + OVI);
             return null;
         }
-
-        List<Podcast> favoritePodcasts = null;
 
         if (Global.IsClient()) {
-            favoritePodcasts = getFavoritePodcastsFromServer();
-        } else {
-            favoritePodcasts = Podcast.readFavoritePodcasts();
-        }
-
-        if (favoritePodcasts == null) {
-            return null;
-        }
-
-        return Podcast.findPodcast(favoritePodcasts, OVT, OVI);
+            Log.Write(Log.LOGLEVEL_VERBOSE, "GetPodcast: Executing GetPodcast on server.");
+            Object RC = GetMQDataGetter().getDataFromServer(THIS_CLASS, "GetPodcast", new Object[] {OVT, OVI}, DEFAULT_TIMEOUT);
+            return (RC==null || !(RC instanceof Podcast) ? null : (Podcast)RC);
+        } else
+            return DataStore.getPodcast(OVT, OVI);
     }
 
     public static boolean PodcastExists(String OVT, String OVI) {
@@ -823,7 +859,7 @@ public class API {
     }
 
     public static long GetLastChecked(String OVT, String OVI) {
-        Log.Write(Log.LOGLEVEL_VERBOSE, "GetLastChecked.");
+        Log.Write(Log.LOGLEVEL_VERBOSE, "GetLastChecked:");
         Podcast podcast = GetPodcast(OVT, OVI);
         if (podcast==null)
             return 0L;
@@ -831,7 +867,7 @@ public class API {
     }
 
     public static int GetDuplicatesDeleted(String OVT, String OVI) {
-        Log.Write(Log.LOGLEVEL_VERBOSE, "GetDuplicatesDeleted.");
+        Log.Write(Log.LOGLEVEL_VERBOSE, "GetDuplicatesDeleted:");
         Podcast podcast = GetPodcast(OVT, OVI);
         if (podcast==null)
             return 0;
@@ -839,16 +875,16 @@ public class API {
     }
 
     public static int GetEpisodesOnServer(String OVT, String OVI) {
-        Log.Write(Log.LOGLEVEL_VERBOSE, "GetEpisodesOnServer.");
+        Log.Write(Log.LOGLEVEL_VERBOSE, "GetEpisodesOnServer:");
         Podcast podcast = GetPodcast(OVT, OVI);
         if (podcast==null)
             return 0;
         else
-            return podcast.getEpisodesOnServerSize();
+            return podcast.getEpisodesOnWebServerSize();
     }
 
     public static int GetEpisodesOnDisk(String OVT, String OVI) {
-        Log.Write(Log.LOGLEVEL_VERBOSE, "GetEpisodesOnDisk.");
+        Log.Write(Log.LOGLEVEL_VERBOSE, "GetEpisodesOnDisk:");
         Podcast podcast = GetPodcast(OVT, OVI);
         if (podcast==null)
             return 0;
@@ -856,7 +892,7 @@ public class API {
     }
 
     public static int GetEpisodesEverRecorded(String OVT, String OVI) {
-        Log.Write(Log.LOGLEVEL_VERBOSE, "GetEpisodesEverRecorded.");
+        Log.Write(Log.LOGLEVEL_VERBOSE, "GetEpisodesEverRecorded:");
         Podcast podcast = GetPodcast(OVT, OVI);
         if (podcast==null)
             return 0;
@@ -868,6 +904,7 @@ public class API {
     /*
      * Isfavorite
      */
+
     /**
      * Method for Sage STV to check if a Podcast is a favorite.
      * <p>
@@ -877,29 +914,16 @@ public class API {
      */
     public static boolean IsPodcastFavorite(String OVT, String OVI) {
 
-        Log.Write(Log.LOGLEVEL_ALL, "IsPodcastFavorite2: Looking for " + OVT + ":" + OVI);
+        Log.Write(Log.LOGLEVEL_ALL, "IsPodcastFavorite: Looking for " + OVT + ":" + OVI);
 
         if (SageUtil.isNull(OVT, OVI)) {
-            Log.Write(Log.LOGLEVEL_WARN, "null parameter 5.");
+            Log.Write(Log.LOGLEVEL_WARN, "IsPodcastFavorite: null parameter " + OVT + ":" + OVI);
             return false;
         }
 
-        List<Podcast> favoritePodcasts = null;
+        Podcast podcast = GetPodcast(OVT, OVI);
 
-        if (Global.IsClient()) {
-            favoritePodcasts = getFavoritePodcastsFromServer();
-        } else {
-            favoritePodcasts = Podcast.readFavoritePodcasts();
-        }
-
-        if (favoritePodcasts == null) {
-            Log.Write(Log.LOGLEVEL_VERBOSE, "IsPodcastFavorite: No favorites.");
-            return false;
-        }
-
-        Podcast podcast = Podcast.findPodcast(favoritePodcasts, OVT, OVI);
-
-        if (podcast == null || !podcast.isIsFavorite()) {
+        if (podcast == null || !podcast.isFavorite()) {
             Log.Write(Log.LOGLEVEL_ALL, "IsPodcastFavorite: Not a favorite.");
             return false;
         } else {
@@ -908,78 +932,75 @@ public class API {
         }
     }
 
+    /**
+     * Checks if the Airing is a Favorite Podcast.
+     * @param Airing
+     * @return true if it's a favorite, false otherwise.
+     */
+    public static boolean IsPodcastFavorite(Object Airing) {
+
+        if (Airing==null)
+            return false;
+
+        Object MediaFile = AiringAPI.GetMediaFileForAiring(Airing);
+
+        if (MediaFile==null)
+            return false;
+
+        String fav = MediaFileAPI.GetMediaFileMetadata(MediaFile, RecordingEpisode.METADATA_FAVORITE);
+
+        return fav!=null && fav.equalsIgnoreCase("true");
+    }
+
     public synchronized static boolean _SetIsFavorite(String OVT, String OVI, Boolean Favorite) {
 
-        Log.Write(Log.LOGLEVEL_VERBOSE, "SetIsFavorite.");
+        Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "_SetIsFavorite: Enter.");
 
         if (SageUtil.isNull(OVT, OVI)) {
-            Log.Write(Log.LOGLEVEL_ERROR, "null parameter 6.");
+            Log.Write(Log.LOGLEVEL_ERROR, "_SetIsFavorite: null parameter " + OVT + ":" + OVI);
             return false;
         }
 
         if (Global.IsClient()) {
-            return setIsFavoriteOnServer(OVT, OVI, Favorite);
+            Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "_SetIsFavoriteOnServer: Setting Isfavorite on server.");
+            GetMQDataGetter().invokeMethodOnServer(THIS_CLASS, "_SetIsFavorite", new Object[] {OVT, OVI, Favorite});
+            return true;
         }
 
-        List<Podcast> favoritePodcasts = Podcast.readFavoritePodcasts();
-
-        if (favoritePodcasts == null) {
-            Log.Write(Log.LOGLEVEL_TRACE, "No favoritePodcasts.");
-            return false;
-        }
-
-        Podcast podcast = Podcast.findPodcast(favoritePodcasts, OVT, OVI);
+        Podcast podcast = GetPodcast(OVT, OVI);
 
         if (podcast == null) {
-            Log.Write(Log.LOGLEVEL_TRACE, "null podcast.");
-            return false;
-        }
-
-        if (!favoritePodcasts.remove(podcast)) {
-            Log.Write(Log.LOGLEVEL_TRACE, "Failed to remove podcast.");
+            Log.Write(Log.LOGLEVEL_TRACE, "_SetIsFavorite: null podcast.");
             return false;
         }
 
         podcast.setIsFavorite(Favorite);
-
-        if (!favoritePodcasts.add(podcast)) {
-            Log.Write(Log.LOGLEVEL_TRACE, "Failed to add podcast.");
-            return false;
-        }
-
-        return Podcast.writeFavoritePodcasts(favoritePodcasts);
+        return DataStore.updatePodcast(podcast);
     }
 
     public static boolean SetIsFavorite(String OVT, String OVI, Object F) {
         return _SetIsFavorite(OVT, OVI, ObjToBool(F));
     }
 
-    private static boolean setIsFavoriteOnServer(String OVT, String OVI, Boolean Favorite) {
-        Log.Write(Log.LOGLEVEL_VERBOSE, "Setting Isfavorite on server.");
-        GetMQDataGetter().invokeMethodOnServer(THIS_CLASS, "_SetIsFavorite", new Object[] {OVT, OVI, Favorite});
-        return true;
-    }
+    public static synchronized List<Podcast> getFavoritePodcastsFromServer() {
+        Log.getInstance().write(Log.LOGLEVEL_ALL, "getFavoritePodcastsFromServer: Getting podcasts from server.");
 
-    public static List<Podcast> getFavoritePodcastsFromServer() {
-        Log.Write(Log.LOGLEVEL_ALL, "Getting podcasts from server.");
+        Date newDate = new Date();
 
-        // Clear the cache to reclaim the memory.
-        PodcastCache.clear();
-        PodcastCache = null;
-    
-        Object RC = GetMQDataGetter().getDataFromServer("tmiranda.podcastrecorder.Podcast", "readFavoritePodcasts", new Object[] {cacheDate}, DEFAULT_TIMEOUT);
+        Object RC = GetMQDataGetter().getDataFromServer("tmiranda.podcastrecorder.DataStore", "readFavoritePodcasts", new Object[] {cacheDate}, DEFAULT_TIMEOUT);
+
         @SuppressWarnings("unchecked")
         List<Podcast> Podcasts = (RC==null || !(RC instanceof List) ? null : (List<Podcast>)RC);
 
         // If it's not null it contains updated Podcasts.  If it is null the Podcasts in the local cache are still valid.
         if (Podcasts!=null) {
-            Log.Write(Log.LOGLEVEL_VERBOSE, "API Podcast cache updated.");
+            Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "API getFavoritePodcastsFromServer: Podcast cache updated.");
+            PodcastCache.clear();
             PodcastCache = Podcasts;
-            cacheDate = new Date();
-            return PodcastCache;
-        } else {
-            return new ArrayList<Podcast>();
+            cacheDate = newDate;
         }
+
+        return PodcastCache;
     }
 
     /**
@@ -991,100 +1012,61 @@ public class API {
      */
     public synchronized static boolean RemoveFavorite(String OVT, String OVI) {
 
-        Log.Write(Log.LOGLEVEL_TRACE, "RemoveFavorite: Removing " + OVT + ":" + OVI);
+        Log.getInstance().write(Log.LOGLEVEL_TRACE, "RemoveFavorite: Removing " + OVT + ":" + OVI);
 
         if (SageUtil.isNull(OVT, OVI)) {
-            Log.Write(Log.LOGLEVEL_ERROR, "null parameter 7.");
+            Log.getInstance().write(Log.LOGLEVEL_ERROR, "RemoveFavorite: null parameter.");
             return false;
         }
 
         if (Global.IsClient()) {
-            return removeFavoriteOnServer(OVT, OVI);
+            Log.Write(Log.LOGLEVEL_VERBOSE, "RemoveFavorite: Removing favorite on server.");
+            GetMQDataGetter().invokeMethodOnServer(THIS_CLASS, "RemoveFavorite", new Object[] {OVT, OVI});
+            return true;
         }
 
-        // Get the current Favorites.
-        List<Podcast> favoritePodcasts = Podcast.readFavoritePodcasts();
-
-        if (favoritePodcasts == null) {
-            Log.Write(Log.LOGLEVEL_TRACE, "RemoveFavorite: No favorites.");
-            return false;
-        }
-
-        Podcast podcast = Podcast.findPodcast(favoritePodcasts, OVT, OVI);
+        Podcast podcast = GetPodcast(OVT, OVI);
 
         if (podcast == null) {
             Log.Write(Log.LOGLEVEL_TRACE, "RemoveFavorite: Is not a favorite.");
             return false;
         }
 
-        // Remove the podcast.
-        if (!favoritePodcasts.remove(podcast))
-            Log.getInstance().write(Log.LOGLEVEL_ERROR, "RemoveFavorite failed to add.");
-
         Log.Write(Log.LOGLEVEL_TRACE, "RemoveFavorite: Removed.");
-
-        // Save to disk.
-        return Podcast.writeFavoritePodcasts(favoritePodcasts);
+        return DataStore.removePodcast(podcast);
     }
 
-    public static boolean removeFavoriteOnServer(String OVT, String OVI) {
-        Log.Write(Log.LOGLEVEL_VERBOSE, "Removing favorite on server.");
-        GetMQDataGetter().invokeMethodOnServer(THIS_CLASS, "RemoveFavorite", new Object[] {OVT, OVI});
-        return true;
-    }
 
     public synchronized static boolean DisableFavorite(String OVT, String OVI) {
         Log.Write(Log.LOGLEVEL_TRACE, "DisableFavorite: Disabling " + OVT + ":" + OVI);
 
         if (SageUtil.isNull(OVT, OVI)) {
-            Log.Write(Log.LOGLEVEL_ERROR, "null parameter 8.");
+            Log.Write(Log.LOGLEVEL_ERROR, "DisableFavorite: null parameter " + OVT + ":" + OVI);
             return false;
         }
 
         if (Global.IsClient()) {
-            return disableFavoriteOnServer(OVT, OVI);
+            Log.Write(Log.LOGLEVEL_VERBOSE, "DisableFavorite: Disabling favorite on server.");
+            GetMQDataGetter().invokeMethodOnServer(THIS_CLASS, "DisableFavorite", new Object[] {OVT, OVI});
+            return true;
         }
 
-        List<Podcast> favoritePodcasts = Podcast.readFavoritePodcasts();
-
-        if (favoritePodcasts == null || favoritePodcasts.isEmpty()) {
-            Log.Write(Log.LOGLEVEL_TRACE, "No podcasts.");
-            return false;
-        }
-
-        Podcast podcast = Podcast.findPodcast(favoritePodcasts, OVT, OVI);
+        Podcast podcast = GetPodcast(OVT, OVI);
 
         if (podcast == null) {
-            Log.Write(Log.LOGLEVEL_TRACE, "Did not findPodcast.");
-            return false;
-        }
-
-        if (!favoritePodcasts.remove(podcast)) {
-            Log.Write(Log.LOGLEVEL_ERROR, "Failed to remove podcast.");
+            Log.Write(Log.LOGLEVEL_TRACE, "DisableFavorite: Is not a favorite.");
             return false;
         }
 
         podcast.setIsFavorite(false);
-
-        if (!favoritePodcasts.add(podcast)) {
-            Log.Write(Log.LOGLEVEL_ERROR, "Failed to add podcast.");
-            return false;
-        }
-
-        return Podcast.writeFavoritePodcasts(favoritePodcasts);
-    }
-
-    public static boolean disableFavoriteOnServer(String OVT, String OVI) {
-        Log.Write(Log.LOGLEVEL_VERBOSE, "Podcast: Disabling favorite on server.");
-        GetMQDataGetter().invokeMethodOnServer(THIS_CLASS, "DisableFavorite", new Object[] {OVT, OVI});
-        return true;
+        return DataStore.updatePodcast(podcast);
     }
 
     public static String GetFeedContext(String OVT, String OVI) {
 
-        Log.Write(Log.LOGLEVEL_VERBOSE, "GetFeedContext.");
+        Log.Write(Log.LOGLEVEL_VERBOSE, "GetFeedContext:");
 
-        Podcast podcast = Podcast.Find(OVT, OVI);
+        Podcast podcast = GetPodcast(OVT, OVI);
 
         if (podcast==null)
             return null;
@@ -1097,14 +1079,15 @@ public class API {
      */
     public static boolean GetRecordNew(String OVT, String OVI) {
 
-        Log.Write(Log.LOGLEVEL_VERBOSE, "GetRecordNew.");
+        Log.Write(Log.LOGLEVEL_VERBOSE, "GetRecordNew:");
 
-        Podcast podcast = Podcast.Find(OVT, OVI);
+        Podcast podcast = GetPodcast(OVT, OVI);
 
-        if (podcast==null)
+        if (podcast==null) {
             return false;
-        else
+        } else {
             return podcast.isRecordNew();
+        }
     }
 
     public static boolean SetRecordNew(String OVT, String OVI, Object RN) {
@@ -1113,50 +1096,28 @@ public class API {
 
     public synchronized static boolean _SetRecordNew(String OVT, String OVI, Boolean RecordNew) {
 
-        Log.Write(Log.LOGLEVEL_VERBOSE, "SetRecordNew.");
+        Log.Write(Log.LOGLEVEL_VERBOSE, "SetRecordNew:");
 
         if (SageUtil.isNull(OVT, OVI)) {
-            Log.Write(Log.LOGLEVEL_ERROR, "null parameter 9.");
+            Log.Write(Log.LOGLEVEL_ERROR, "SetRecordNew: null parameter " + OVT + ":" + OVI);
             return false;
         }
 
         if (Global.IsClient()) {
-            return setRecordNewOnServer(OVT, OVI, RecordNew);
+            Log.Write(Log.LOGLEVEL_VERBOSE, "SetRecordNew: Setting record new on server.");
+            GetMQDataGetter().invokeMethodOnServer(THIS_CLASS, "_SetRecordNew", new Object[] {OVT, OVI, RecordNew});
+            return true;
         }
 
-        List<Podcast> favoritePodcasts = Podcast.readFavoritePodcasts();
+        Podcast podcast = GetPodcast(OVT, OVI);
 
-        if (favoritePodcasts == null) {
-            Log.Write(Log.LOGLEVEL_TRACE, "No favoritePodcasts.");
+        if (podcast==null) {
+            Log.Write(Log.LOGLEVEL_TRACE, "_SetIsFavorite: Could not get Podcast.");
             return false;
         }
-
-        Podcast podcast = Podcast.findPodcast(favoritePodcasts, OVT, OVI);
-
-        if (podcast == null) {
-            Log.Write(Log.LOGLEVEL_TRACE, "null podcast.");
-            return false;
-        }
-
-        if (!favoritePodcasts.remove(podcast)) {
-            Log.Write(Log.LOGLEVEL_ERROR, "Failed to remove podcast.");
-            return false;
-        }
-
+        
         podcast.setRecordNew(RecordNew);
-
-        if (!favoritePodcasts.add(podcast)) {
-            Log.Write(Log.LOGLEVEL_ERROR, "Failed to add podcast.");
-            return false;
-        }
-
-        return Podcast.writeFavoritePodcasts(favoritePodcasts);
-    }
-
-    private static boolean setRecordNewOnServer(String OVT, String OVI, Boolean RecordNew) {
-        Log.Write(Log.LOGLEVEL_VERBOSE, "Setting record new on server.");
-        GetMQDataGetter().invokeMethodOnServer(THIS_CLASS, "_SetRecordNew", new Object[] {OVT, OVI, RecordNew});
-        return true;
+        return DataStore.updatePodcast(podcast);
     }
 
     /*
@@ -1164,9 +1125,9 @@ public class API {
      */
     public static boolean GetReRecord(String OVT, String OVI) {
 
-        Log.Write(Log.LOGLEVEL_VERBOSE, "GetReRecord.");
+        Log.Write(Log.LOGLEVEL_VERBOSE, "GetReRecord:");
 
-        Podcast podcast = Podcast.Find(OVT, OVI);
+        Podcast podcast = GetPodcast(OVT, OVI);
 
         if (podcast==null)
             return false;
@@ -1176,54 +1137,33 @@ public class API {
 
     public synchronized static boolean _SetReRecord(String OVT, String OVI, Boolean ReRecord) {
 
-        Log.Write(Log.LOGLEVEL_VERBOSE, "SetReRecord.");
+        Log.Write(Log.LOGLEVEL_VERBOSE, "SetReRecord:");
 
         if (SageUtil.isNull(OVT, OVI)) {
-            Log.Write(Log.LOGLEVEL_ERROR, "null parameter 10.");
+            Log.Write(Log.LOGLEVEL_ERROR, "SetReRecord: null parameter " + OVT + ":" + OVI);
             return false;
         }
 
         if (Global.IsClient()) {
-            return setReRecordOnServer(OVT, OVI, ReRecord);
+            Log.Write(Log.LOGLEVEL_VERBOSE, "SetReRecord: Setting ReRecord on server.");
+            GetMQDataGetter().invokeMethodOnServer(THIS_CLASS, "_SetReRecord", new Object[] {OVT, OVI, ReRecord});
+            return true;
         }
 
-        List<Podcast> favoritePodcasts = Podcast.readFavoritePodcasts();
-
-        if (favoritePodcasts == null) {
-            Log.Write(Log.LOGLEVEL_TRACE, "No favoritePodcasts.");
-            return false;
-        }
-
-        Podcast podcast = Podcast.findPodcast(favoritePodcasts, OVT, OVI);
+        Podcast podcast = GetPodcast(OVT, OVI);
 
         if (podcast == null) {
-            Log.Write(Log.LOGLEVEL_TRACE, "null podcast.");
-            return false;
-        }
-
-        if (!favoritePodcasts.remove(podcast)) {
-            Log.Write(Log.LOGLEVEL_ERROR, "Failed to remove podcast.");
+            Log.Write(Log.LOGLEVEL_TRACE, "SetReRecord: null podcast.");
             return false;
         }
 
         podcast.setReRecordDeleted(ReRecord);
 
-        if (!favoritePodcasts.add(podcast)) {
-            Log.Write(Log.LOGLEVEL_ERROR, "Failed to add podcast.");
-            return false;
-        }
-
-        return Podcast.writeFavoritePodcasts(favoritePodcasts);
+        return DataStore.updatePodcast(podcast);
     }
 
     public static boolean SetReRecord(String OVT, String OVI, Object RR) {
         return _SetReRecord(OVT, OVI, ObjToBool(RR));
-    }
-
-    private static boolean setReRecordOnServer(String OVT, String OVI, Boolean ReRecord) {
-        Log.Write(Log.LOGLEVEL_VERBOSE, "Setting ReRecord on server.");
-        GetMQDataGetter().invokeMethodOnServer(THIS_CLASS, "_SetReRecord", new Object[] {OVT, OVI, ReRecord});
-        return true;
     }
 
     /*
@@ -1231,9 +1171,9 @@ public class API {
      */
     public static boolean GetAutoDelete(String OVT, String OVI) {
 
-        Log.Write(Log.LOGLEVEL_VERBOSE, "GetAutoDelete.");
+        Log.Write(Log.LOGLEVEL_VERBOSE, "GetAutoDelete:");
 
-        Podcast podcast = Podcast.Find(OVT, OVI);
+        Podcast podcast = GetPodcast(OVT, OVI);
 
         if (podcast==null)
             return false;
@@ -1243,54 +1183,33 @@ public class API {
 
     public synchronized static boolean _SetAutoDelete(String OVT, String OVI, Boolean AutoDelete) {
 
-        Log.Write(Log.LOGLEVEL_VERBOSE, "SetAutoDelete.");
+        Log.Write(Log.LOGLEVEL_VERBOSE, "SetAutoDelete:");
 
         if (SageUtil.isNull(OVT, OVI)) {
-            Log.Write(Log.LOGLEVEL_ERROR, "null parameter 11.");
+            Log.Write(Log.LOGLEVEL_ERROR, "SetAutoDelete: null parameter " + OVT + ":" + OVI);
             return false;
         }
 
         if (Global.IsClient()) {
-            return setAutoDeleteOnServer(OVT, OVT, AutoDelete);
+            Log.Write(Log.LOGLEVEL_VERBOSE, "SetAutoDelete: Setting AutoDelete on server.");
+            GetMQDataGetter().invokeMethodOnServer(THIS_CLASS, "_SetAutoDelete", new Object[] {OVT, OVI, AutoDelete});
+            return true;
         }
 
-        List<Podcast> favoritePodcasts = Podcast.readFavoritePodcasts();
+        Podcast podcast = GetPodcast(OVT, OVI);
 
-        if (favoritePodcasts == null) {
-            Log.Write(Log.LOGLEVEL_TRACE, "No favoritePodcasts.");
-            return false;
-        }
-
-        Podcast podcast = Podcast.findPodcast(favoritePodcasts, OVT, OVI);
-
-        if (podcast == null) {
-            Log.Write(Log.LOGLEVEL_TRACE, "null podcast.");
-            return false;
-        }
-
-        if (!favoritePodcasts.remove(podcast)) {
-            Log.Write(Log.LOGLEVEL_ERROR, "Failed to remove podcast.");
+        if (podcast==null) {
+            Log.Write(Log.LOGLEVEL_TRACE, "SetAutoDelete: Could not get Podcast.");
             return false;
         }
 
         podcast.setAutoDelete(AutoDelete);
 
-        if (!favoritePodcasts.add(podcast)) {
-            Log.Write(Log.LOGLEVEL_ERROR, "Failed to add podcast.");
-            return false;
-        }
-
-        return Podcast.writeFavoritePodcasts(favoritePodcasts);
+        return DataStore.updatePodcast(podcast);
     }
 
     public static boolean SetAutoDelete(String OVT, String OVI, Object AD) {
         return _SetAutoDelete(OVT, OVI, ObjToBool(AD));
-    }
-
-    private static boolean setAutoDeleteOnServer(String OVT, String OVI, Boolean AutoDelete) {
-        Log.Write(Log.LOGLEVEL_VERBOSE, "Setting AutoDelete on server.");
-        GetMQDataGetter().invokeMethodOnServer(THIS_CLASS, "_SetAutoDelete", new Object[] {OVT, OVI, AutoDelete});
-        return true;
     }
 
     /*
@@ -1298,9 +1217,9 @@ public class API {
      */
     public static boolean GetKeepNewest(String OVT, String OVI) {
 
-        Log.Write(Log.LOGLEVEL_VERBOSE, "GetKeepNewest.");
+        Log.Write(Log.LOGLEVEL_VERBOSE, "GetKeepNewest:");
 
-        Podcast podcast = Podcast.Find(OVT, OVI);
+        Podcast podcast = GetPodcast(OVT, OVI);
 
         if (podcast==null)
             return false;
@@ -1310,64 +1229,44 @@ public class API {
 
     public synchronized static boolean _SetKeepNewest(String OVT, String OVI, Boolean Keep) {
 
-        Log.Write(Log.LOGLEVEL_VERBOSE, "SetKeepNewest.");
+        Log.Write(Log.LOGLEVEL_VERBOSE, "SetKeepNewest:");
 
         if (SageUtil.isNull(OVT, OVI)) {
-            Log.Write(Log.LOGLEVEL_ERROR, "null parameter 12.");
+            Log.Write(Log.LOGLEVEL_ERROR, "SetKeepNewest: null parameter " + OVT + ":" + OVI);
             return false;
         }
 
         if (Global.IsClient()) {
-            return setKeepNewestOnServer(OVT, OVI, Keep);
+            Log.Write(Log.LOGLEVEL_VERBOSE, "SetKeepNewest: Setting KeepNewest on server.");
+            GetMQDataGetter().invokeMethodOnServer(THIS_CLASS, "_SetKeepNewest", new Object[] {OVT, OVI, Keep});
+            return true;
         }
 
-        List<Podcast> favoritePodcasts = Podcast.readFavoritePodcasts();
-
-        if (favoritePodcasts == null) {
-            Log.Write(Log.LOGLEVEL_TRACE, "No favoritePodcasts.");
-            return false;
-        }
-
-        Podcast podcast = Podcast.findPodcast(favoritePodcasts, OVT, OVI);
+        Podcast podcast = GetPodcast(OVT, OVI);
 
         if (podcast == null) {
-            Log.Write(Log.LOGLEVEL_TRACE, "null podcast.");
-            return false;
-        }
-
-        if (!favoritePodcasts.remove(podcast)) {
-            Log.Write(Log.LOGLEVEL_ERROR, "Failed to remove podcast.");
+            Log.Write(Log.LOGLEVEL_TRACE, "SetKeepNewest: null podcast.");
             return false;
         }
 
         podcast.setKeepNewest(Keep);
 
-        if (!favoritePodcasts.add(podcast)) {
-            Log.Write(Log.LOGLEVEL_ERROR, "Failed to add podcast.");
-            return false;
-        }
-
-        return Podcast.writeFavoritePodcasts(favoritePodcasts);
+        return DataStore.updatePodcast(podcast);
     }
 
     public static boolean SetKeepNewest(String OVT, String OVI, Object K) {
         return _SetKeepNewest(OVT, OVI, ObjToBool(K));
     }
 
-    private static boolean setKeepNewestOnServer(String OVT, String OVI, Boolean Keep) {
-        Log.Write(Log.LOGLEVEL_VERBOSE, "Setting KeepNewest on server.");
-        GetMQDataGetter().invokeMethodOnServer(THIS_CLASS, "_SetKeepNewest", new Object[] {OVT, OVI, Keep});
-        return true;
-    }
 
     /*
      * RemoveDuplicates
      */
     public static boolean GetRemoveDuplicates(String OVT, String OVI) {
 
-        Log.Write(Log.LOGLEVEL_VERBOSE, "GetRemoveDuplicates.");
+        Log.Write(Log.LOGLEVEL_VERBOSE, "GetRemoveDuplicates:");
 
-        Podcast podcast = Podcast.Find(OVT, OVI);
+        Podcast podcast = GetPodcast(OVT, OVI);
 
         if (podcast==null)
             return false;
@@ -1377,64 +1276,44 @@ public class API {
 
     public synchronized static boolean _SetRemoveDuplicates(String OVT, String OVI, Boolean Remove) {
 
-        Log.Write(Log.LOGLEVEL_VERBOSE, "SetRemoveDuplicates.");
+        Log.Write(Log.LOGLEVEL_VERBOSE, "SetRemoveDuplicates:");
 
         if (SageUtil.isNull(OVT, OVI)) {
-            Log.Write(Log.LOGLEVEL_ERROR, "null parameter 13.");
+            Log.Write(Log.LOGLEVEL_ERROR, "SetRemoveDuplicates: null parameter " + OVT + ":" + OVI);
             return false;
         }
 
         if (Global.IsClient()) {
-            return setRemoveDuplicatesOnServer(OVT, OVI, Remove);
+            Log.Write(Log.LOGLEVEL_VERBOSE, "SetRemoveDuplicates: Setting RemoveDuplicates on server.");
+            GetMQDataGetter().invokeMethodOnServer(THIS_CLASS, "_SetRemoveDuplicates", new Object[] {OVT, OVI, Remove});
+            return true;
         }
 
-        List<Podcast> favoritePodcasts = Podcast.readFavoritePodcasts();
-
-        if (favoritePodcasts == null) {
-            Log.Write(Log.LOGLEVEL_TRACE, "No favoritePodcasts.");
-            return false;
-        }
-
-        Podcast podcast = Podcast.findPodcast(favoritePodcasts, OVT, OVI);
+        Podcast podcast = GetPodcast(OVT, OVI);
 
         if (podcast == null) {
-            Log.Write(Log.LOGLEVEL_TRACE, "null podcast.");
-            return false;
-        }
-
-        if (!favoritePodcasts.remove(podcast)) {
-            Log.Write(Log.LOGLEVEL_ERROR, "Failed to remove podcast.");
+            Log.Write(Log.LOGLEVEL_TRACE, "SetRemoveDuplicates: null podcast.");
             return false;
         }
 
         podcast.setDeleteDuplicates(Remove);
 
-        if (!favoritePodcasts.add(podcast)) {
-            Log.Write(Log.LOGLEVEL_ERROR, "Failed to add podcast.");
-            return false;
-        }
-
-        return Podcast.writeFavoritePodcasts(favoritePodcasts);
+        return DataStore.updatePodcast(podcast);
     }
 
     public static boolean SetRemoveDuplicates(String OVT, String OVI, Object R) {
         return _SetRemoveDuplicates(OVT, OVI, ObjToBool(R));
     }
 
-    private static boolean setRemoveDuplicatesOnServer(String OVT, String OVI, Boolean Remove) {
-        Log.Write(Log.LOGLEVEL_VERBOSE, "Setting RemoveDuplicates on server.");
-        GetMQDataGetter().invokeMethodOnServer(THIS_CLASS, "_SetRemoveDuplicates", new Object[] {OVT, OVI, Remove});
-        return true;
-    }
 
     /*
      * UseTitleAsSubir
      */
     public static boolean GetUseTitleAsSubdir(String OVT, String OVI) {
 
-        Log.Write(Log.LOGLEVEL_VERBOSE, "GetUseTitleAsSubdir.");
+        Log.Write(Log.LOGLEVEL_VERBOSE, "GetUseTitleAsSubdir:");
 
-        Podcast podcast = Podcast.Find(OVT, OVI);
+        Podcast podcast = GetPodcast(OVT, OVI);
 
         if (podcast==null)
             return false;
@@ -1444,99 +1323,64 @@ public class API {
 
     public synchronized static boolean _SetUseTitleAsSubdir(String OVT, String OVI, Boolean Use) {
 
-        Log.Write(Log.LOGLEVEL_VERBOSE, "SetUseTitleAsSubdir.");
+        Log.Write(Log.LOGLEVEL_VERBOSE, "SetUseTitleAsSubdir:");
 
         if (SageUtil.isNull(OVT, OVI)) {
-            Log.Write(Log.LOGLEVEL_ERROR, "null parameter 14.");
+            Log.Write(Log.LOGLEVEL_ERROR, "SetUseTitleAsSubdir: null parameter " + OVT + ":" + OVI);
             return false;
         }
 
         if (Global.IsClient()) {
-            return setUseTitleAsSubdirOnServer(OVT, OVI, Use);
+            Log.Write(Log.LOGLEVEL_VERBOSE, "SetUseTitleAsSubdir: Setting UseTitleAsSubdir on server.");
+            GetMQDataGetter().invokeMethodOnServer(THIS_CLASS, "_SetUseTitleAsSubdir", new Object[] {OVT, OVI, Use});
+            return true;
         }
 
-        List<Podcast> favoritePodcasts = Podcast.readFavoritePodcasts();
-
-        if (favoritePodcasts == null) {
-            Log.Write(Log.LOGLEVEL_TRACE, "No favoritePodcasts.");
-            return false;
-        }
-
-        Podcast podcast = Podcast.findPodcast(favoritePodcasts, OVT, OVI);
+        Podcast podcast = GetPodcast(OVT, OVI);
 
         if (podcast == null) {
-            Log.Write(Log.LOGLEVEL_TRACE, "null podcast.");
-            return false;
-        }
-
-        if (!favoritePodcasts.remove(podcast)) {
-            Log.Write(Log.LOGLEVEL_ERROR, "Failed to remove podcast.");
+            Log.Write(Log.LOGLEVEL_TRACE, "SetUseTitleAsSubdir: null podcast.");
             return false;
         }
 
         podcast.setUseShowTitleAsSubdir(Use);
 
-        if (!favoritePodcasts.add(podcast)) {
-            Log.Write(Log.LOGLEVEL_ERROR, "Failed to add podcast.");
-            return false;
-        }
-
-        return Podcast.writeFavoritePodcasts(favoritePodcasts);
+        return DataStore.updatePodcast(podcast);
     }
 
     public static boolean SetUseTitleAsSubdir(String OVT, String OVI, Object U) {
         return _SetUseTitleAsSubdir(OVT, OVI, ObjToBool(U));
     }
 
-    private static boolean setUseTitleAsSubdirOnServer(String OVT, String OVI, Boolean Use) {
-        Log.Write(Log.LOGLEVEL_VERBOSE, "Setting UseTitleAsSubdir on server.");
-        GetMQDataGetter().invokeMethodOnServer(THIS_CLASS, "_SetUseTitleAsSubdir", new Object[] {OVT, OVI, Use});
-        return true;
-    }
 
     /*
      * UseShowTitleInFileName
      */
     public synchronized static boolean _SetUseTitleInFileName(String OVT, String OVI, Boolean Use) {
 
-        Log.Write(Log.LOGLEVEL_VERBOSE, "SetUseTitleInFileName.");
+        Log.Write(Log.LOGLEVEL_VERBOSE, "SetUseTitleInFileName:");
 
         if (SageUtil.isNull(OVT, OVI)) {
-            Log.Write(Log.LOGLEVEL_ERROR, "null parameter 15.");
+            Log.Write(Log.LOGLEVEL_ERROR, "SetUseTitleInFileName: null parameter " + OVT + ":" + OVI);
             return false;
         }
 
         if (Global.IsClient()) {
-            return setUseTitleInFileNameOnServer(OVT, OVI, Use);
+            Log.Write(Log.LOGLEVEL_VERBOSE, "SetUseTitleInFileName: Setting UseTitleInFileName on server.");
+            GetMQDataGetter().invokeMethodOnServer(THIS_CLASS, "_SetUseTitleInFileName", new Object[] {OVT, OVI, Use});
+            return true;
         }
 
-        List<Podcast> favoritePodcasts = Podcast.readFavoritePodcasts();
-
-        if (favoritePodcasts == null) {
-            Log.Write(Log.LOGLEVEL_TRACE, "No favoritePodcasts.");
-            return false;
-        }
-
-        Podcast podcast = Podcast.findPodcast(favoritePodcasts, OVT, OVI);
+        Podcast podcast = GetPodcast(OVT, OVI);
 
         if (podcast == null) {
-            Log.Write(Log.LOGLEVEL_TRACE, "null podcast.");
-            return false;
-        }
-
-        if (!favoritePodcasts.remove(podcast)) {
-            Log.Write(Log.LOGLEVEL_ERROR, "Failed to remove podcast.");
+            Log.Write(Log.LOGLEVEL_TRACE, "SetUseTitleInFileName: null podcast.");
             return false;
         }
 
         podcast.setUseShowTitleInFileName(Use);
 
-        if (!favoritePodcasts.add(podcast)) {
-            Log.Write(Log.LOGLEVEL_ERROR, "Failed to add podcast.");
-            return false;
-        }
-
-        return Podcast.writeFavoritePodcasts(favoritePodcasts);
+        return DataStore.updatePodcast(podcast);
     }
 
     public static boolean SetUseTitleInFileName(String OVT, String OVI, Object U) {
@@ -1545,9 +1389,9 @@ public class API {
 
     public static boolean GetUseTitleInFileName(String OVT, String OVI) {
 
-        Log.Write(Log.LOGLEVEL_VERBOSE, "GetUseTitleInFileName.");
+        Log.Write(Log.LOGLEVEL_VERBOSE, "GetUseTitleInFileName:");
 
-        Podcast podcast = Podcast.Find(OVT, OVI);
+        Podcast podcast = GetPodcast(OVT, OVI);
 
         if (podcast==null)
             return false;
@@ -1555,20 +1399,15 @@ public class API {
             return podcast.isUseShowTitleInFileName();
     }
 
-    private static boolean setUseTitleInFileNameOnServer(String OVT, String OVI, Boolean Use) {
-        Log.Write(Log.LOGLEVEL_VERBOSE, "Setting UseTitleInFileName on server.");
-        GetMQDataGetter().invokeMethodOnServer(THIS_CLASS, "_SetUseTitleInFileName", new Object[] {OVT, OVI, Use});
-        return true;
-    }
 
     /*
      * ShowTitle
      */
     public static String GetShowTitle(String OVT, String OVI) {
 
-        Log.Write(Log.LOGLEVEL_VERBOSE, "GetShowTitle.");
+        Log.Write(Log.LOGLEVEL_VERBOSE, "GetShowTitle:");
 
-        Podcast podcast = Podcast.Find(OVT, OVI);
+        Podcast podcast = GetPodcast(OVT, OVI);
 
         if (podcast==null)
             return null;
@@ -1578,64 +1417,44 @@ public class API {
 
     public synchronized static boolean SetShowTitle(String OVT, String OVI, String Title) {
 
-        Log.Write(Log.LOGLEVEL_VERBOSE, "SetShowTitle.");
+        Log.Write(Log.LOGLEVEL_VERBOSE, "SetShowTitle:");
 
         if (SageUtil.isNull(OVT, OVI, Title)) {
-            Log.Write(Log.LOGLEVEL_ERROR, "null parameter 16.");
+            Log.Write(Log.LOGLEVEL_ERROR, "SetShowTitle: null parameter " + OVT + ":" + OVI);
             return false;
         }
 
         if (Global.IsClient()) {
-            return setShowTitleOnServer(OVT, OVI, Title);
+            Log.Write(Log.LOGLEVEL_VERBOSE, "SetShowTitle: Setting ShowTitle on server.");
+            GetMQDataGetter().invokeMethodOnServer(THIS_CLASS, "SetShowTitle", new Object[] {OVT, OVI, Title});
+            return true;
         }
 
-        List<Podcast> favoritePodcasts = Podcast.readFavoritePodcasts();
-
-        if (favoritePodcasts == null) {
-            Log.Write(Log.LOGLEVEL_TRACE, "No favoritePodcasts.");
-            return false;
-        }
-
-        Podcast podcast = Podcast.findPodcast(favoritePodcasts, OVT, OVI);
+        Podcast podcast = GetPodcast(OVT, OVI);
 
         if (podcast == null) {
-            Log.Write(Log.LOGLEVEL_TRACE, "null podcast.");
-            return false;
-        }
-
-        if (!favoritePodcasts.remove(podcast)) {
-            Log.Write(Log.LOGLEVEL_ERROR, "Failed to remove podcast.");
+            Log.Write(Log.LOGLEVEL_TRACE, "SetShowTitle: null podcast.");
             return false;
         }
 
         podcast.setShowTitle(API.StripShowTitle(Title));
 
-        if (!favoritePodcasts.add(podcast)) {
-            Log.Write(Log.LOGLEVEL_ERROR, "Failed to add podcast.");
-            return false;
-        }
-
-        return Podcast.writeFavoritePodcasts(favoritePodcasts);
+        return DataStore.updatePodcast(podcast);
     }
 
     public static boolean SetShowTitle(String OVT, String OVI, Object Title) {
         return SetShowTitle(OVT, OVI, (String)Title);
     }
 
-    private static boolean setShowTitleOnServer(String OVT, String OVI, String Title) {
-        Log.Write(Log.LOGLEVEL_VERBOSE, "Setting ShowTitle on server.");
-        GetMQDataGetter().invokeMethodOnServer(THIS_CLASS, "SetShowTitle", new Object[] {OVT, OVI, Title});
-        return true;
-    }
 
     /*
      * KeepAtMost
      */
     public static int GetKeepAtMost(String OVT, String OVI) {
 
-        Log.Write(Log.LOGLEVEL_VERBOSE, "GetKeepAtMost.");
+        Log.Write(Log.LOGLEVEL_VERBOSE, "GetKeepAtMost:");
 
-        Podcast podcast = Podcast.Find(OVT, OVI);
+        Podcast podcast = GetPodcast(OVT, OVI);
 
         if (podcast==null)
             return 0;
@@ -1653,60 +1472,39 @@ public class API {
 
     public synchronized static boolean _SetKeepAtMost(String OVT, String OVI, Integer Keep) {
 
-        Log.Write(Log.LOGLEVEL_VERBOSE, "SetKeepAtMost.");
+        Log.Write(Log.LOGLEVEL_VERBOSE, "SetKeepAtMost:");
 
         if (SageUtil.isNull(OVT, OVI)) {
-            Log.Write(Log.LOGLEVEL_ERROR, "null parameter 17.");
+            Log.Write(Log.LOGLEVEL_ERROR, "SetKeepAtMost: null parameter " + OVT + ":" + OVI);
             return false;
         }
 
         if (Global.IsClient()) {
-            return setKeepAtMostOnServer(OVT, OVI, Keep);
+            Log.Write(Log.LOGLEVEL_VERBOSE, "SetKeepAtMost:  Setting on server.");
+            GetMQDataGetter().invokeMethodOnServer(THIS_CLASS, "_SetKeepAtMost", new Object[] {OVT, OVI, Keep});
+            return true;
         }
 
-        List<Podcast> favoritePodcasts = Podcast.readFavoritePodcasts();
-
-        if (favoritePodcasts == null) {
-            Log.Write(Log.LOGLEVEL_TRACE, "No favoritePodcasts.");
-            return false;
-        }
-
-        Podcast podcast = Podcast.findPodcast(favoritePodcasts, OVT, OVI);
+        Podcast podcast = GetPodcast(OVT, OVI);
 
         if (podcast == null) {
-            Log.Write(Log.LOGLEVEL_TRACE, "null podcast.");
-            return false;
-        }
-
-        if (!favoritePodcasts.remove(podcast)) {
-            Log.Write(Log.LOGLEVEL_ERROR, "Failed to remove podcast.");
+            Log.Write(Log.LOGLEVEL_TRACE, "SetKeepAtMost: null podcast.");
             return false;
         }
 
         podcast.setMaxToRecord(Keep);
-
-        if (!favoritePodcasts.add(podcast)) {
-            Log.Write(Log.LOGLEVEL_ERROR, "Failed to add podcast.");
-            return false;
-        }
-
-        return Podcast.writeFavoritePodcasts(favoritePodcasts);
+        return DataStore.updatePodcast(podcast);
     }
 
-    private static boolean setKeepAtMostOnServer(String OVT, String OVI, Integer Keep) {
-        Log.Write(Log.LOGLEVEL_VERBOSE, "Setting KeepAtMost on server.");
-        GetMQDataGetter().invokeMethodOnServer(THIS_CLASS, "_SetKeepAtMost", new Object[] {OVT, OVI, Keep});
-        return true;
-    }
 
     /*
      * RecDir.
      */
     public static String GetRecDir(String OVT, String OVI) {
 
-        Log.Write(Log.LOGLEVEL_VERBOSE, "SetRecDir.");
+        Log.Write(Log.LOGLEVEL_VERBOSE, "SetRecDir:");
 
-        Podcast podcast = Podcast.Find(OVT, OVI);
+        Podcast podcast = GetPodcast(OVT, OVI);
 
         if (podcast==null)
             return null;
@@ -1716,64 +1514,44 @@ public class API {
 
     public synchronized static boolean SetRecDir(String OVT, String OVI, String Dir) {
 
-        Log.Write(Log.LOGLEVEL_VERBOSE, "SetRecDir.");
+        Log.Write(Log.LOGLEVEL_VERBOSE, "SetRecDir:");
 
         if (SageUtil.isNull(OVT, OVI, Dir)) {
-            Log.Write(Log.LOGLEVEL_ERROR, "null parameter 18.");
+            Log.Write(Log.LOGLEVEL_ERROR, "SetRecDir: null parameter " + OVT + ":" + OVI);
             return false;
         }
 
         if (Global.IsClient()) {
-            return setRecDirOnServer(OVT, OVI, Dir);
+            Log.Write(Log.LOGLEVEL_VERBOSE, "SetRecDir:  Setting on server.");
+            GetMQDataGetter().invokeMethodOnServer(THIS_CLASS, "SetRecDir", new Object[] {OVT, OVI, Dir});
+            return true;
         }
 
-        List<Podcast> favoritePodcasts = Podcast.readFavoritePodcasts();
-
-        if (favoritePodcasts == null) {
-            Log.Write(Log.LOGLEVEL_TRACE, "No favoritePodcasts.");
-            return false;
-        }
-
-        Podcast podcast = Podcast.findPodcast(favoritePodcasts, OVT, OVI);
+        Podcast podcast = GetPodcast(OVT, OVI);
 
         if (podcast == null) {
-            Log.Write(Log.LOGLEVEL_TRACE, "null podcast.");
-            return false;
-        }
-
-        if (!favoritePodcasts.remove(podcast)) {
-            Log.Write(Log.LOGLEVEL_ERROR, "Failed to remove podcast.");
+            Log.Write(Log.LOGLEVEL_TRACE, "SetRecDir: null podcast.");
             return false;
         }
 
         podcast.setRecDir(Dir);
 
-        if (!favoritePodcasts.add(podcast)) {
-            Log.Write(Log.LOGLEVEL_ERROR, "Failed to add podcast.");
-            return false;
-        }
-
-        return Podcast.writeFavoritePodcasts(favoritePodcasts);
+        return DataStore.updatePodcast(podcast);
     }
 
     public static boolean SetRecDir(String OVT, String OVI, File Dir) {
         return SetRecDir(OVT, OVI, Dir.toString());
     }
 
-    private static boolean setRecDirOnServer(String OVT, String OVI, String Dir) {
-        Log.Write(Log.LOGLEVEL_VERBOSE, "Setting RecDir on server.");
-        GetMQDataGetter().invokeMethodOnServer(THIS_CLASS, "SetRecDir", new Object[] {OVT, OVI, Dir});
-        return true;
-    }
 
     /*
      * Subdir
      */
     public static String GetSubdir(String OVT, String OVI) {
 
-        Log.Write(Log.LOGLEVEL_VERBOSE, "GetSubdir.");
+        Log.Write(Log.LOGLEVEL_VERBOSE, "GetSubdir:");
 
-        Podcast podcast = Podcast.Find(OVT, OVI);
+        Podcast podcast = GetPodcast(OVT, OVI);
 
         if (podcast==null)
             return null;
@@ -1783,55 +1561,35 @@ public class API {
 
     public synchronized static boolean SetSubdir(String OVT, String OVI, String Subdir) {
 
-        Log.Write(Log.LOGLEVEL_VERBOSE, "SetSubdir.");
+        Log.Write(Log.LOGLEVEL_VERBOSE, "SetSubdir:");
 
         if (SageUtil.isNull(OVT, OVI, Subdir)) {
-            Log.Write(Log.LOGLEVEL_ERROR, "null parameter 19.");
+            Log.Write(Log.LOGLEVEL_ERROR, "SetSubdir: null parameter " + OVT + ":" + OVI);
             return false;
         }
 
         if (Global.IsClient()) {
-            return setSubdirOnServer(OVT, OVI, Subdir);
+            Log.Write(Log.LOGLEVEL_VERBOSE, "SetSubdir: Setting on server.");
+            GetMQDataGetter().invokeMethodOnServer(THIS_CLASS, "SetSubdir", new Object[] {OVT, OVI, Subdir});
+            return true;
         }
 
-        List<Podcast> favoritePodcasts = Podcast.readFavoritePodcasts();
-
-        if (favoritePodcasts == null) {
-            Log.Write(Log.LOGLEVEL_TRACE, "No favoritePodcasts.");
-            return false;
-        }
-
-        Podcast podcast = Podcast.findPodcast(favoritePodcasts, OVT, OVI);
+        Podcast podcast = GetPodcast(OVT, OVI);
 
         if (podcast == null) {
-            Log.Write(Log.LOGLEVEL_TRACE, "null podcast.");
-            return false;
-        }
-
-        if (!favoritePodcasts.remove(podcast)) {
-            Log.Write(Log.LOGLEVEL_ERROR, "Failed to remove podcast.");
+            Log.Write(Log.LOGLEVEL_TRACE, "SetSubdir: null podcast.");
             return false;
         }
 
         podcast.setRecSubdir(Subdir);
 
-        if (!favoritePodcasts.add(podcast)) {
-            Log.Write(Log.LOGLEVEL_ERROR, "Failed to add podcast.");
-            return false;
-        }
-
-        return Podcast.writeFavoritePodcasts(favoritePodcasts);
+        return DataStore.updatePodcast(podcast);
     }
 
     public static boolean SetSubdir(String OVT, String OVI, Object Subdir) {
         return SetSubdir(OVT, OVI, (String)Subdir);
     }
 
-    private static boolean setSubdirOnServer(String OVT, String OVI, String Subdir) {
-        Log.Write(Log.LOGLEVEL_VERBOSE, "Setting Subdir on server.");
-        GetMQDataGetter().invokeMethodOnServer(THIS_CLASS, "SetSubdir", new Object[] {OVT, OVI, Subdir});
-        return true;
-    }
 
     /*
      * Creates a new Podcast in the database.  Does NOT mark the Podcast as a Favorite.
@@ -1851,7 +1609,7 @@ public class API {
                                                     Boolean bUseShowTitleAsSubdir,
                                                     Boolean bUseShowTitleInFileName) {
 
-        Log.Write(Log.LOGLEVEL_TRACE, "CreatePodcast parameters = " +
+        Log.Write(Log.LOGLEVEL_TRACE, "CreatePodcast: Parameters = " +
                                         OnlineVideoType + ":" +
                                         OnlineVideoItem + ":" +
                                         FeedContext + ":" +
@@ -1871,17 +1629,8 @@ public class API {
             return createPodcastOnServer(OnlineVideoType, OnlineVideoItem, FeedContext, bRecordNew, bDeleteDuplicates, bKeepNewest, bReRecordDeleted, MaxToRecord, bAutoDelete, RecordDir, RecordSubdir, ShowTitle, bUseShowTitleAsSubdir, bUseShowTitleInFileName);
         }
 
-        // Get the current Favorites.
-        List<Podcast> favoritePodcasts = Podcast.readFavoritePodcasts();
-
-        // If there are no Favorites create a new list.
-        if (favoritePodcasts == null) {
-            Log.Write(Log.LOGLEVEL_TRACE, "CreatePodcast: Creating new Favorite array.");
-            favoritePodcasts = new ArrayList<Podcast>();
-        }
-
-        // See if this one exists already.
-        Podcast podcast = Podcast.findPodcast(favoritePodcasts, OnlineVideoType, OnlineVideoItem);
+        // See if the Podcast already exists in the database.
+        Podcast podcast = DataStore.getPodcast(OnlineVideoType, OnlineVideoItem);
 
         // If Podcast does not already exist, create one. Otherwise remove the existing.
         if (podcast == null) {
@@ -1902,16 +1651,25 @@ public class API {
                                 bUseShowTitleAsSubdir,
                                 bUseShowTitleInFileName);
         } else {
-            if (!favoritePodcasts.remove(podcast))
-                Log.getInstance().write(Log.LOGLEVEL_ERROR, "Createpodcast failed to remove.");
+            
+            // Lock the existing podcast.
+            //if (DataStore.getPodcastForUpdate(podcast, HALF_SECOND_TIMEOUT)==null) {
+                //Log.getInstance().write(Log.LOGLEVEL_ERROR, "CreatePodcast: Failed to lock Podcast.");
+                //return false;
+            //}
+
+            // Now remove it.
+            if (!DataStore.removePodcast(podcast))
+                Log.getInstance().write(Log.LOGLEVEL_ERROR, "CreatePodcast: Failed to remove.");
         }
 
         // Add the new or updated podcast;
-        if (!favoritePodcasts.add(podcast))
-            Log.getInstance().write(Log.LOGLEVEL_ERROR, "Createpodcast failed to add.");
+        boolean result = DataStore.addPodcast(podcast);
 
-        // Save to disk.
-        return Podcast.writeFavoritePodcasts(favoritePodcasts);
+        if (!result)
+            Log.getInstance().write(Log.LOGLEVEL_ERROR, "CreatePodcast: Failed to add.");
+
+        return result;
     }
 
     public synchronized static boolean CreatePodcast(Object OnlineVideoType, Object OnlineVideoItem, Object FeedContext, Object RecordNew, Object DeleteDuplicates, Object KeepNewest, Object ReRecordDeleted, Object MaxToRecord, Object AutoDelete, Object RecordDir, Object RecordSubdir, Object ShowTitle, Object UseShowTitleAsSubdir, Object UseShowTitleInFileName) {
@@ -1920,6 +1678,9 @@ public class API {
     }
 
     public synchronized static void ShowClass(Object OnlineVideoType, Object OnlineVideoItem, Object FeedContext, Object bRecordNew, Object bDeleteDuplicates, Object bKeepNewest, Object bReRecordDeleted, Object MaxToRecord, Object bAutoDelete, Object RecordDir, Object RecordSubdir, Object ShowTitle, Object bUseShowTitleAsSubdir, Object bUseShowTitleInFileName) {
+        if (Log.getInstance().GetLogLevel() >= Log.LOGLEVEL_TRACE)
+            return;
+
         System.out.println("Class = " + OnlineVideoType.getClass());
         System.out.println("Class = " + OnlineVideoItem.getClass());
         System.out.println("Class = " + FeedContext.getClass());
@@ -1937,7 +1698,7 @@ public class API {
 }
 
     public static boolean createPodcastOnServer(Object OnlineVideoType, Object OnlineVideoItem, Object FeedContext, Object bRecordNew, Object bDeleteDuplicates, Object bKeepNewest, Object bReRecordDeleted, Integer MaxToRecord, Object bAutoDelete, Object RecordDir, Object RecordSubdir, Object ShowTitle, Object bUseShowTitleAsSubdir, Object bUseShowTitleInFileName) {
-        Log.Write(Log.LOGLEVEL_VERBOSE, "Creating podcast on server.");
+        Log.Write(Log.LOGLEVEL_VERBOSE, "createPodcastOnServer: Creating podcast on server.");
         Object result = GetMQDataGetter().getDataFromServer(THIS_CLASS, "_CreatePodcast",
                                     new Object[] {  OnlineVideoType,
                                                     OnlineVideoItem,
@@ -1977,7 +1738,7 @@ public class API {
             return recordOnServer(OnlineVideoType, OnlineVideoItem, FeedContext, RecordDir, RecordSubdir, ShowTitle, UseShowTitleAsSubdir, UseShowTitleInFileName, ChanItem);
         }
 
-        Podcast podcast = Podcast.Find(OnlineVideoType, OnlineVideoItem);
+        Podcast podcast = DataStore.getPodcast(OnlineVideoType, OnlineVideoItem);
 
         if (podcast==null) {
 
@@ -1999,7 +1760,14 @@ public class API {
                                     UseShowTitleInFileName);    // Use ShowTitle in FileName
 
         } else {
+            
             Log.getInstance().write(Log.LOGLEVEL_TRACE, "Record: Found existing Podcast for " + OnlineVideoType + ":" + OnlineVideoItem);
+
+            // ChannelsDotCom Podcasts can have the same OnlineVideoItem yet different FeedContexts.
+            if (!podcast.getFeedContext().equalsIgnoreCase(FeedContext)) {
+                Log.getInstance().write(Log.LOGLEVEL_TRACE, "Record: Updating FeedContext " + podcast.getFeedContext() + "->" + FeedContext);
+                podcast.setFeedContext(FeedContext);
+            }
         }
 
         UnrecordedEpisode episode = new UnrecordedEpisode(podcast, ChanItem);
@@ -2013,7 +1781,7 @@ public class API {
 
     public static boolean recordOnServer(Object OnlineVideoType, Object OnlineVideoItem, Object FeedContext, Object RecordDir, Object RecordSubdir, Object ShowTitle, Object UseShowTitleAsSubdir, Object UseShowTitleInFileName, Object ChanItem) {
 
-        Log.Write(Log.LOGLEVEL_VERBOSE, "Recording on server.");
+        Log.Write(Log.LOGLEVEL_VERBOSE, "recordOnServer: Recording on server.");
         Object result = GetMQDataGetter().getDataFromServer(THIS_CLASS, 
                                                             "_Record",
                                                             new Object[] {OnlineVideoType, OnlineVideoItem, FeedContext, RecordDir, RecordSubdir, ShowTitle, UseShowTitleAsSubdir, UseShowTitleInFileName, ChanItem},
@@ -2024,62 +1792,23 @@ public class API {
 
 
     public static void ShowClass(Object OnlineVideoType, Object OnlineVideoItem, Object FeedContext, Object RecordDir, Object RecordSubdir, Object ShowTitle, Object UseShowTitleAsSubdir, Object UseShowTitleInFileName, Object ChanItem) {
-        System.out.println("Class = " + OnlineVideoType.getClass());
-        System.out.println("Class = " + OnlineVideoItem.getClass());
-        System.out.println("Class = " + FeedContext.getClass());
-        System.out.println("Class = " + RecordDir.getClass());
-        System.out.println("Class = " + RecordSubdir.getClass());
-        System.out.println("Class = " + ShowTitle.getClass());
-        System.out.println("Class = " + UseShowTitleAsSubdir.getClass());
-        System.out.println("Class = " + UseShowTitleInFileName.getClass());
-        System.out.println("Class = " + ChanItem.getClass());
+        if (Log.getInstance().GetLogLevel() >= Log.LOGLEVEL_TRACE)
+            return;
+
+        System.out.println("Class = " + OnlineVideoType.getClass() + OnlineVideoType.toString());
+        System.out.println("Class = " + OnlineVideoItem.getClass() + OnlineVideoItem.toString());
+        System.out.println("Class = " + FeedContext.getClass() + FeedContext.toString());
+        System.out.println("Class = " + RecordDir.getClass() + RecordDir.toString());
+        System.out.println("Class = " + RecordSubdir.getClass() + RecordSubdir.toString());
+        System.out.println("Class = " + ShowTitle.getClass() + ShowTitle.toString());
+        System.out.println("Class = " + UseShowTitleAsSubdir.getClass() + UseShowTitleAsSubdir.toString());
+        System.out.println("Class = " + UseShowTitleInFileName.getClass() + UseShowTitleInFileName.toString());
+        System.out.println("Class = " + ChanItem.getClass() + ChanItem.toString());
         return;
     }
    
-    public static boolean OLDRecordAllEpisodes(String OnlineVideoType, String OnlineVideoItem, String FeedContext, String RecordDir, String RecordSubdir, String ShowTitle, Boolean bUseShowTitleAsSubdir) {
-
-
-        if (Global.IsClient()) {
-            return recordAllEpisodesOnServer(OnlineVideoType, OnlineVideoItem, FeedContext, RecordDir, RecordSubdir, ShowTitle, bUseShowTitleAsSubdir);
-        }
-
-        Podcast podcast = new Podcast(  false,                  // Is Not a Favorite
-                                        OnlineVideoType.toString(),
-                                        OnlineVideoItem.toString(),
-                                        FeedContext.toString(),
-                                        false,                  // Do not record new
-                                        false,                  // Do not delete duplicates
-                                        true,                   // Keep the newest
-                                        true,                   // Rerecord if deleted
-                                        0,                      // Unlimited number of recordings
-                                        false,                  // Do not auto delete
-                                        RecordDir.toString(),
-                                        RecordSubdir.toString(),
-                                        ShowTitle.toString(),
-                                        SageUtil.StringToBool(bUseShowTitleAsSubdir.toString()),
-                                        true);                  // Use ShowTitle in FileName
-
-        Set<UnrecordedEpisode> UnrecordedEpisodes = podcast.getEpisodesOnWebServer();
-
-        if (UnrecordedEpisodes == null) {
-            Log.getInstance().write(Log.LOGLEVEL_ERROR, "RecordAllEpisodes: Failed to getEpisodesOnWebServer.");
-            return false;
-        }
-
-        boolean failed = false;
-
-        for(UnrecordedEpisode episode : UnrecordedEpisodes) {
-            if (!episode.startRecord().startsWith("REQ")) {
-                Log.getInstance().write(Log.LOGLEVEL_ERROR, "RecordAllEpisodes: Failed to startRecord.");
-                failed = true;
-            }
-        }
-
-        return failed;
-    }
-
     public static boolean recordAllEpisodesOnServer(Object OnlineVideoType, Object OnlineVideoItem, Object FeedContext, Object RecordDir, Object RecordSubdir, Object ShowTitle, Object bUseShowTitleAsSubdir) {
-        Log.Write(Log.LOGLEVEL_VERBOSE, "Recording All on server.");
+        Log.Write(Log.LOGLEVEL_VERBOSE, "recordAllEpisodesOnServer: Recording All on server.");
         Object result = GetMQDataGetter().getDataFromServer(THIS_CLASS, "RecordAllEpisodes",
                                                             new Object[] {OnlineVideoType, OnlineVideoItem,
                                                                             FeedContext, RecordDir, RecordSubdir,
@@ -2089,9 +1818,6 @@ public class API {
         return (result==null || !(result instanceof Boolean) ? false : (Boolean)result);
     }
 
-    public static boolean OLDRecordAllEpisodes(String OnlineVideoType, String OnlineVideoItem, String FeedContext, File RecordDir, String RecordSubdir, String ShowTitle, Boolean UseShowTitleAsSubdir) {
-        return OLDRecordAllEpisodes(OnlineVideoType, OnlineVideoItem, FeedContext, RecordDir.toString(), RecordSubdir, ShowTitle, UseShowTitleAsSubdir);
-    }
 
     private static Boolean ObjToBool(Object O) {
         if (O == null) {
@@ -2135,5 +1861,10 @@ public class API {
             }
         } else
             return 0;
+    }
+
+    public static void showFavoriteDatabase() {
+        Podcast podcast = new Podcast();
+        podcast.dumpFavorites();
     }
 }

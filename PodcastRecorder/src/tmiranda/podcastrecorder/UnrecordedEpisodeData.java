@@ -1,7 +1,3 @@
-/*
- * To change this template, choose Tools | Templates
- * and open the template in the editor.
- */
 
 package tmiranda.podcastrecorder;
 
@@ -10,7 +6,7 @@ import sage.media.rss.*;
 
 /**
  *
- * @author Default
+ * @author Tom Miranda.
  */
 public class UnrecordedEpisodeData implements Serializable {
     RSSItem ChanItem;

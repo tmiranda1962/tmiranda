@@ -49,7 +49,6 @@ public class MQDataPutter extends EventListener {
         try {ec = Class.forName(c);}
         catch (Exception e) {
             Log.getInstance().write(Log.LOGLEVEL_ERROR, "Class exception " + e.getMessage());
-            e.printStackTrace();
             fireErrorCode(ClientID, InstanceID, "Class Exception");
             return;
         }
@@ -59,7 +58,6 @@ public class MQDataPutter extends EventListener {
         try {method = ec.getMethod(m);}
         catch (Exception e) {
             Log.getInstance().write(Log.LOGLEVEL_ERROR, "Method exception " + e.getMessage());
-            e.printStackTrace();
             fireErrorCode(ClientID, InstanceID, "Method Exception");
             return;
         }
@@ -75,7 +73,6 @@ public class MQDataPutter extends EventListener {
         try {returnedObject = method.invoke(null);}
         catch (Exception e) {
             Log.getInstance().write(Log.LOGLEVEL_ERROR, "doDataPutterWithoutArgs: Exception invoking method " + e.getMessage());
-            e.printStackTrace();
             fireErrorCode(ClientID, InstanceID, "Invoke Exception");
             return;
         }
@@ -115,7 +112,6 @@ public class MQDataPutter extends EventListener {
         try {ec = Class.forName(c);}
         catch (Exception e) {
             Log.getInstance().write(Log.LOGLEVEL_ERROR, "Class exception " + e.getMessage());
-            e.printStackTrace();
             fireErrorCode(ClientID, InstanceID, "Class Exception");
             return;
         }
@@ -131,7 +127,6 @@ public class MQDataPutter extends EventListener {
         try {method = ec.getMethod(m, parmTypes);}
         catch (Exception e) {
             Log.getInstance().write(Log.LOGLEVEL_ERROR, "Method exception " + e.getMessage());
-            e.printStackTrace();
             fireErrorCode(ClientID, InstanceID, "Method Exception");
             return;
         }
@@ -147,7 +142,6 @@ public class MQDataPutter extends EventListener {
         try {returnedObject = method.invoke(null, args);}
         catch (Exception e) {
             Log.getInstance().write(Log.LOGLEVEL_ERROR, "doDataPutterWithArgs: Exception invoking method " + e.getMessage());
-            e.printStackTrace();
             fireErrorCode(ClientID, InstanceID, "Invoke Exception");
             return;
         }
@@ -180,7 +174,6 @@ public class MQDataPutter extends EventListener {
         try {ec = Class.forName(c);}
         catch (Exception e) {
             Log.getInstance().write(Log.LOGLEVEL_ERROR, "Class exception " + e.getMessage());
-            e.printStackTrace();
             return;
         }
 
@@ -189,7 +182,6 @@ public class MQDataPutter extends EventListener {
         try {method = ec.getMethod(m);}
         catch (Exception e) {
             Log.getInstance().write(Log.LOGLEVEL_ERROR, "Method exception " + e.getMessage());
-            e.printStackTrace();
             return;
         }
 
@@ -201,7 +193,6 @@ public class MQDataPutter extends EventListener {
         try {method.invoke(null);}
         catch (Exception e) {
             Log.getInstance().write(Log.LOGLEVEL_ERROR, "doInvokeMethod: Exception invoking method " + e.getMessage());
-            e.printStackTrace();
             return;
         }
 
@@ -228,7 +219,6 @@ public class MQDataPutter extends EventListener {
         try {ec = Class.forName(c);}
         catch (Exception e) {
             Log.getInstance().write(Log.LOGLEVEL_ERROR, "Class exception " + e.getMessage());
-            e.printStackTrace();
             return;
         }
 
@@ -242,7 +232,6 @@ public class MQDataPutter extends EventListener {
         try {method = ec.getMethod(m, parmTypes);}
         catch (Exception e) {
             Log.getInstance().write(Log.LOGLEVEL_ERROR, "Method exception " + e.getMessage());
-            e.printStackTrace();
             return;
         }
 
@@ -254,7 +243,6 @@ public class MQDataPutter extends EventListener {
         try {method.invoke(null, args);}
         catch (Exception e) {
             Log.getInstance().write(Log.LOGLEVEL_ERROR, "doInvokeMethod: Exception invoking method " + e.getMessage());
-            e.printStackTrace();
             return;
         }
 

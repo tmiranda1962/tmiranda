@@ -110,11 +110,12 @@ public class MQDataGetter extends EventListener {
         // Make sure the message is for this client.
         //if (!ClientID.equalsIgnoreCase(Client) || !Instance.equalsIgnoreCase(Instance)) {
         if (!ClientID.equalsIgnoreCase(Client)) {
+            Log.getInstance().write(Log.LOGLEVEL_TRACE, "doDataGetter: Message for another Client. " + Client);
             return;
         }
 
         // Add the data to the Queue, unblocking getDataFromServer.
-        if (!Queue.add(data)) Log.printStackTrace();
+        if (!Queue.add(data)) Log.getInstance().write(Log.LOGLEVEL_ERROR, "doDataGetter: Error adding.");
         Log.getInstance().write(Log.LOGLEVEL_ALL, "doDataGetter done.");
     }
 

@@ -5,7 +5,6 @@
 
 package tmiranda.podcastrecorder;
 
-import java.net.*;
 import java.io.*;
 import java.util.*;
 import sagex.api.*;
@@ -21,6 +20,9 @@ import sagex.api.*;
  *
  */
 public class CleanupThread extends TimerTask {
+
+    public static final String  DOWNLOAD_FILE_PREFIX_PR = "MaloreOnlineVideo";
+    public static final String  DOWNLOAD_FILE_PREFIX_SAGE = "onlinevideo";
 
     /**
      * Creates a new CleanupThread.  No parameters required.
@@ -90,18 +92,18 @@ public class CleanupThread extends TimerTask {
             String name = file.getName().toLowerCase();
 
             if (!file.isDirectory() && name.startsWith(startingwith)) {
-                Log.getInstance().write(Log.LOGLEVEL_TRACE, "CT: Found potential file " + name);
+                Log.getInstance().write(Log.LOGLEVEL_TRACE, "CleanupThread.deleteFilesStartingWith: Found potential file " + name);
                 Long LastModified = file.lastModified();
 
                 if (LastModified + minage < time) {
                     if (justcount) {
-                        Log.getInstance().write(Log.LOGLEVEL_TRACE, "CT: Counting file " + name);
+                        Log.getInstance().write(Log.LOGLEVEL_TRACE, "CleanupThread.deleteFilesStartingWith: Counting file " + name);
                         count++;
                     } else {
                         if(!file.delete()) {
-                            Log.getInstance().write(Log.LOGLEVEL_ERROR, "CT: Could not delete locked file " + name);
+                            Log.getInstance().write(Log.LOGLEVEL_ERROR, "CleanupThread.deleteFilesStartingWith: Could not delete locked file " + name);
                         } else {
-                            Log.getInstance().write(Log.LOGLEVEL_WARN, "CT: Deleted old file " + name);
+                            Log.getInstance().write(Log.LOGLEVEL_WARN, "CleanupThread.deleteFilesStartingWith: Deleted old file " + name);
                             count++;
                         }
                     }
@@ -115,43 +117,44 @@ public class CleanupThread extends TimerTask {
     /**
      * Method used to start the Cleanup Thread.
      */
+    @Override
     public void run() {
 
-        Log.getInstance().write(Log.LOGLEVEL_TRACE, "CT: Starting Cleanup thread.");
+        Log.getInstance().write(Log.LOGLEVEL_TRACE, "CleanupThread.run: Starting Cleanup thread.");
 
         Thread.currentThread().setName("CleanupThread");
 
         // Get the location of the directory where temporary files are stored.
         File tempdir = getTempDir();
         if (tempdir == null) {
-            Log.getInstance().write(Log.LOGLEVEL_ERROR, "CT: Could not get temporary file directory.  Terminating Cleanup thread.");
+            Log.getInstance().write(Log.LOGLEVEL_ERROR, "CleanupThread.run: Could not get temporary file directory.  Terminating Cleanup thread.");
             return;
         }
 
-        Log.getInstance().write(Log.LOGLEVEL_TRACE, "CT: Will monitor " + tempdir);
+        Log.getInstance().write(Log.LOGLEVEL_TRACE, "CleanupThread.run: Will monitor " + tempdir);
 
         setLastRunTime(Utility.Time());
 
         // Get the maxage.
         long maxage = SageUtil.GetLongProperty(Plugin.PROPERTY_CLEANUP_MAX_AGE_OF_TEMPFILE, 60L * 60L * 1000L);
-        Log.getInstance().write(Log.LOGLEVEL_TRACE, "CT: Min age before deleting files = " + maxage);
+        Log.getInstance().write(Log.LOGLEVEL_TRACE, "CleanupThread.run: Min age before deleting files = " + maxage);
 
         File[] FileList = tempdir.listFiles();
 
-        Log.getInstance().write(Log.LOGLEVEL_TRACE, "CT: Looking for old Malore Online files.");
-        deleteFilesStartingWith(FileList, "maloreonline", maxage, false);
+        Log.getInstance().write(Log.LOGLEVEL_TRACE, "CleanupThread.run: Looking for old Malore Online files.");
+        deleteFilesStartingWith(FileList, DOWNLOAD_FILE_PREFIX_PR, maxage, false);
 
         if (SageUtil.GetBoolProperty(Plugin.PROPERTY_CLEANUP_ONLINE_VIDEO, true)) {
-            Log.getInstance().write(Log.LOGLEVEL_TRACE, "CT: Looking for old Online Video.");
-            deleteFilesStartingWith(FileList, "onlinevideo", maxage, false);
+            Log.getInstance().write(Log.LOGLEVEL_TRACE, "CleanupThread.run: Looking for old Online Video.");
+            deleteFilesStartingWith(FileList, DOWNLOAD_FILE_PREFIX_SAGE, maxage, false);
         }
 
         if (SageUtil.GetBoolProperty(Plugin.PROPERTY_CLEANUP_RSS, false)) {
-            Log.getInstance().write(Log.LOGLEVEL_TRACE, "CT: Looking for old RSS files.");
+            Log.getInstance().write(Log.LOGLEVEL_TRACE, "CleanupThread.run: Looking for old RSS files.");
             deleteFilesStartingWith(FileList, ".rsslib4jbug", maxage, false);
         }
 
-        Log.getInstance().write(Log.LOGLEVEL_TRACE, "CT: Done.");
+        Log.getInstance().write(Log.LOGLEVEL_TRACE, "CleanupThread.run: Done.");
     }
 
     /**
@@ -164,7 +167,7 @@ public class CleanupThread extends TimerTask {
         File tempfile = null;
 
         try {
-            tempfile = java.io.File.createTempFile("MaloreOnlineVideo",".cln");
+            tempfile = java.io.File.createTempFile(DOWNLOAD_FILE_PREFIX_PR,".cln");
         } catch(IOException e) {
             return null;
         }

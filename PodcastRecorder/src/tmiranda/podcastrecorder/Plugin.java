@@ -68,7 +68,9 @@ import ortus.mq.EventListener;
  */
 public class Plugin implements sage.SageTVPlugin, SageTVEventListener {
 
-    private final String VERSION = "0.25";
+    final static String VERSION = "0.50 04.03.2011";
+
+    private DataStore   dataStore;
 
     private TimerTask RecordManager;
     private Timer RecordManagerTimer;
@@ -77,8 +79,8 @@ public class Plugin implements sage.SageTVPlugin, SageTVEventListener {
     private TimerTask CleanupThread;
     private Timer CleanupTimer;
 
-    private sage.SageTVPluginRegistry registry;
-    private sage.SageTVEventListener listener;
+    //private sage.SageTVPluginRegistry registry;
+    //private sage.SageTVEventListener listener;
 
     // Define all of the properties used in this plugin.
     public static final String PROPERTY_LOGLEVEL                    = "podcastrecorder/loglevel";
@@ -101,7 +103,7 @@ public class Plugin implements sage.SageTVPlugin, SageTVEventListener {
     public static final String PROPERTY_AUTO_DELETE                 = "podcastrecorder/auto_delete";
     public static final String PROPERTY_MAX_RECORD                  = "podcastrecorder/max_to_record";
 
-    // Define the srttings used in this plugin.
+    // Define the settings used in this plugin.
     public static final String SETTING_RECDIR                   = "RecDir";
     public static final String SETTING_RECSUBDIR                = "RecSubDir";
     public static final String SETTING_SHOWTITLEASSUBDIR        = "ShowTitleAsSubdir";
@@ -144,7 +146,8 @@ public class Plugin implements sage.SageTVPlugin, SageTVEventListener {
     //     Give ability to cycle through import and recording dirs.  GetLibraryImportPaths(), GetVideoDirectories()
 
 
-    private MQDataPutter MQDataPutter;
+    private MQDataPutter    MQDataPutter;
+    //private DataStore       DataStore;
 
     /**
      * Constructor.
@@ -152,20 +155,21 @@ public class Plugin implements sage.SageTVPlugin, SageTVEventListener {
      * @param registry
      */
     public Plugin(sage.SageTVPluginRegistry Registry) {
-        registry = Registry;
-        listener = this;
-        Registry.eventSubscribe(listener, "PlaybackFinished");
+        //registry = Registry;
+        //listener = this;
+        //Registry.eventSubscribe(listener, "PlaybackFinished");
     }
 
-    public void Plugin(sage.SageTVPluginRegistry Registry, boolean reset) {
-        registry = Registry;
-        listener = this;
-        Registry.eventSubscribe(listener, "PlaybackFinished");
+    public Plugin(sage.SageTVPluginRegistry Registry, boolean reset) {
+        //registry = Registry;
+        //listener = this;
+        //Registry.eventSubscribe(listener, "PlaybackFinished");
         if (reset)
             resetConfig();
     }
 
     // This method is called when the plugin should startup.
+    @Override
     public void start() {
 
         System.out.println("PodcastRecorder starting. Version = " + VERSION);
@@ -182,23 +186,30 @@ public class Plugin implements sage.SageTVPlugin, SageTVEventListener {
             CleanupTimer.scheduleAtFixedRate(CleanupThread, 10000L, sleeptime);
         }
 
+        // Initialize the DataStore by creating an instance.
+        //DataStore = DataStore.getInstance();
+
         if (Global.IsClient()) {
             Log.getInstance().write(Log.LOGLEVEL_TRACE, "Plugin running as a SageClient.");
             return;
         }
+        
+        // Load the database into memory.
+        dataStore = new DataStore();
 
         // Start the listener for MQ messages destined to this server.
-        //ServerListener = new MQListenerServer();
         MQDataPutter = new MQDataPutter();
 
-        // Start the DownloadThread by gettng an instance of the DownloadManger.
-        DownloadManager.getInstance();
+        // Start the DownloadThread by gettng an instance of the DownloadManger
+        // and starting the DownloadThread.
+        DownloadManager.getInstance().startDownloadThread();
 
         // Start the RecordManager as a TimerTask.
         RecordManager = new RecordManager();
         RecordManagerTimer = new Timer();
         Long sleeptime = SageUtil.GetLongProperty(PROPERTY_RECORD_MANAGER_CYCLE_TIME, PROPERTY_DEFAULT_RECORD_MANAGER_CYCLE_TIME);
         RecordManagerTimer.scheduleAtFixedRate(RecordManager, 60000L, sleeptime);
+        Log.getInstance().write(Log.LOGLEVEL_TRACE, "Plugin: RecordManager cycle time " + sleeptime + ":" + sleeptime/1000/60);
     }
 
     public static void RecordManagerManualRun() {
@@ -209,6 +220,7 @@ public class Plugin implements sage.SageTVPlugin, SageTVEventListener {
     }
 
     // This method is called when the plugin should shutdown
+    @Override
     public void stop() {
         Log.getInstance().write(Log.LOGLEVEL_TRACE, "PlugIn: Stop received from Plugin Manager.");
         CleanupTimer.cancel();                          // Don't start the CleanupThread anymore.
@@ -219,11 +231,12 @@ public class Plugin implements sage.SageTVPlugin, SageTVEventListener {
             RecordManagerTimer.cancel();                // Don't start the RecordManager anymore.
             RecordManager.cancel();                     // Kill off the currently running RecordManager.
         }
-        
+
     }
 
     // This method is called after plugin shutdown to free any resources
     // used by the plugin
+    @Override
     public void destroy() {
         Log.getInstance().write(Log.LOGLEVEL_TRACE, "Plugin: Destroy received from Plugin Manager.");
         if (!Global.IsClient()) {
@@ -235,11 +248,13 @@ public class Plugin implements sage.SageTVPlugin, SageTVEventListener {
 
         CleanupThread = null;
         CleanupTimer = null;
+        DataStore.stop();
         Log.getInstance().destroy();
     }
 
 
     // Returns the names of the settings for this plugin
+    @Override
     public String[] getConfigSettings() {
         Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "PlugIn: getConfigSetting received from Plugin Manager.");
 
@@ -281,6 +296,7 @@ public class Plugin implements sage.SageTVPlugin, SageTVEventListener {
     }
 
     // Returns the current value of the specified setting for this plugin
+    @Override
     public String getConfigValue(String setting) {
         Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "Plugin: getConfigValue received from Plugin Manager. Setting = " + setting);
 
@@ -364,6 +380,7 @@ public class Plugin implements sage.SageTVPlugin, SageTVEventListener {
 
 	// Returns the current value of the specified multichoice setting for
 	// this plugin
+    @Override
     public String[] getConfigValues(String setting) {
         Log.getInstance().write(Log.LOGLEVEL_WARN, "getConfigValues received from Plugin Manager. Setting = " + setting);
         return null;
@@ -381,6 +398,7 @@ public class Plugin implements sage.SageTVPlugin, SageTVEventListener {
 
     // Returns one of the constants above that indicates what type of value
     // is used for a specific settings
+    @Override
     public int getConfigType(String setting) {
         Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "getConfigType received from Plugin Manager. Setting = " + setting);
 
@@ -427,6 +445,7 @@ public class Plugin implements sage.SageTVPlugin, SageTVEventListener {
     }
 
     // Sets a configuration value for this plugin
+    @Override
     public void setConfigValue(String setting, String value) {
         Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "PlugIn: setConfigValue received from Plugin Manager. Setting = " + setting + ":" + value);
 
@@ -530,11 +549,13 @@ public class Plugin implements sage.SageTVPlugin, SageTVEventListener {
     }
 
     // Sets a configuration values for this plugin for a multiselect choice
+    @Override
     public void setConfigValues(String setting, String[] values) {
         Log.getInstance().write(Log.LOGLEVEL_WARN, "setConfigValues received from Plugin Manager. Setting = " + setting);
     }
 
     // For CONFIG_CHOICE settings; this returns the list of choices
+    @Override
     public String[] getConfigOptions(String setting) {
         Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "getConfigOptions received from Plugin Manager. Setting = " + setting);
         if (setting.startsWith(SETTING_RECDIR)) {
@@ -565,6 +586,7 @@ public class Plugin implements sage.SageTVPlugin, SageTVEventListener {
     }
 
     // Returns the help text for a configuration setting
+    @Override
     public String getConfigHelpText(String setting) {
 
         if (setting.startsWith(SETTING_RECDIR)) {
@@ -610,6 +632,7 @@ public class Plugin implements sage.SageTVPlugin, SageTVEventListener {
     }
 
     // Returns the label used to present this setting to the user
+    @Override
     public String getConfigLabel(String setting) {
 
         if (setting.startsWith(SETTING_RECDIR)) {
@@ -647,7 +670,7 @@ public class Plugin implements sage.SageTVPlugin, SageTVEventListener {
         } else if (setting.startsWith(SETTING_REC_MGR_MANUAL_RUN)) {
             return "Check for New Episodes Now";
         } else if (setting.startsWith(SETTING_MESSAGE_AFTER_RECORD)) {
-            return "Show a Message After Favorite Podcasts are Recorded";
+            return "Show a Msg After Fav. Podcasts are Recorded";
         } else if (setting.startsWith(SETTING_MESSAGE_IF_NEW_AVAIL)) {
             return "Show a Message if New Episodes Are Available";
         } else
@@ -655,6 +678,7 @@ public class Plugin implements sage.SageTVPlugin, SageTVEventListener {
     }
 
     // Resets the configuration of this plugin
+    @Override
     public void resetConfig() {
         Log.getInstance().write(Log.LOGLEVEL_TRACE, "PlugIn: resetConfig received from Plugin Manager.");
         Configuration.SetServerProperty(PROPERTY_RECORD_DIRECTORY, GetFirstImportDirectory());
@@ -744,12 +768,13 @@ public class Plugin implements sage.SageTVPlugin, SageTVEventListener {
     // may change in the future and plugins that submit events
     // are not required to follow that rule.
 
+    @Override
     public void sageEvent(String eventName, java.util.Map eventVars) {
 
-        Object MediaFile = eventVars.get("MediaFile");
-        String UIContext = (String)eventVars.get("UIContext");
+        //Object MediaFile = eventVars.get("MediaFile");
+        //String UIContext = (String)eventVars.get("UIContext");
 
-        Log.getInstance().write(Log.LOGLEVEL_TRACE, "sageEvent: EOF for " + UIContext + ":" + MediaFileAPI.GetMediaTitle(MediaFile));
+        Log.getInstance().write(Log.LOGLEVEL_WARN, "sageEvent: Invoked.");
     }
 
 }

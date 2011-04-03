@@ -1,7 +1,3 @@
-/*
- * To change this template, choose Tools | Templates
- * and open the template in the editor.
- */
 
 package tmiranda.podcastrecorder;
 
@@ -13,7 +9,6 @@ import sage.SageTV.*;
 import sagex.api.*;
 
 
-
 /**
  *
  * @author Tom Miranda
@@ -21,34 +16,47 @@ import sagex.api.*;
 // public class RecordingEpisode {
 public class RecordingEpisode {
 
+    public static final String    METADATA_PODCAST      = "Podcast";
+    public static final String    METADATA_FAVORITE     = "FavoritePodcast";
+    public static final String    METADATA_OVT          = "OnlineVideoType";
+    public static final String    METADATA_OVI          = "OnlineVideoItem";
+    public static final String    METADATA_FEEDCONTEXT  = "FeedContext";
+
     public static final int BLOCK_SIZE = 2048;
+
     private static final String WINDOWS_SEPARATOR = "\\";
     private static final String LINUX_SEPARATOR = "/";
 
-    private String FeedContext;
-    private RSSItem ChanItem;
-    private RSSItem OrigChanItem;
-    private List<String> VideoURLs;
-    private String FileExt;
-    private File tempFile;
-    private String DownloadStatus;
-    private String RecDir;
-    private String RecSubdir;
-    private String FileName;
-    private File NewFile;
-    private String EpisodeID;
-    private String ShowTitle;
-    private String EpisodeTitle;
-    private String RequestID;
-    private long BlocksRecorded;
-    //private String Separator;
-    private boolean Abort;
+    private String          FeedContext;
+    private String          OVT;
+    private String          OVI;
+    private boolean         isFavorite;
+    private RSSItem         ChanItem;
+    private RSSItem         OrigChanItem;
+    private List<String>    VideoURLs;
+    private String          FileExt;
+    private File            tempFile;
+    private String          DownloadStatus;
+    private String          RecDir;
+    private String          RecSubdir;
+    private String          FileName;
+    private File            NewFile;
+    private String          EpisodeID;
+    private String          ShowTitle;
+    private String          EpisodeTitle;
+    private String          RequestID;
+    private long            BlocksRecorded;
+    private boolean         Abort;
+    private Object          Airing;
 
     /**
      * Make a new RecordingEpisode object. Takes the Feed Context as a parameter.
      */
     public RecordingEpisode(    String ReqID,
                                 String Context,
+                                String OnlineVideoType,
+                                String OnlineVideoItem,
+                                boolean isFav,
                                 String EpID,
                                 RSSItem xOrigChanItem,
                                 String RecDirectory,
@@ -62,6 +70,8 @@ public class RecordingEpisode {
         BlocksRecorded = 0;
         RequestID = ReqID;
         FeedContext = Context;
+        OVT = OnlineVideoType;
+        OVI = OnlineVideoItem;
         EpisodeID = EpID;
         RecDir = fixPath(RecDirectory);
         RecSubdir = fixPath(SubDir);
@@ -88,7 +98,7 @@ public class RecordingEpisode {
         // Replace all of the Windows separator characters with linux separator characters.
         String NewPath = Path.replaceAll("\\\\", File.separator);
 
-        Log.getInstance().write(Log.LOGLEVEL_TRACE, "fixPath " + Path + "->" + NewPath);
+        Log.getInstance().write(Log.LOGLEVEL_TRACE, "RecordingEpisode.fixPath: " + Path + "->" + NewPath);
         
         return NewPath;
     }
@@ -115,7 +125,7 @@ public class RecordingEpisode {
 
     public RSSItem getChanItem() {
         if (ChanItem == null) {
-            Log.getInstance().write(Log.LOGLEVEL_ERROR, "REEP: Attempt to access null ChanItem");
+            Log.getInstance().write(Log.LOGLEVEL_ERROR, "RecordingEpisode.getChanItem: Attempt to access null ChanItem");
             return RSSHelper.makeDummyRSSItem();
         }
         return ChanItem;
@@ -194,19 +204,19 @@ public class RecordingEpisode {
     public RSSItem getItemForID(List<RSSItem> RSSItems, String ID) {
 
         if (RSSItems == null) {
-            Log.getInstance().write(Log.LOGLEVEL_ERROR, "REEP getItemForID: null RSSItems.");
+            Log.getInstance().write(Log.LOGLEVEL_ERROR, "RecordingEpisode.getItemForID: null RSSItems.");
             return null;
         }
 
         for (RSSItem item : RSSItems) {
             String tID = RSSHelper.makeID(item);
-            Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "REEP getItemForID: tID = " + tID);
+            Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "RecordingEpisode.getItemForID: tID = " + tID);
             if (tID.equals(ID)) {
                 return item;
             }
         }
 
-        Log.getInstance().write(Log.LOGLEVEL_TRACE, "REEP getItemForID: No matches found for ID = " + ID);
+        Log.getInstance().write(Log.LOGLEVEL_TRACE, "RecordingEpisode.getItemForID: No matches found for ID = " + ID);
         return null;
     }
 
@@ -219,12 +229,12 @@ public class RecordingEpisode {
 
         for (Integer i=0; name.exists() && i<1000; i++) {
             filetotry = FileName + "-" + i.toString();
-            Log.getInstance().write(Log.LOGLEVEL_TRACE, "REEP getUniqueFileName: Trying alternate filename = " + filetotry);
+            Log.getInstance().write(Log.LOGLEVEL_TRACE, "RecordingEpisode.getUniqueFileName: Trying alternate filename = " + filetotry);
             name = new File(fullpath+filetotry+FileExt);
         }
 
         if (name.exists()) {
-            Log.getInstance().write(Log.LOGLEVEL_ERROR, "REEP getUniqueFileName: Error - Can't find unique name.");
+            Log.getInstance().write(Log.LOGLEVEL_ERROR, "RecordingEpisode.getUniqueFileName: Error - Can't find unique name.");
             return null;
         }
 
@@ -246,7 +256,7 @@ public class RecordingEpisode {
      */
     public List<RSSItem> getRSSItems() {
         String SearchURL = FeedContext;
-        Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "REEP getRSSItems FeedContext = " + FeedContext);
+        Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "RecordingEpisode.getRSSItems FeedContext = " + FeedContext);
         return RSSHelper.getRSSItems(SearchURL);
     }
 
@@ -274,7 +284,7 @@ public class RecordingEpisode {
             FileExt = ".flv";
         }
 
-        Log.getInstance().write(Log.LOGLEVEL_TRACE, "REEP setFileExt: FileExt = " + FileExt);
+        Log.getInstance().write(Log.LOGLEVEL_TRACE, "RecordingEpisode.setFileExt: FileExt = " + FileExt);
 
         return true;
     }
@@ -286,22 +296,29 @@ public class RecordingEpisode {
      */
     public boolean setTempFile() {
         try {
-            tempFile = File.createTempFile("MaloreOnlineVideo", FileExt);
-            Log.getInstance().write(Log.LOGLEVEL_TRACE, "REEP setTempFile: " + tempFile.getAbsolutePath());
+            tempFile = File.createTempFile(CleanupThread.DOWNLOAD_FILE_PREFIX_PR, FileExt);
+            Log.getInstance().write(Log.LOGLEVEL_TRACE, "RecordingEpisode.setTempFile: " + tempFile.getAbsolutePath());
         } catch (IOException e) {
-            Log.getInstance().write(Log.LOGLEVEL_ERROR, "REEP setTempFile: Exception creating tempfile. " + e.getMessage());
+            Log.getInstance().write(Log.LOGLEVEL_ERROR, "RecordingEpisode.setTempFile: Exception creating tempfile. " + e.getMessage());
             return false;
         }
 
         if (tempFile==null || !(tempFile instanceof File)) {
-            Log.getInstance().write(Log.LOGLEVEL_ERROR, "REEP setTempFile: Failed to create valid tempFile.");
+            Log.getInstance().write(Log.LOGLEVEL_ERROR, "RecordingEpisode.setTempFile: Failed to create valid tempFile.");
             return false;
         }
 
         return true;
     }
 
+    public boolean isZeroSizeDownload() {
 
+        if (tempFile==null)
+            return true;
+
+        Log.getInstance().write(Log.LOGLEVEL_TRACE, "RecordingEpisode.isZeroSizeDownload: Size is " + tempFile.length());
+        return tempFile.length()==0L;
+    }
 
     /**
      * Move the tempfile to the final location and reanme it to the final name.  Deletes the tempFile.
@@ -310,11 +327,14 @@ public class RecordingEpisode {
      */
     public boolean moveToFinalLocation() {
 
+        if (tempFile==null)
+            return false;
+
         if (RecDir==null || RecSubdir==null) {
-            Log.getInstance().write(Log.LOGLEVEL_ERROR, "REEP moveToFinalLocation: null Dir or SubDir = " + RecDir + ":" + RecSubdir);
+            Log.getInstance().write(Log.LOGLEVEL_ERROR, "RecordingEpisode.moveToFinalLocation: null Dir or SubDir = " + RecDir + ":" + RecSubdir);
 
             if (!tempFile.delete()) {
-                Log.getInstance().write(Log.LOGLEVEL_WARN, "REEP moveToFinalLocation: Failed to delete tempFile.");
+                Log.getInstance().write(Log.LOGLEVEL_WARN, "RecordingEpisode.moveToFinalLocation: Failed to delete tempFile.");
             }
 
             return false;
@@ -323,10 +343,10 @@ public class RecordingEpisode {
         File DestPath = new File(RecDir + File.separator + RecSubdir);
 
         if (DestPath==null) {
-            Log.getInstance().write(Log.LOGLEVEL_ERROR, "REEP moveToFinalLocation: null DestPath = " + RecDir + ":" + RecSubdir);
+            Log.getInstance().write(Log.LOGLEVEL_ERROR, "RecordingEpisode.moveToFinalLocation: null DestPath = " + RecDir + ":" + RecSubdir);
 
             if (!tempFile.delete()) {
-                Log.getInstance().write(Log.LOGLEVEL_WARN, "REEP moveToFinalLocation: Failed to delete tempFile.");
+                Log.getInstance().write(Log.LOGLEVEL_WARN, "RecordingEpisode.moveToFinalLocation: Failed to delete tempFile.");
             }
 
             return false;
@@ -334,10 +354,10 @@ public class RecordingEpisode {
 
         if (!DestPath.isDirectory()) {
             if (!DestPath.mkdir()) {
-                Log.getInstance().write(Log.LOGLEVEL_ERROR, "REEP moveToFinalLocation: Could not create directory " + DestPath);
+                Log.getInstance().write(Log.LOGLEVEL_ERROR, "RecordingEpisode.moveToFinalLocation: Could not create directory " + DestPath);
 
                 if (!tempFile.delete()) {
-                    Log.getInstance().write(Log.LOGLEVEL_ERROR, "REEP moveToFinalLocation: Failed to delete tempFile.");
+                    Log.getInstance().write(Log.LOGLEVEL_ERROR, "RecordingEpisode.moveToFinalLocation: Failed to delete tempFile.");
                 }
                 return false;
             }
@@ -346,51 +366,54 @@ public class RecordingEpisode {
         NewFile = this.getUniqueFile();
 
         if (NewFile==null) {
-            Log.getInstance().write(Log.LOGLEVEL_ERROR, "REEP moveToFinalLocation: Could not create unique file.");
+            Log.getInstance().write(Log.LOGLEVEL_ERROR, "RecordingEpisode.moveToFinalLocation: Could not create unique file.");
 
             if (!tempFile.delete()) {
-                Log.getInstance().write(Log.LOGLEVEL_WARN, "REEP moveToFinalLocation: Failed to delete tempFile.");
+                Log.getInstance().write(Log.LOGLEVEL_WARN, "RecordingEpisode.moveToFinalLocation: Failed to delete tempFile.");
             }
 
             return false;
         }
 
-        Log.getInstance().write(Log.LOGLEVEL_TRACE, "REEP moveToFinalLocation: Moving = " + tempFile.getAbsolutePath() + "->" + NewFile.getAbsolutePath());
+        Log.getInstance().write(Log.LOGLEVEL_TRACE, "RecordingEpisode.moveToFinalLocation: Moving = " + tempFile.getAbsolutePath() + "->" + NewFile.getAbsolutePath());
 
         if (!tempFile.renameTo(NewFile)) {
-            Log.getInstance().write(Log.LOGLEVEL_ERROR, "REEP moveToFinalLocation: Moving failed.");
+            Log.getInstance().write(Log.LOGLEVEL_ERROR, "RecordingEpisode.moveToFinalLocation: Moving failed.");
         }
 
         if (!tempFile.delete()) {
-            Log.getInstance().write(Log.LOGLEVEL_WARN, "REEP moveToFinalLocation: Failed to delete tempFile.");
+            Log.getInstance().write(Log.LOGLEVEL_WARN, "RecordingEpisode.moveToFinalLocation: Failed to delete tempFile.");
         }
 
         return true;
     }
 
     /**
-     * Imports NewFile into the Sage database.
+     * Imports NewFile into the Sage database as an Airing.
      * <p>
-     * @return true if success, false otherwise.
+     * @return The Airing if success, null otherwise.
      */
-    public boolean importAsMediaFile() {
+    public Object importAsAiring() {
+
+        if (NewFile==null)
+            return null;
 
         String MovedFileString = NewFile.getAbsolutePath();
 
         File MovedFile = new File(MovedFileString);
 
         if (!MovedFile.exists()) {
-            Log.getInstance().write(Log.LOGLEVEL_ERROR, "REEP importAsMediaFile: Error. MovedFile does not exist.");
+            Log.getInstance().write(Log.LOGLEVEL_ERROR, "RecordingEpisode.importAsMediaFile: Error. MovedFile does not exist.");
         }
 
         // Add the MediaFile to the database.
         Object MF = MediaFileAPI.AddMediaFile(MovedFile, RecSubdir);
         if (MF == null) {
-            Log.getInstance().write(Log.LOGLEVEL_ERROR, "REEP importAsMediaFile: AddMediaFile failed for " + MovedFile.getAbsolutePath());
-            return false;
+            Log.getInstance().write(Log.LOGLEVEL_ERROR, "RecordingEpisode.importAsMediaFile: AddMediaFile failed for " + MovedFile.getAbsolutePath());
+            return null;
         }
             
-        Log.getInstance().write(Log.LOGLEVEL_TRACE, "REEP importAsMediaFile: Added MediaFile into subdir " + RecSubdir);
+        Log.getInstance().write(Log.LOGLEVEL_TRACE, "RecordingEpisode.importAsMediaFile: Added MediaFile into subdir " + RecSubdir);
 
         String Title = ShowTitle;
         boolean IsFirstRun = true;
@@ -434,16 +457,16 @@ public class RecordingEpisode {
                                         OriginalAirDate);
 
         if (Show == null) {
-            Log.getInstance().write(Log.LOGLEVEL_ERROR, "REEP importAsMediaFile: AddShow failed.");
-            return false;
+            Log.getInstance().write(Log.LOGLEVEL_ERROR, "RecordingEpisode.importAsMediaFile: AddShow failed.");
+            return null;
         }
 
         if (!MediaFileAPI.SetMediaFileShow(MF, Show)) {
-            Log.getInstance().write(Log.LOGLEVEL_ERROR, "REEP importAsMediaFile: SetMediaFileShow failed.");
-            return false;
+            Log.getInstance().write(Log.LOGLEVEL_ERROR, "RecordingEpisode.importAsMediaFile: SetMediaFileShow failed.");
+            return null;
         }
 
-        Log.getInstance().write(Log.LOGLEVEL_TRACE, "REEP importAsMediaFile succeeded.");
+        Log.getInstance().write(Log.LOGLEVEL_TRACE, "RecordingEpisode.importAsMediaFile succeeded.");
 
         // Change the ExternalID metadata to something that starts with "EP" to turn the Imported video
         // file into an archived TV recording.
@@ -452,38 +475,35 @@ public class RecordingEpisode {
         // Clear the Archived flag.
         MediaFileAPI.MoveTVFileOutOfLibrary(MF);
 
-        /**************************************
-        Long Now = Utility.Time();
-        String NowString = Now.toString();
+        Airing = MediaFileAPI.GetMediaFileAiring(MF);
 
-        if (NowString.length()>8) {
-            NowString = NowString.substring(NowString.length()-8);
+        if (!AiringAPI.IsAiringObject(Airing)) {
+            Log.getInstance().write(Log.LOGLEVEL_ERROR, "RecordingEpisode.importAsMediaFile: Object is not an Airing.");
+            return null;
         }
 
-        ExternalID = "EP" + Now.toString();
-        System.out.println("EXTERNALID = " + ExternalID);
-        Object Airing = AiringAPI.AddAiring(ExternalID, 0, OriginalAirDate, Duration);
-        if (Airing == null) {
-            Log.getInstance().write(Log.LOGLEVEL_ERROR, "REEP importAsMediaFile: AddAiring failed.");
-        } else {
+        // Set metadata to show this is a Podcast.
+        MediaFileAPI.SetMediaFileMetadata(MF, METADATA_PODCAST, "true");
 
-            // Connect the Airing to the MediaFile.
-            Log.getInstance().write(Log.LOGLEVEL_TRACE, "REEP importAsMediaFile: AddAiring succeeded.");
-            if (!MediaFileAPI.SetMediaFileAiring(MF, Airing)) {
-                Log.getInstance().write(Log.LOGLEVEL_ERROR, "REEP importAsMediaFile: SetMediaFileAiring failed.");
-                return false;
-            }
-        }
-         * ***********************************************************/
+        // Set metadata if this is a Favorite.
+        MediaFileAPI.SetMediaFileMetadata(MF, METADATA_FAVORITE, isFavorite ? "true" : "false");
 
-        return true;
+        // Set metadata for OVT, OVI and FeedContext.  This can be used at a later time to
+        // match MediaFiles to Podcasts.
+        MediaFileAPI.SetMediaFileMetadata(MF, METADATA_OVT, OVT);
+        MediaFileAPI.SetMediaFileMetadata(MF, METADATA_OVI, OVI);
+        MediaFileAPI.SetMediaFileMetadata(MF, METADATA_FEEDCONTEXT, FeedContext);
+
+        // Return the Airing.
+        return Airing;
     }
 
     public boolean download() {
 
+        Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "RecordingEpisode.download: RSSItem encoding is " + ChanItem.getContentEncoded());
         HttpURLConnection.setFollowRedirects(true);
         if (!HttpURLConnection.getFollowRedirects()) {
-            Log.getInstance().write(Log.LOGLEVEL_WARN, "REEP download: Warning - Redirects are NOT set.");
+            Log.getInstance().write(Log.LOGLEVEL_WARN, "RecordingEpisode.download: Warning - Redirects are NOT set.");
         }
 
         BufferedInputStream in = null;
@@ -491,24 +511,26 @@ public class RecordingEpisode {
 
         for (String url : VideoURLs) {
 
-            Log.getInstance().write(Log.LOGLEVEL_TRACE, "REEP download: Trying URL =" + url);
+            Log.getInstance().write(Log.LOGLEVEL_TRACE, "RecordingEpisode.download: Trying URL = " + url);
 
             BlocksRecorded = 0;
 
             try {
                 in = new BufferedInputStream(new URL(url).openStream());
             } catch (Exception e) {
-                Log.getInstance().write(Log.LOGLEVEL_ERROR, "REEP download: Failed to open " + url);
+                Log.getInstance().write(Log.LOGLEVEL_ERROR, "RecordingEpisode.download: Failed to open " + url);
                 break;
             }
 
             try {
                 fout = new FileOutputStream(tempFile);
             } catch (FileNotFoundException e) {
-                Log.getInstance().write(Log.LOGLEVEL_ERROR, "REEP download: Failed to open tempFile. " + e.getMessage());
+                Log.getInstance().write(Log.LOGLEVEL_ERROR, "RecordingEpisode.download: Failed to open tempFile. " + e.getMessage());
                 try {in.close();} catch (Exception e1) {}
                 break;
             }
+
+            Log.getInstance().write(Log.LOGLEVEL_TRACE, "RecordingEpisode.download: Download in progress.");
 
             byte data[] = new byte[BLOCK_SIZE];
             int count = 0;
@@ -520,40 +542,40 @@ public class RecordingEpisode {
                     BlocksRecorded++;
                 }
             } catch (IOException e2) {
-                Log.getInstance().write(Log.LOGLEVEL_ERROR, "REEP download: Exception during transfer " + e2.getMessage());
+                Log.getInstance().write(Log.LOGLEVEL_ERROR, "RecordingEpisode.download: Exception during transfer " + e2.getMessage());
                 try {
                     in.close();
                     fout.close();
                 } catch (IOException e3) {
-                    Log.getInstance().write(Log.LOGLEVEL_ERROR, "REEP download: Exception closing files " + e3.getMessage());
+                    Log.getInstance().write(Log.LOGLEVEL_ERROR, "RecordingEpisode.download: Exception closing files " + e3.getMessage());
                 }
                 return false;
             }
 
             if (Abort) {
-                Log.getInstance().write(Log.LOGLEVEL_WARN, "RecordingEpisode was aborted.");
+                Log.getInstance().write(Log.LOGLEVEL_WARN, "RecordingEpisode.download: RecordingEpisode was aborted.");
             }
 
             try {
                 in.close();
                 fout.close();
             } catch (IOException e2) {
-                Log.getInstance().write(Log.LOGLEVEL_ERROR, "REEP download: Error closing files. " + e2.getMessage());
+                Log.getInstance().write(Log.LOGLEVEL_ERROR, "RecordingEpisode.download: Error closing files. " + e2.getMessage());
             }
 
             if (count==-1) {
-                Log.getInstance().write(Log.LOGLEVEL_TRACE, "REEP download: Completed successfully.");
+                Log.getInstance().write(Log.LOGLEVEL_TRACE, "RecordingEpisode.download: Completed successfully. " + BlocksRecorded + ":" + BLOCK_SIZE);
                 return true;
             }
         }
 
-        Log.getInstance().write(Log.LOGLEVEL_WARN, "REEP download: Failed for all URLs.");
+        Log.getInstance().write(Log.LOGLEVEL_WARN, "RecordingEpisode.download: Failed for all URLs.");
         return false;
 
     }
 
     public void completed() {
-        Log.getInstance().write(Log.LOGLEVEL_TRACE, "REEP completed: Successfully recorded " + this.getShowTitle());
+        Log.getInstance().write(Log.LOGLEVEL_TRACE, "RecordingEpisode.completed: Successfully recorded " + this.getShowTitle());
         DownloadManager.getInstance().setCurrentlyRecordingID(null);
         DownloadManager.getInstance().addCompletedDownloads(RequestID);
         DownloadManager.getInstance().removeActiveDownloads(RequestID);
@@ -561,11 +583,21 @@ public class RecordingEpisode {
     }
 
     public void failed() {
-        Log.getInstance().write(Log.LOGLEVEL_ERROR, "REEP failed: Recording failed.");
+        Log.getInstance().write(Log.LOGLEVEL_ERROR, "RecordingEpisode.failed: Recording failed.");
         DownloadManager.getInstance().setCurrentlyRecordingID(null);
         DownloadManager.getInstance().addFailedDownloads(RequestID);
         DownloadManager.getInstance().removeActiveDownloads(RequestID);
         return;
+    }
+
+    void show() {
+        System.out.println("RecordingEpisode.show: Currently recording details:");
+        System.out.println("  Title=" + ShowTitle + "-" + EpisodeTitle);
+        System.out.println("  RequestID=" + RequestID);
+        System.out.println("  FeedContext=" + FeedContext);
+        System.out.println("  VideoURLs=" + VideoURLs);
+        System.out.println("  FileName=" + FileName + "." + FileExt);
+        System.out.println("  RecDir=" + RecDir + "-" + RecSubdir);
     }
 
     @Override

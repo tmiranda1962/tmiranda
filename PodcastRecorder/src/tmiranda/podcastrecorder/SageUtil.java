@@ -8,6 +8,7 @@ package tmiranda.podcastrecorder;
 import java.io.*;
 import java.util.*;
 import sagex.api.*;
+
 /**
  *
  * @author Default
@@ -120,6 +121,11 @@ public class SageUtil {
     public static boolean RenameFile(String Original, String Backup) {
 
         File orig = new File(Original);
+
+        // Nothing to do if original does not exist.
+        if (!orig.exists())
+            return true;
+
         File back = new File(Backup);
 
         // Delete the backup if it already exists.
