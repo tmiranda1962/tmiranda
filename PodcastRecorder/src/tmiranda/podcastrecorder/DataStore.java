@@ -413,9 +413,6 @@ public class DataStore {
         podcastMap.put(key, podcast);
         podcastLock.put(key, Boolean.FALSE);
         cacheDate = new Date();
-Long now = Utility.Time();
-Long heldTime = now - podcastLockTime.get(key);
-System.out.println("UPDATEPODCAST: Time lock was held " + heldTime.toString());
         return writePodcastsToDisk();
     }
 
