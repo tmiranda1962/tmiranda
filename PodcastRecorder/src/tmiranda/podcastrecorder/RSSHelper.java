@@ -55,9 +55,15 @@ public class RSSHelper {
         if (MediaFilesAll == null || RSSString == null)
             return null;
 
-        for (int i=0; i < MediaFilesAll.length; i++) {
-            if (RSSString.compareTo(ShowAPI.GetShowMisc(MediaFilesAll[i])) == 0) {
-                return MediaFilesAll[i];
+        //for (int i=0; i < MediaFilesAll.length; i++) {
+            //if (RSSString.compareTo(ShowAPI.GetShowMisc(MediaFilesAll[i])) == 0) {
+                //return MediaFilesAll[i];
+            //}
+        //}
+
+        for (Object MediaFile : MediaFilesAll) {
+            if (RSSString.compareTo(ShowAPI.GetShowMisc(MediaFile)) == 0) {
+                return MediaFile;
             }
         }
 
@@ -691,6 +697,9 @@ public class RSSHelper {
         int itemsPerPage = 0;
         boolean done = false;
 
+        String maxItemsString = Configuration.GetProperty(Plugin.PROPERTY_MAX_RSS_ITEMS, "500");
+        int maxRSSItems = Integer.parseInt(maxItemsString);
+
         do {
             Integer startingAt = (page * itemsPerPage) + 1;
             String newSearchURL = SearchURL + startingAt.toString();
@@ -706,11 +715,18 @@ public class RSSHelper {
                 
                 // Use the number of items we fetch the first time as the number we expect
                 // to fetch each time, i.e. max-results=xx.
-                if (itemsPerPage == 0)
+                if (itemsPerPage == 0) {
                     itemsPerPage = newList.size();
+                    Log.getInstance().write(Log.LOGLEVEL_TRACE, "RSSHelper.getRSSItemsMultiPage: Setting itemsPerPage " + itemsPerPage);
+                }
                 
                 RSSItems.addAll(newList);
                 page++;
+
+                if (RSSItems.size() >= maxRSSItems) {
+                    Log.getInstance().write(Log.LOGLEVEL_TRACE, "RSSHelper.getRSSItemsMultiPage: Fetched the maximum number of RSSItems " + maxRSSItems);
+                    done = true;
+                }
             }
 
         } while (!done);

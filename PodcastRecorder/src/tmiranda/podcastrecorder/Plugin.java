@@ -68,7 +68,7 @@ import ortus.mq.EventListener;
  */
 public class Plugin implements sage.SageTVPlugin, SageTVEventListener {
 
-    final static String VERSION = "0.50 04.03.2011";
+    final static String VERSION = "0.40 04.XX.2011";
 
     private DataStore   dataStore;
 
@@ -102,6 +102,7 @@ public class Plugin implements sage.SageTVPlugin, SageTVEventListener {
     public static final String PROPERTY_RECORD_NEW                  = "podcastrecorder/record_new";
     public static final String PROPERTY_AUTO_DELETE                 = "podcastrecorder/auto_delete";
     public static final String PROPERTY_MAX_RECORD                  = "podcastrecorder/max_to_record";
+    public static final String PROPERTY_MAX_RSS_ITEMS               = "podcastrecorder/max_rss_items";
 
     // Define the settings used in this plugin.
     public static final String SETTING_RECDIR                   = "RecDir";

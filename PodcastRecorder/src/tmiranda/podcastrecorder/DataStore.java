@@ -316,7 +316,7 @@ public class DataStore {
 
         podcastLock.put(Key, Boolean.TRUE);
         podcastLockTime.put(Key, Utility.Time());
-        Log.getInstance().write(Log.LOGLEVEL_TRACE, "DataStore.getPodcastForUpdate: Locked Podcast " + podcast.getShowTitle());
+        Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "DataStore.getPodcastForUpdate: Locked Podcast " + podcast.getShowTitle());
         return podcast;
     }
 

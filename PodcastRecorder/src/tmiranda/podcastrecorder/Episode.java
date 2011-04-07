@@ -14,8 +14,9 @@ import sagex.api.*;
  */
  public class Episode implements Serializable {
 
-    Podcast podcast;             // The Podcast that contains this Episode.
-    String  ID;                  // A unique String that identifies each Episode.
+    Podcast podcast;            // The Podcast that contains this Episode.
+    String  ID;                 // A unique String that identifies each Episode.
+    int     AiringID;           // The ID of the Airing corresponding to this Episode.
 
     /**
      * Constructor for an Episode object.
@@ -23,12 +24,14 @@ import sagex.api.*;
     public Episode(Podcast OwningPodcast, String EpID) {
         podcast = OwningPodcast;
         ID = EpID;
+        AiringID = 0;
         Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "Episode: FeedContext=" + podcast.getFeedContext());
     }
 
     public Episode(EpisodeData e) {
         podcast = e.podcast;
         ID = e.ID;
+        AiringID = e.AiringID;
         Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "Episode: FeedContext=" + podcast.getFeedContext());
     }
 
@@ -42,13 +45,16 @@ import sagex.api.*;
      * @return The Show Title.
      */
     public String getShowTitle() {
-        Object MF = this.getMediaFile();
-        if (MF==null) {
-            Log.getInstance().write(Log.LOGLEVEL_WARN, "Episode.getShowTitle: null MediaFile.");
-            return null;
-        }
 
-        return ShowAPI.GetShowTitle(MF);
+        // Try first to get the show title from the MediaFile.  If it's null it means the Episode
+        // is probably deleted so get the title from the Podcast.
+
+        Object MF = this.fetchMediaFile();
+        if (MF!=null)
+            return ShowAPI.GetShowTitle(MF);
+        else
+            //return null;
+            return podcast.getShowTitle();
     }
 
     /**
@@ -57,7 +63,7 @@ import sagex.api.*;
      * @return The title.
      */
     public String getShowEpisode() {
-        Object MF = this.getMediaFile();
+        Object MF = this.fetchMediaFile();
         if (MF==null) {
             Log.getInstance().write(Log.LOGLEVEL_WARN, "Episode.getShowEpisode: null MediaFile.");
             return null;
@@ -75,7 +81,7 @@ import sagex.api.*;
      * @return true if the Episode is on the disk, false otherwise.
      */
     public boolean isOnDisk() {
-        if (this.getMediaFile() == null) {
+        if (this.fetchMediaFile() == null) {
             return false;
         } else {
             return true;
@@ -128,7 +134,7 @@ import sagex.api.*;
      */
     public boolean isWatchedCompletely() {
 
-        Object MediaFile = this.getMediaFile();
+        Object MediaFile = this.fetchMediaFile();
 
         if (MediaFile==null) {
             return false;
@@ -181,7 +187,7 @@ import sagex.api.*;
      * @return The original recording date, in ms since 1/1/1970.
      */
     public long getDateRecorded() {
-        Object MediaFile = this.getMediaFile();
+        Object MediaFile = this.fetchMediaFile();
 
         if (MediaFile == null) {
             Log.getInstance().write(Log.LOGLEVEL_WARN, "Episode.getDateRecorded: MediaFile not found.");
@@ -222,7 +228,7 @@ import sagex.api.*;
      */
     public boolean delete() {
 
-        Object MediaFile = this.getMediaFile();
+        Object MediaFile = this.fetchMediaFile();
 
         if (MediaFile == null) {
             return false;
@@ -231,12 +237,64 @@ import sagex.api.*;
         return MediaFileAPI.DeleteFile(MediaFile);
     }
 
+    public Object findAiring() {
+
+        if (AiringID != 0) {
+            Log.getInstance().write(Log.LOGLEVEL_TRACE, "Episode.findAiring: Returning Airing for AiringID.");
+            return AiringAPI.GetAiringForID(AiringID);
+        }
+
+        Object MediaFile = fetchMediaFile();
+
+        if (MediaFile != null) {
+            Log.getInstance().write(Log.LOGLEVEL_TRACE, "Episode.findAiring: Returning Airing for MediaFile.");
+            Object Airing = MediaFileAPI.GetMediaFileAiring(MediaFile);
+            AiringID = AiringAPI.GetAiringID(Airing);
+            return Airing;
+        }
+
+        Log.getInstance().write(Log.LOGLEVEL_TRACE, "Episode.findAiring: No MediaFile.  Manually searching for Airing.");
+
+        Object[] allAirings = getAllSageAirings();
+        Log.getInstance().write(Log.LOGLEVEL_TRACE, "Episode.findAiring: All Airings " + allAirings.length);
+
+        String OVT = podcast.getOnlineVideoType();
+        String OVI = podcast.getOnlineVideoItem();
+        String FeedContext = podcast.getFeedContext();
+        Log.getInstance().write(Log.LOGLEVEL_TRACE, "Episode.findAiring: OVT:OVI:FeedContext " + OVT + " : " + OVI + " : " + FeedContext);
+
+        for (Object Airing : allAirings) {
+            String thisOVT = AiringAPI.GetManualRecordProperty(Airing, RecordingEpisode.METADATA_OVT);
+            String thisOVI = AiringAPI.GetManualRecordProperty(Airing, RecordingEpisode.METADATA_OVI);
+            String thisFeedContext = AiringAPI.GetManualRecordProperty(Airing, RecordingEpisode.METADATA_FEEDCONTEXT);
+
+            if (OVT.equals(thisOVT) && OVI.equals(thisOVI) && FeedContext.equals(thisFeedContext)) {
+                Log.getInstance().write(Log.LOGLEVEL_TRACE, "Episode.findAiring: Found Airing.");
+                AiringID = AiringAPI.GetAiringID(Airing);
+                return Airing;
+            }
+        }
+
+        Log.getInstance().write(Log.LOGLEVEL_TRACE, "Episode.findAiring: Did not find a matching Airing.");
+        return null;
+    }
+
+    static Object[] getAllSageAirings() {
+        Vector V = Database.SearchSelectedFields(" ", false, true, true, true, true, true, true, true, true, true);
+
+        if (V==null || V.isEmpty())
+            return null;
+        else
+            return V.toArray();
+    }
+
+
     /**
     * Returns a MediaFile object corresponding to an Episode.
     * <p>
     * @return       MediaFile object corresponding to the Podcast ID or null if it does not exist.
     */
-    public Object getMediaFile() {
+    public Object fetchMediaFile() {
         Object[] MediaFilesAll = MediaFileAPI.GetMediaFiles("VM");
 
         if (MediaFilesAll==null || MediaFilesAll.length==0) {

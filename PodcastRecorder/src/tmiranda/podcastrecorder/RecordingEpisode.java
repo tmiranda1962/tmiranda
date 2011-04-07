@@ -13,7 +13,6 @@ import sagex.api.*;
  *
  * @author Tom Miranda
  */
-// public class RecordingEpisode {
 public class RecordingEpisode {
 
     public static final String    METADATA_PODCAST      = "Podcast";
@@ -72,6 +71,7 @@ public class RecordingEpisode {
         FeedContext = Context;
         OVT = OnlineVideoType;
         OVI = OnlineVideoItem;
+        isFavorite = isFav;
         EpisodeID = EpID;
         RecDir = fixPath(RecDirectory);
         RecSubdir = fixPath(SubDir);
@@ -494,8 +494,19 @@ public class RecordingEpisode {
         MediaFileAPI.SetMediaFileMetadata(MF, METADATA_OVI, OVI);
         MediaFileAPI.SetMediaFileMetadata(MF, METADATA_FEEDCONTEXT, FeedContext);
 
+        // Use ManualRecord properties to store Airing information.
+        AiringAPI.SetManualRecordProperty(Airing, METADATA_PODCAST, "true");
+        AiringAPI.SetManualRecordProperty(Airing, METADATA_FAVORITE, isFavorite ? "true" : "false");
+        AiringAPI.SetManualRecordProperty(Airing, METADATA_OVT, OVT);
+        AiringAPI.SetManualRecordProperty(Airing, METADATA_OVI, OVI);
+        AiringAPI.SetManualRecordProperty(Airing, METADATA_FEEDCONTEXT, FeedContext);
+
         // Return the Airing.
         return Airing;
+    }
+
+    public int getAiringID() {
+        return (Airing==null ? 0 : AiringAPI.GetAiringID(Airing));
     }
 
     public boolean download() {
@@ -505,6 +516,10 @@ public class RecordingEpisode {
         if (!HttpURLConnection.getFollowRedirects()) {
             Log.getInstance().write(Log.LOGLEVEL_WARN, "RecordingEpisode.download: Warning - Redirects are NOT set.");
         }
+
+        boolean testmode = SageUtil.GetBoolProperty("download_testmode", false);
+        if (testmode)
+            Log.getInstance().write(Log.LOGLEVEL_WARN, "RecordingEpisode.download: In test mode!");
 
         BufferedInputStream in = null;
         FileOutputStream fout = null;
@@ -540,6 +555,15 @@ public class RecordingEpisode {
                 {
                     fout.write(data, 0, count);
                     BlocksRecorded++;
+
+                    if (testmode) {
+                        if (BlocksRecorded > 10) {
+                            count = -1;
+                            Abort = true;
+                            Log.getInstance().write(Log.LOGLEVEL_WARN, "RecordingEpisode.download: In test mode! 10 blocks recorded. Stopping.");
+                            break;
+                        }
+                    }
                 }
             } catch (IOException e2) {
                 Log.getInstance().write(Log.LOGLEVEL_ERROR, "RecordingEpisode.download: Exception during transfer " + e2.getMessage());

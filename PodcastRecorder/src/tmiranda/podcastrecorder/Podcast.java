@@ -4,6 +4,7 @@ package tmiranda.podcastrecorder;
 import java.io.*;
 import java.util.*;
 import sage.media.rss.*;
+import sagex.api.*;
 
 /**
  *
@@ -365,7 +366,7 @@ public class Podcast implements Serializable {
                 Log.getInstance().write(Log.LOGLEVEL_TRACE, "Podcast.dumpList: EpisodesOnWebServer " + podcast.episodesOnWebServer.size());
 
                 for (UnrecordedEpisode e : podcast.episodesOnWebServer) {
-                    Log.getInstance().write(Log.LOGLEVEL_TRACE, "Podcast.dumpList: Title = " + e.getEpisodeTitle());
+                    Log.getInstance().write(Log.LOGLEVEL_TRACE, "Podcast.dumpList: Title for Episode on Web = " + e.getEpisodeTitle());
                 }
             }
 
@@ -375,7 +376,7 @@ public class Podcast implements Serializable {
                 Log.getInstance().write(Log.LOGLEVEL_TRACE, "Podcast.dumpList: episodesEverRecorded:" + podcast.episodesEverRecorded.size());
 
                 for (Episode e : podcast.episodesEverRecorded) {
-                    Log.getInstance().write(Log.LOGLEVEL_TRACE, "Podcast.dumpList: Title = " + e.getShowEpisode());
+                    Log.getInstance().write(Log.LOGLEVEL_TRACE, "Podcast.dumpList: Title for recorded Episode = " + e.getShowEpisode());
                 }
             }
         }
@@ -716,7 +717,7 @@ public class Podcast implements Serializable {
             return;
         }
 
-        Log.getInstance().write(Log.LOGLEVEL_TRACE, "Podcast.addEpisodesOnWebServer: Adding episodeEverRecorded " + episode.getShowTitle());
+        Log.getInstance().write(Log.LOGLEVEL_TRACE, "Podcast.addEpisodesOnWebServer: Adding episodesOnWebServer " + episode.getShowTitle());
         if (!episodesOnWebServer.add(episode))
             Log.getInstance().write(Log.LOGLEVEL_ERROR, "Podcast.addEpisodesOnWebServer: Failed to add " + episode.getShowEpisode());
 
@@ -811,7 +812,31 @@ public class Podcast implements Serializable {
 
     public void setIsFavorite(boolean isFavorite) {
         this.isFavorite = isFavorite;
+        changeEpisodeFavoriteStatus(isFavorite);
         updateDatabase();
+    }
+
+    /**
+     * Change the status of all episodesEverRecorded to indicate if they are a favorite
+     * or not.  Will update the MediaFile metadata properties.
+     *
+     * @param favorite true if the Episodes should be marked as a Favorite, false if they
+     * should be marked as not a Favorite.
+     * 
+     */
+    private void changeEpisodeFavoriteStatus(boolean favorite) {
+
+        for (Episode episode : episodesEverRecorded) {
+            Object MediaFile = episode.fetchMediaFile();
+            if (MediaFile != null) {
+                MediaFileAPI.SetMediaFileMetadata(MediaFile, RecordingEpisode.METADATA_FAVORITE, favorite ? "true" : "false");
+
+                Object Airing = MediaFileAPI.GetMediaFileEncoding(MediaFile);
+                if (Airing != null) {
+                    AiringAPI.SetManualRecordProperty(Airing, RecordingEpisode.METADATA_FAVORITE, favorite ? "true" : "false");
+                }
+            }
+        }
     }
 
     public void setKeepNewest(boolean keepNewest) {

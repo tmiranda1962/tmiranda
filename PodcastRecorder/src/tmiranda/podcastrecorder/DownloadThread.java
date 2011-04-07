@@ -224,6 +224,8 @@ public class DownloadThread extends Thread {
                 continue;
             }
 
+            int AiringID = CurrentlyRecording.getAiringID();
+
             // It worked.
             Log.getInstance().write(Log.LOGLEVEL_TRACE, "DT: Completed successfully.");
             CurrentlyRecording.completed();

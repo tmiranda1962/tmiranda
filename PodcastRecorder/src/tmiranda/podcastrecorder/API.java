@@ -303,7 +303,7 @@ public class API {
             return false;
         }
         
-        return (Category.equalsIgnoreCase("PodcastRecorder") ? true : false);
+        return Category.equalsIgnoreCase("PodcastRecorder");
     }
 
     /**
@@ -939,13 +939,15 @@ public class API {
      */
     public static boolean IsPodcastFavorite(Object Airing) {
 
-        if (Airing==null)
+        if (Airing==null) {
             return false;
+        }
 
         Object MediaFile = AiringAPI.GetMediaFileForAiring(Airing);
 
-        if (MediaFile==null)
+        if (MediaFile==null) {
             return false;
+        }
 
         String fav = MediaFileAPI.GetMediaFileMetadata(MediaFile, RecordingEpisode.METADATA_FAVORITE);
 
