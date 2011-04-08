@@ -194,26 +194,29 @@ public class API {
 
     public static boolean IsDynamicSubCat(String OVT, String OVI, RSSItem ChanItem) {
 
+        Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "IsDynamicSubCat: Checking " + OVT + ":" + OVI);
+        
         if (OVI != null && OVT.startsWith("xChannelsDotCom") && OVI.startsWith("xChannelsDotComCatList")) {
-            Log.Write(Log.LOGLEVEL_VERBOSE, "IsDynamicSubCat: ChannelsDotCom List. Returning true. " + OVI);
+            Log.Write(Log.LOGLEVEL_TRACE, "IsDynamicSubCat: ChannelsDotCom List. Returning true. " + OVI);
             return true;
         }
 
         RSSEnclosure Enclosure = ChanItem.getEnclosure();
 
         if (Enclosure==null) {
-            Log.Write(Log.LOGLEVEL_VERBOSE, "IsDynamicSubCat: found null Enclosure. Returning false.");
+            Log.Write(Log.LOGLEVEL_TRACE, "IsDynamicSubCat: found null Enclosure. Returning false.");
             return false;
         }
 
         String Type = Enclosure.getType().toLowerCase();
-        Log.Write(Log.LOGLEVEL_VERBOSE, "IsDynamicSubCat: Type is " + Type);
+        Log.Write(Log.LOGLEVEL_TRACE, "IsDynamicSubCat: Type is " + Type);
 
         if (Type!=null && Type.contains("sagetv")) {
             Log.Write(Log.LOGLEVEL_VERBOSE, "IsDynamicSubCat: Found sagetv Enclosure. Returning true.");
             return true;
         }
 
+        Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "IsDynamicSubCat: Is not a dynamic subcat.");
         return false;
     }
     
@@ -917,7 +920,7 @@ public class API {
         Log.Write(Log.LOGLEVEL_ALL, "IsPodcastFavorite: Looking for " + OVT + ":" + OVI);
 
         if (SageUtil.isNull(OVT, OVI)) {
-            Log.Write(Log.LOGLEVEL_WARN, "IsPodcastFavorite: null parameter " + OVT + ":" + OVI);
+            Log.Write(Log.LOGLEVEL_VERBOSE, "IsPodcastFavorite: null parameter " + OVT + ":" + OVI);
             return false;
         }
 

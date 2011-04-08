@@ -559,7 +559,7 @@ import sagex.api.*;
         if (episode.findAiring()==null) {
             Log.getInstance().write(Log.LOGLEVEL_WARN, "SRM record: Did not find correcponding Airing.");
         } else {
-            Log.getInstance().write(Log.LOGLEVEL_TRACE, "SRM record: Founf corresponding Airing.");
+            Log.getInstance().write(Log.LOGLEVEL_TRACE, "SRM record: Found corresponding Airing.");
         }
 
         p.addEpisodeEverRecorded(episode);

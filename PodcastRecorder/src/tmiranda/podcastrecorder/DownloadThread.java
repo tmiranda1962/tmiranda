@@ -224,6 +224,7 @@ public class DownloadThread extends Thread {
                 continue;
             }
 
+            // Force Episode to update it's Airing information.
             int AiringID = CurrentlyRecording.getAiringID();
 
             // It worked.
