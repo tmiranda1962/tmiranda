@@ -109,9 +109,20 @@ public class API {
 
         Log.Write(Log.LOGLEVEL_VERBOSE, "MakeHuluOVI: Making from " + SearchURL);
 
+        if (SearchURL==null) {
+            Log.Write(Log.LOGLEVEL_WARN, "MakeHuluOVI: null SearchURL.");
+            return null;
+        }
+
         String OVI = null;
 
         String FeedParts[] = SearchURL.split(",",3);
+
+        if (FeedParts==null) {
+            Log.Write(Log.LOGLEVEL_ERROR, "MakeHuluOVI: null FeedParts " + SearchURL);
+            return null;
+        }
+
         String FeedEXE = null;
         String FeedParamList[] = null;
 
@@ -155,6 +166,22 @@ public class API {
         }
 
         return OVI;
+    }
+
+    public static String MakeChannelsDotComOVI(String OnlineVideoItem, String UnstrippedTitle, RSSItem ChanItem) {
+
+        if (OnlineVideoItem.equalsIgnoreCase("xChannelsDotComFeedContent")) {
+            return UnstrippedTitle == null ? null : StripShowTitle(UnstrippedTitle);
+        } else if (OnlineVideoItem.equalsIgnoreCase("xChannelsDotComFeedList")) {
+            if (ChanItem==null)
+                return null;
+            String title = ChanItem.getTitle();
+            return title == null ? null : StripShowTitle(title);
+        } else if (OnlineVideoItem.equalsIgnoreCase("xChannelsDotCatList")) {
+            return OnlineVideoItem;
+        } else {
+            return null;
+        }
     }
 
     public static void ShowRSSItem(RSSItem Item) {
@@ -857,6 +884,23 @@ public class API {
             return DataStore.getPodcast(OVT, OVI);
     }
 
+    public static Podcast GetPodcast(String FeedContext) {
+
+        Log.Write(Log.LOGLEVEL_ALL, "GetPodcast: Begin");
+
+        if (FeedContext==null) {
+            Log.Write(Log.LOGLEVEL_ERROR, "GetPodcast: null parameter " + FeedContext);
+            return null;
+        }
+
+        if (Global.IsClient()) {
+            Log.Write(Log.LOGLEVEL_VERBOSE, "GetPodcast: Executing GetPodcast on server.");
+            Object RC = GetMQDataGetter().getDataFromServer(THIS_CLASS, "GetPodcast", new Object[] {FeedContext}, DEFAULT_TIMEOUT);
+            return (RC==null || !(RC instanceof Podcast) ? null : (Podcast)RC);
+        } else
+            return DataStore.getPodcast(FeedContext);
+    }
+
     public static boolean PodcastExists(String OVT, String OVI) {
         return (GetPodcast(OVT,OVI)==null ? false : true);
     }
@@ -903,6 +947,144 @@ public class API {
             return podcast.getEpisodesEverRecordedSize();
     }
 
+    public static boolean MarkAsRecorded(String OVT, String OVI, RSSItem ChanItem) {
+
+        Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "MarkAsRecorded: Enter.");
+
+        if (SageUtil.isNull(OVT, OVI) || ChanItem==null) {
+            Log.Write(Log.LOGLEVEL_ERROR, "MarkAsRecorded: null parameter " + OVT + ":" + OVI);
+            return false;
+        }
+
+        if (Global.IsClient()) {
+            Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "MarkAsRecorded: Marking as Recorded on server.");
+            GetMQDataGetter().invokeMethodOnServer(THIS_CLASS, "MarkAsRecorded", new Object[] {OVT, OVI, ChanItem});
+            return true;
+        }
+
+        Podcast podcast = GetPodcast(OVT, OVI);
+
+        if (podcast == null) {
+            Log.Write(Log.LOGLEVEL_TRACE, "MarkAsRecorded: null podcast.");
+            return false;
+        }
+
+        Episode episode = new Episode(podcast, RSSHelper.makeID(ChanItem));
+
+        if (podcast.hasEpisodeEverBeenRecorded(episode)) {
+            Log.getInstance().write(Log.LOGLEVEL_TRACE, "MarkAsRecorded: Episode has already been recorded.");
+            return true;
+        }
+
+        episode.setAiringID(-1);
+        
+        podcast.addEpisodeEverRecorded(episode);
+        return true;
+    }
+
+    public static boolean MarkAsUnrecorded(String OVT, String OVI, RSSItem ChanItem) {
+System.out.println("MARKASUNREC: " + OVT + ":" + OVI + ":" + RSSHelper.makeID(ChanItem));
+        Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "MarkAsUnrecorded: Enter.");
+
+        if (SageUtil.isNull(OVT, OVI) || ChanItem==null) {
+            Log.Write(Log.LOGLEVEL_ERROR, "MarkAsUnrecorded: null parameter " + OVT + ":" + OVI);
+            return false;
+        }
+
+        if (Global.IsClient()) {
+            Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "MarkAsUnecorded: Marking as Unrecorded on server.");
+            GetMQDataGetter().invokeMethodOnServer(THIS_CLASS, "MarkAsUnrecorded", new Object[] {OVT, OVI, ChanItem});
+            return true;
+        }
+
+        Podcast podcast = GetPodcast(OVT, OVI);
+System.out.println("MARKASUNREC: podcast EER Size " + podcast.getEpisodesEverRecordedSize());
+
+        if (podcast == null) {
+            Log.Write(Log.LOGLEVEL_TRACE, "MarkAsUnrecorded: null podcast.");
+            return false;
+        }
+
+        Episode episode = new Episode(podcast, RSSHelper.makeID(ChanItem));
+
+        if (!podcast.hasEpisodeEverBeenRecorded(episode)) {
+            Log.getInstance().write(Log.LOGLEVEL_TRACE, "MarkAsUnrecorded: Episode has never been recorded " + RSSHelper.makeID(ChanItem));
+            return true;
+        }
+
+        podcast.removeEpisodeEverRecorded(episode);
+        return true;
+    }
+
+    public static boolean HasBeenRecorded(String OVT, String OVI, RSSItem ChanItem) {
+
+        Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "HasBeenRecorded: Enter.");
+
+        if (SageUtil.isNull(OVT, OVI) || ChanItem==null) {
+            Log.Write(Log.LOGLEVEL_ERROR, "HasBeenRecorded: null parameter " + OVT + ":" + OVI);
+            return false;
+        }
+
+        if (Global.IsClient()) {
+            Object result = GetMQDataGetter().getDataFromServer(THIS_CLASS, "HasBeenRecorded", new Object[] {OVT, OVI, ChanItem}, DEFAULT_TIMEOUT);
+            return (result==null || !(result instanceof Boolean) ? false : (Boolean)result);
+        }
+
+        Podcast podcast = GetPodcast(OVT, OVI);
+
+        if (podcast == null) {
+            Log.Write(Log.LOGLEVEL_TRACE, "HasBeenRecorded: null podcast.");
+            return false;
+        }
+
+        Episode episode = new Episode(podcast, RSSHelper.makeID(ChanItem));
+
+        return podcast.hasEpisodeEverBeenRecorded(episode);
+    }
+
+    public static Map<String, Boolean> GetHasBeenRecorded(RSSChannel Channel) {
+
+        Map<String, Boolean> recordedMap = new HashMap<String, Boolean>();
+
+        if (Channel == null)
+            return recordedMap;
+
+        if (Global.IsClient()) {
+            Object result = GetMQDataGetter().getDataFromServer(THIS_CLASS, "GetHasBeenRecorded", new Object[] {Channel}, DEFAULT_TIMEOUT);
+
+            //@SuppressWarnings("unchecked")
+            return (result==null || !(result instanceof Map) ? new HashMap<String, Boolean>() : (Map<String, Boolean>)result);
+        }
+
+        List<RSSItem> RSSItems = new LinkedList<RSSItem>();
+        RSSItems = Channel.getItems();
+
+        if (RSSItems==null || RSSItems.isEmpty())
+            return recordedMap;
+
+        List<Podcast> podcasts = DataStore.getAllPodcasts();
+
+        if (podcasts == null || podcasts.isEmpty())
+            return recordedMap;
+
+        for (RSSItem thisItem : RSSItems) {
+            
+            for (Podcast podcast : podcasts) {
+
+                Set<Episode> episodes = podcast.getEpisodesEverRecorded();
+
+                for (Episode episode : episodes) {
+
+                    if (episode.getID().equals(RSSHelper.makeID(thisItem))) {
+                        Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "GetHasBeenRecorded: Found recorded RSSItem " + thisItem.getTitle() + " : " + RSSHelper.makeID(thisItem));
+                        recordedMap.put(RSSHelper.makeID(thisItem), Boolean.TRUE);
+                    }
+                }
+            }
+        }
+
+        return recordedMap;
+    }
     
     /*
      * Isfavorite
@@ -980,7 +1162,7 @@ public class API {
         }
 
         podcast.setIsFavorite(Favorite);
-        return DataStore.updatePodcast(podcast);
+        return true;
     }
 
     public static boolean SetIsFavorite(String OVT, String OVI, Object F) {
@@ -1064,7 +1246,7 @@ public class API {
         }
 
         podcast.setIsFavorite(false);
-        return DataStore.updatePodcast(podcast);
+        return true;
     }
 
     public static String GetFeedContext(String OVT, String OVI) {
@@ -1122,7 +1304,7 @@ public class API {
         }
         
         podcast.setRecordNew(RecordNew);
-        return DataStore.updatePodcast(podcast);
+        return true;
     }
 
     /*
@@ -1164,7 +1346,7 @@ public class API {
 
         podcast.setReRecordDeleted(ReRecord);
 
-        return DataStore.updatePodcast(podcast);
+        return true;
     }
 
     public static boolean SetReRecord(String OVT, String OVI, Object RR) {
@@ -1210,7 +1392,7 @@ public class API {
 
         podcast.setAutoDelete(AutoDelete);
 
-        return DataStore.updatePodcast(podcast);
+        return true;
     }
 
     public static boolean SetAutoDelete(String OVT, String OVI, Object AD) {
@@ -1256,7 +1438,7 @@ public class API {
 
         podcast.setKeepNewest(Keep);
 
-        return DataStore.updatePodcast(podcast);
+        return true;
     }
 
     public static boolean SetKeepNewest(String OVT, String OVI, Object K) {
@@ -1303,7 +1485,7 @@ public class API {
 
         podcast.setDeleteDuplicates(Remove);
 
-        return DataStore.updatePodcast(podcast);
+        return true;
     }
 
     public static boolean SetRemoveDuplicates(String OVT, String OVI, Object R) {
@@ -1350,7 +1532,7 @@ public class API {
 
         podcast.setUseShowTitleAsSubdir(Use);
 
-        return DataStore.updatePodcast(podcast);
+        return true;
     }
 
     public static boolean SetUseTitleAsSubdir(String OVT, String OVI, Object U) {
@@ -1385,7 +1567,7 @@ public class API {
 
         podcast.setUseShowTitleInFileName(Use);
 
-        return DataStore.updatePodcast(podcast);
+        return true;
     }
 
     public static boolean SetUseTitleInFileName(String OVT, String OVI, Object U) {
@@ -1444,7 +1626,7 @@ public class API {
 
         podcast.setShowTitle(API.StripShowTitle(Title));
 
-        return DataStore.updatePodcast(podcast);
+        return true;
     }
 
     public static boolean SetShowTitle(String OVT, String OVI, Object Title) {
@@ -1498,7 +1680,7 @@ public class API {
         }
 
         podcast.setMaxToRecord(Keep);
-        return DataStore.updatePodcast(podcast);
+        return true;
     }
 
 
@@ -1541,7 +1723,7 @@ public class API {
 
         podcast.setRecDir(Dir);
 
-        return DataStore.updatePodcast(podcast);
+        return true;
     }
 
     public static boolean SetRecDir(String OVT, String OVI, File Dir) {
@@ -1588,7 +1770,7 @@ public class API {
 
         podcast.setRecSubdir(Subdir);
 
-        return DataStore.updatePodcast(podcast);
+        return true;
     }
 
     public static boolean SetSubdir(String OVT, String OVI, Object Subdir) {

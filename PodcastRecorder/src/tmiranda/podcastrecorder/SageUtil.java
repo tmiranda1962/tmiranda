@@ -149,10 +149,10 @@ public class SageUtil {
         return (S1==null || S1.isEmpty());
     }
     public static boolean isNull(String S1, String S2) {
-        return (S1==null || S1.isEmpty() || S2==null || S2.isEmpty());
+        return (S1==null || S1.isEmpty() || S2==null || S2.isEmpty() || S2.startsWith("xChannelsDot"));
     }
     public static boolean isNull(String S1, String S2, String S3) {
-        return (S1==null || S1.isEmpty() || S2==null || S2.isEmpty() || S3==null || S3.isEmpty());
+        return (S1==null || S1.isEmpty() || S2==null || S2.isEmpty() || S2.startsWith("xChannelsDot") || S3==null || S3.isEmpty());
     }
 
     /*

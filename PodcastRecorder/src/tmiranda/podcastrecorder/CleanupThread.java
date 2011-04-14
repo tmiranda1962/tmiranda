@@ -23,6 +23,7 @@ public class CleanupThread extends TimerTask {
 
     public static final String  DOWNLOAD_FILE_PREFIX_PR = "MaloreOnlineVideo";
     public static final String  DOWNLOAD_FILE_PREFIX_SAGE = "onlinevideo";
+    public static final String  PROPERTY_SYSTEM_TEMP_PATH = "online_video/temp_file_path";
 
     /**
      * Creates a new CleanupThread.  No parameters required.
@@ -158,11 +159,17 @@ public class CleanupThread extends TimerTask {
     }
 
     /**
-     * Gets the temp directory on this system.
+     * Gets the temp directory on this system. If the user has selected a specific directory
+     * that will be returned.  If not the standard system temp directory will be returned.
      * <p>
      * @return a File that represents the temp directory on this system.
      */
     private File getTempDir() {
+
+        String systemLocation = Configuration.GetProperty(PROPERTY_SYSTEM_TEMP_PATH, null);
+
+        if (systemLocation!=null && systemLocation.length()>0)
+            return new File(systemLocation);
 
         File tempfile = null;
 

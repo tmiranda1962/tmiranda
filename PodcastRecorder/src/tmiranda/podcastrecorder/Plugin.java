@@ -68,7 +68,7 @@ import ortus.mq.EventListener;
  */
 public class Plugin implements sage.SageTVPlugin, SageTVEventListener {
 
-    final static String VERSION = "0.40 04.XX.2011";
+    final static String VERSION = "0.70 04.XX.2011";
 
     private DataStore   dataStore;
 

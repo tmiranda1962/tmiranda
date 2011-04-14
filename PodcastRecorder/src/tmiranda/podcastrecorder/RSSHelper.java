@@ -124,7 +124,9 @@ public class RSSHelper {
             FeedContext = OVI;
             Log.getInstance().write(Log.LOGLEVEL_TRACE, "RSSHelper.getFeedContext: Found FeedContext from OVI " + FeedContext);
         } else {
+
             if (OVT.startsWith("xPodcast")) {
+
                 FeedContext = Props.getProperty(OVI + "/URLContext");
                 Log.getInstance().write(Log.LOGLEVEL_TRACE, "RSSHelper.getFeedContext: Found FeedContext from /URLContext " + FeedContext);
 
@@ -155,19 +157,26 @@ public class RSSHelper {
                 }
 
             } else if (OVT.startsWith("xChannelsDotCom")) {
+
+                Log.getInstance().write(Log.LOGLEVEL_TRACE, "RSSHelper.getFeedContext: Looking for xChannelsDotCom.");
+
+                //String Prefix = Props.getProperty(OnlineVideoType + "/URLPrefix");
+
                 // LangList = GetProperty("ui/ChannelsDotCom/Langs","en")
                 String LangList = Configuration.GetProperty("ui/ChannelsDotCom/Langs","en");
 
                 // FeedContext = FeedContext + java_util_Properties_getProperty( gOnlineVideoListProps, OnlineVideoType + "/URLLangPrefix", "" ) + LangList
 
-                FeedContext = Props.getProperty(OnlineVideoType + "/URLLangPrefix");
+                FeedContext = Props.getProperty(OnlineVideoType + "/URLLangPrefix") + LangList;
 
-                if (SageUtil.GetBoolProperty("ui/ChannelsDotCom/AllowAdultContent",false)) {
+                if (SageUtil.GetBoolProperty("ui/ChannelsDotCom/AllowAdultContent", false)) {
                     // FeedContext = FeedContext + java_util_Properties_getProperty( gOnlineVideoListProps, OnlineVideoType + "/URLAdultPrefix", "" )
                     FeedContext = FeedContext + Props.getProperty(OnlineVideoType + "/URLAdultPrefix");
 
                     Log.getInstance().write(Log.LOGLEVEL_TRACE, "RSSHelper.getFeedContext: Found FeedContext from xChannelsDotCom " + FeedContext);
                 }
+
+                Log.getInstance().write(Log.LOGLEVEL_TRACE, "RSSHelper.getFeedContext: xChannelsDotCom FeedContext " + FeedContext);
 
             } else {
                 FeedContext = Props.getProperty(OVI + "/URLContext");
@@ -218,7 +227,7 @@ public class RSSHelper {
         Log.getInstance().write(Log.LOGLEVEL_TRACE, "RSSHelper.getSearchURL: pageIndexBase " + PageIndexBase);
 
         // Don't put the start number at the end if there is max-results specified.  This
-        // makes it easier for gteRSSItems later on.
+        // makes it easier for getRSSItems later on.
         String URLPostfix = Props.getProperty(OVT + "/URLPostfix", "");
         if (NeedsPageNumPostfix && !URLPostfix.contains("max-results")) {
             Integer I = ((NewResultsIndex-1) * NumItemsPerPage + PageIndexBase);
@@ -285,211 +294,16 @@ public class RSSHelper {
 
         Log.getInstance().write(Log.LOGLEVEL_TRACE, "RSSHelper.getRSSItems: SearchURL = " + SearchURL);
 
+        setRedirects();
+
         if (SearchURL.contains("max-results")) {
             Log.getInstance().write(Log.LOGLEVEL_TRACE, "RSSHelper.getRSSItems: Need to get RSSItems for MultiPage.");
             return getRSSItemsMultiPage(SearchURL);
         } else {
-            Log.getInstance().write(Log.LOGLEVEL_TRACE, "RSSHelper.getRSSItems: Need to get RSSItems for normally.");
+            Log.getInstance().write(Log.LOGLEVEL_TRACE, "RSSHelper.getRSSItems: Need to get RSSItems normally.");
             return getRSSItemsNormal(SearchURL);
         }
 
-
-/**
-        List<RSSItem> RSSItems = new ArrayList<RSSItem>();
-
-        if (SearchURL==null || SearchURL.isEmpty()) {
-            Log.getInstance().write(Log.LOGLEVEL_ERROR, "RSSHelper.getRSSItems: null or empty SearchURL.");
-            return RSSItems;
-        }
-
-        //String SearchURL = zapMaxResults(origSearchURL);
-
-        Log.getInstance().write(Log.LOGLEVEL_TRACE, "RSSHelper.getRSSItems: SearchURL after zapping max-results = " + SearchURL);
-
-        RSSHandler hand = new RSSHandler();
-        if (hand==null) {
-            Log.getInstance().write(Log.LOGLEVEL_ERROR, "RSSHelper.getRSSItems: null handler.");
-            return RSSItems;
-        }
-
-        String SearchURLlc = SearchURL.toLowerCase();
-
-        if (SearchURLlc.startsWith("xurlnone")) {
-            Log.getInstance().write(Log.LOGLEVEL_ERROR, "RSSHelper.getRSSItems: Found xurlnone");
-            return RSSItems;
-        }
-
-        if (SearchURLlc.startsWith("external")) {
-            Log.getInstance().write(Log.LOGLEVEL_TRACE, "RSSHelper.getRSSItems: Found external feed " + SearchURL);
-
-            String FeedParts[] = SearchURL.split(",",3);
-            String FeedEXE = null;
-            String FeedParamList[] = null;
-
-            Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "RSSHelper.getRSSItems: FeedParts = " + FeedParts);
-
-            // Parse the various parts.
-            switch (FeedParts.length) {
-                case 2:
-                    FeedEXE = FeedParts[1];
-                    Log.getInstance().write(Log.LOGLEVEL_TRACE, "RSSHelper.getRSSItems: FeedEXE = " + FeedEXE);
-                    break;
-                case 3:
-                    FeedEXE = FeedParts[1];
-                    Log.getInstance().write(Log.LOGLEVEL_TRACE, "RSSHelper.getRSSItems: FeedEXE = " + FeedEXE);
-
-                    String FeedParam = FeedParts[2];
-                    Log.getInstance().write(Log.LOGLEVEL_TRACE, "RSSHelper.getRSSItems: FeedParam = " + FeedParam);
-
-                    if (FeedParam.length() > 0) {
-                        FeedParamList = FeedParam.split("\\|\\|");
-                        Log.getInstance().write(Log.LOGLEVEL_TRACE, "RSSHelper.getRSSItems: Found parameters " + FeedParamList.length);
-
-                        // "REM Walk through parameter list to check for any special cases."
-                        for (int i=0; i<FeedParamList.length; i++) {
-                            String Param = FeedParamList[i];
-                            Log.getInstance().write(Log.LOGLEVEL_TRACE, "RSSHelper.getRSSItems: Parameters " + Param);
-
-                            if (Param!=null && Param.startsWith("%%") && Param.endsWith("%%")) {
-                                // ThisParam = Substring(ThisParam, 2, Size(ThisParam) - 2)
-                                String ThisParam = Param.substring(2, Param.length()-2);
-                                Log.getInstance().write(Log.LOGLEVEL_TRACE, "RSSHelper.getRSSItems: Found special parameter " + ThisParam);
-
-                                String ThisParamLC = ThisParam.toLowerCase();
-
-                                if (ThisParamLC.startsWith("property=")) {
-
-                                    // ThisParam = Substring(ThisParam, Size("property="), -1)
-                                    String S = "property=";
-                                    ThisParam = ThisParam.substring(S.length());
-                                    Log.getInstance().write(Log.LOGLEVEL_TRACE, "RSSHelper.getRSSItems: Property " + ThisParam);
-
-                                    String NewVal = Configuration.GetProperty(ThisParam, null);
-                                    Log.getInstance().write(Log.LOGLEVEL_TRACE, "RSSHelper.getRSSItems: Value " + NewVal);
-
-                                    FeedParamList[i] = NewVal;
-
-                                } else if (ThisParamLC.startsWith("serverproperty=")) {
-
-                                    // ThisParam = Substring(ThisParam, Size("serverproperty="), -1)
-                                    String S = "serverproperty=";
-                                    ThisParam = ThisParam.substring(S.length());
-                                    Log.getInstance().write(Log.LOGLEVEL_TRACE, "RSSHelper.getRSSItems: ServerProperty " + ThisParam);
-
-                                    String NewVal = Configuration.GetServerProperty(ThisParam, null);
-                                    Log.getInstance().write(Log.LOGLEVEL_TRACE, "RSSHelper.getRSSItems: Value " + NewVal);
-
-                                    FeedParamList[i] = NewVal;
-
-                                } else if (ThisParamLC.startsWith("getuserinput=")) {
-                                    Log.getInstance().write(Log.LOGLEVEL_ERROR, "RSSHelper.getRSSItems: Parameter requires user input.");
-                                }
-                            }
-                        }
-                    }
-                    break;
-                default:
-                    Log.getInstance().write(Log.LOGLEVEL_ERROR, "RSSHelper.getRSSItems: Bad SearchURL = " + SearchURL);
-                    return RSSItems;
-
-            }
-
-            // Execute the command.  If we are not running on Windows we need to execute the command remotely.
-
-            String feedText = null;
-
-            if (Global.IsWindowsOS()) {
-                Log.getInstance().write(Log.LOGLEVEL_TRACE, "RSSHelper.getRSSItems: Execute " + FeedEXE + " " + StringArrayToString(FeedParamList));
-                feedText = Utility.ExecuteProcessReturnOutput(FeedEXE, FeedParamList, null, true, false);
-            } else {
-                Log.getInstance().write(Log.LOGLEVEL_TRACE, "RSSHelper.getRSSItems: RemoteExecute " + FeedEXE + " " + FeedParamList);
-                //feedText = SageUtil.ExecuteUPnPBrowser(FeedEXE, FeedParamList);
-                feedText = Utility.ExecuteProcessReturnOutput("/opt/sagetv/server/SageOnlineServicesEXEs/UPnPBrowser.out", FeedParamList, null, true, false);
-            }
-
-            if (feedText==null || feedText.isEmpty() || feedText.length() == 0) {
-                Log.getInstance().write(Log.LOGLEVEL_ERROR, "RSSHelper.getRSSItems: No results from ExecuteProcess.");
-                return RSSItems;
-            }
-
-           Log.getInstance().write(Log.LOGLEVEL_ALL, "RSSHelper.getRSSItems: feedtext " + feedText);
-
-            String RSSWriteFilePath = GetWriteFilePath();
-
-            if (RSSWriteFilePath==null) {
-                Log.getInstance().write(Log.LOGLEVEL_ERROR, "RSSHelper.getRSSItems: Failed to get RSSWriteFilePath.");
-                return RSSItems;
-            }
-
-            //String RSSReadFilePath = "file:" + RSSWriteFilePath;
-            String RSSReadFilePath = RSSWriteFilePath;
-            Log.getInstance().write(Log.LOGLEVEL_TRACE, "RSSHelper.getRSSItems: RSSReadFilePath = " + RSSReadFilePath);
-
-            // Write the text to a file.
-            if (!WriteText(RSSWriteFilePath, feedText)) {
-                Log.getInstance().write(Log.LOGLEVEL_ERROR, "RSSHelper.getRSSItems: Failed to write text.");
-                return RSSItems;
-            }
-            
-            // Create the new Parser and check for errors.
-            RSSParser parser = new RSSParser();
-
-            // Parse the XML file pointed to be the URL.
-            try {
-                parser.parseXmlFile(RSSReadFilePath, hand, false);
-            } catch (RSSException rsse) {
-                Log.getInstance().write(Log.LOGLEVEL_ERROR, "RSSHelper.getRSSItems: Exception parsing URL. " + rsse.getMessage());
-                return RSSItems;
-            }
-
-        } else {
-
-            // Create the new URL from the String and check for errors.
-            URL url;
-            try {
-                url = new URL(SearchURL);
-            } catch (MalformedURLException urle) {
-                Log.getInstance().write(Log.LOGLEVEL_ERROR, "RSSHelper.getRSSItems: malformed URL. " + SearchURL + " - "+ urle.getMessage());
-                return RSSItems;
-            }
-
-            // Create the new Parser and check for errors.
-            RSSParser parser = new RSSParser();
-
-            // Parse the XML file pointed to be the URL.
-            try {
-                parser.parseXmlFile(url, hand, false);
-            } catch (RSSException rsse) {
-                Log.getInstance().write(Log.LOGLEVEL_ERROR, "RSSHelper.getRSSItems: Exception parsing URL. " + rsse.getMessage());
-                return RSSItems;
-            }
-        }
-
-        // Create the new Channel and check for errors.
-        RSSChannel rsschan = new RSSChannel();
-
-        // Get the Channel for this handle.
-        rsschan = hand.getRSSChannel();
-        if (rsschan == null) {
-            Log.getInstance().write(Log.LOGLEVEL_ERROR, "RSSHelper.getRSSItems: null chan.");
-            return null;
-        }
-
-        // Get the RSSItems in a LinkedList.
-        @SuppressWarnings("unchecked")
-        LinkedList<RSSItem> ChanItems = rsschan.getItems();
-
-        // Loop through all the ChanItems and convert to a List.
-        for (RSSItem item : ChanItems) {
-            if (!RSSItems.add(item))
-                Log.getInstance().write(Log.LOGLEVEL_ERROR, "RSSHelper.getRSSItems: Error adding.");
-        }
-
-        // Done at last.
-        Log.getInstance().write(Log.LOGLEVEL_TRACE, "RSSHelper.getRSSItems: Returning ChanItems = " + RSSItems.size());
-        return RSSItems;
- *
- */
     }
 
 
@@ -697,12 +511,20 @@ public class RSSHelper {
         int itemsPerPage = 0;
         boolean done = false;
 
+        String copySearchURL = new String(SearchURL);
+
+        // See if we need to strip off the start index.
+        if (copySearchURL.contains("start-index") && !copySearchURL.endsWith("=")) {
+            int lastEqualsPos = copySearchURL.lastIndexOf("=");
+            copySearchURL = copySearchURL.substring(0, lastEqualsPos);
+        }
+
         String maxItemsString = Configuration.GetProperty(Plugin.PROPERTY_MAX_RSS_ITEMS, "500");
         int maxRSSItems = Integer.parseInt(maxItemsString);
 
         do {
             Integer startingAt = (page * itemsPerPage) + 1;
-            String newSearchURL = SearchURL + startingAt.toString();
+            String newSearchURL = copySearchURL + startingAt.toString();
 
             Log.getInstance().write(Log.LOGLEVEL_TRACE, "RSSHelper.getRSSItemsMultiPage: newSearchURL = " + newSearchURL);
 

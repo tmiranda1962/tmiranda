@@ -396,6 +396,19 @@ public class DataStore {
         return null;
     }
 
+    public static Podcast getPodcast(String FeedContext) {
+        if (FeedContext == null)
+            return null;
+
+        for (Podcast podcast : getAllPodcasts()) {
+            if (podcast.getFeedContext().equals(FeedContext)) {
+                return getPodcast(podcast);
+            }
+        }
+
+        return null;
+    }
+
     public synchronized static boolean addPodcast(Podcast podcast) {
 
         PodcastKey key = podcast.getKey();

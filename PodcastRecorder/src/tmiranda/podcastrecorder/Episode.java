@@ -14,9 +14,13 @@ import sagex.api.*;
  */
  public class Episode implements Serializable {
 
+    private static final long serialVersionUID = 1L;
+
     Podcast podcast;            // The Podcast that contains this Episode.
     String  ID;                 // A unique String that identifies each Episode.
     int     AiringID;           // The ID of the Airing corresponding to this Episode.
+                                // - 0 means uninitialized, -1 means it's never been downloaded
+                                //   and the user marked it as downloaded.
 
     /**
      * Constructor for an Episode object.
@@ -46,9 +50,19 @@ import sagex.api.*;
      */
     public String getShowTitle() {
 
-        // Try first to get the show title from the MediaFile.  If it's null it means the Episode
-        // is probably deleted so get the title from the Podcast.
+        if (AiringID == -1)
+            return podcast.getShowTitle();
+        
+        // Try to get the title from the Airing.
+        if (AiringID > 0) {
+            Object Airing = AiringAPI.GetAiringForID(AiringID);
+            if (Airing != null) {
+                return ShowAPI.GetShowTitle(Airing);
+            }
+        }
 
+        // Try to get the show title from the MediaFile.  If it's null it means the Episode
+        // is probably deleted so get the title from the Podcast.
         Object MF = this.fetchMediaFile();
         if (MF!=null)
             return ShowAPI.GetShowTitle(MF);
@@ -155,6 +169,10 @@ import sagex.api.*;
         ID = NewID;
     }
 
+    public void setAiringID(int AirID) {
+        AiringID = AirID;
+    }
+
 
     /*
      * *****************
@@ -239,7 +257,12 @@ import sagex.api.*;
 
     public Object findAiring() {
 
-        if (AiringID != 0) {
+        if (AiringID == -1) {
+            Log.getInstance().write(Log.LOGLEVEL_TRACE, "Episode.findAiring: Episode manually marked as recorded.");
+            return null;
+        }
+
+        if (AiringID > 0) {
             Log.getInstance().write(Log.LOGLEVEL_TRACE, "Episode.findAiring: Returning Airing for AiringID.");
             return AiringAPI.GetAiringForID(AiringID);
         }
@@ -348,6 +371,8 @@ import sagex.api.*;
         if ((this.ID == null) ? (other.ID != null) : !this.ID.equals(other.ID)) {
             return false;
         }
+
+System.out.println("EPISODES ARE EQUAL.");
         return true;
     }
 

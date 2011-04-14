@@ -16,6 +16,8 @@ import sagex.api.*;
  */
 public class Podcast implements Serializable {
 
+    private static final long serialVersionUID = 1L;
+
     private Set<UnrecordedEpisode>  episodesOnWebServer = null;     // Episodes available on the web.
     private Set<Episode>            episodesEverRecorded = null;    // Complete Episode recording history.
 
@@ -223,24 +225,15 @@ public class Podcast implements Serializable {
             return false;
         }
         final Podcast other = (Podcast) obj;
-        if (this.recordNew != other.recordNew) {
-            return false;
-        }
-        if (this.deleteDuplicates != other.deleteDuplicates) {
-            return false;
-        }
-        if (this.keepNewest != other.keepNewest) {
-            return false;
-        }
-        if (this.reRecordDeleted != other.reRecordDeleted) {
-            return false;
-        }
+
         if ((this.onlineVideoType == null) ? (other.onlineVideoType != null) : !this.onlineVideoType.equals(other.onlineVideoType)) {
             return false;
         }
+
         if ((this.onlineVideoItem == null) ? (other.onlineVideoItem != null) : !this.onlineVideoItem.equals(other.onlineVideoItem)) {
             return false;
         }
+        
         return true;
     }
 
@@ -810,6 +803,20 @@ public class Podcast implements Serializable {
         updateDatabase();
     }
 
+    public void removeEpisodeEverRecorded(Episode episode) {
+
+        if (!episodesEverRecorded.contains(episode)) {
+            Log.getInstance().write(Log.LOGLEVEL_TRACE, "Podcast.removeEpisodeEverRecorded: Episode has never been recorded.");
+            return;
+        }
+
+        Log.getInstance().write(Log.LOGLEVEL_TRACE, "Podcast.removeEpisodeEverRecorded: Removing episodeEverRecorded.");
+        if (!episodesEverRecorded.remove(episode))
+            Log.getInstance().write(Log.LOGLEVEL_TRACE, "Podcast.removeEpisodeEverRecorded: Error removing element.");
+
+        updateDatabase();
+    }
+
     public void setIsFavorite(boolean isFavorite) {
         this.isFavorite = isFavorite;
         changeEpisodeFavoriteStatus(isFavorite);
@@ -910,361 +917,3 @@ public class Podcast implements Serializable {
         }
     }
 }
-
-/*
- * Old stuff that can be deleted.
- */
-
-    /*
-     * Convenience method for API class. A return of null signifies that the cache in the API class is still valid.
-     */
-    /**
-    public synchronized static List<Podcast> readFavoritePodcasts(Date clientCacheDate) {
-        if (cacheIsDirty || clientCacheDate.compareTo(cacheDate) < 0) {
-            Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "Podcast.readFavoritePodcasts: Date cache needs to be updated.");
-            return readFavoritePodcasts();
-        }
-
-        return null;
-    }
-     */
-
-    /**
-    * Saves the Favorite Podcasts to disk.
-    * <p>
-     * @param A List of Podcasts.
-    * @return   true if the operation succeded, false otherwise.
-    */
-    /**
-    public synchronized static boolean writeFavoritePodcasts(List<Podcast> favoritePodcasts) {
-
-        // Make sure the List is not null.
-        if (favoritePodcasts==null) {
-            return false;
-        }
-
-        // Backup the current database file and delete the original.
-        SageUtil.RenameFile(FavoriteDB, FavoriteDBBackup);
-
-        File file = new File(FavoriteDB);
-        if (!file.exists()) {
-            try {
-                file.createNewFile();
-            } catch (Exception e) {
-                Log.getInstance().write(Log.LOGLEVEL_ERROR, "Podcast.writeFavoritePodcasts: Error creating new FavoriteDB file.");
-                return false;
-            }
-        }
-
-        // Write the new database file.
-        try {
-            FileOutputStream fileStream = new FileOutputStream(FavoriteDB);
-            ObjectOutputStream objectStream = new ObjectOutputStream(fileStream);
-
-            // Write all Podcasts to disk.
-            for (Podcast p : favoritePodcasts) {
-                PodcastData pData = new PodcastData(p);
-                objectStream.writeObject(pData);
-            }
-
-            objectStream.close();
-            fileStream.close();
-
-        } catch (Exception e) {
-            Log.getInstance().write(Log.LOGLEVEL_ERROR, "Podcast.writeFavoritePodcasts: Exception " + e.getMessage());
-            return false;
-        }
-
-        cacheIsDirty = true;
-        cacheDate = new Date();
-        return true;
-    }
-
-    public synchronized static boolean writePodcast(Podcast podcast) {
-
-        // Make sure the List is not null.
-        if (podcast==null) {
-            return false;
-        }
-
-        // Delete the backup.
-        File backupDB = new File(FavoriteDBBackup);
-
-        if (backupDB.exists()) {
-            if (!backupDB.delete()) {
-                Log.getInstance().write(Log.LOGLEVEL_ERROR, "Podcast.writePodcast: Error deleting backup file.");
-            }
-        }
-
-        // Backup the current database file and delete the original.
-        if (!SageUtil.RenameFile(FavoriteDB, FavoriteDBBackup)) {
-            Log.getInstance().write(Log.LOGLEVEL_ERROR, "Podcast.writePodcast: Error backing up file.");
-            return false;
-        }
-
-        // Create a new database file.
-        File file = new File(FavoriteDB);
-        if (!file.exists()) {
-            try {
-                file.createNewFile();
-            } catch (Exception e) {
-                Log.getInstance().write(Log.LOGLEVEL_ERROR, "Podcast.writePodcast: Error creating new FavoriteDB file.");
-                return false;
-            }
-        }
-
-        // Write the new database file replacing the existing Podcast with the new one.
-
-        cacheIsDirty = true;
-        cacheDate = new Date();
-        return true;
-    }
-*/
-
-    /**
-    * Reads the Favorite Podcasts form the disk.
-    * <p>
-    * @return   A List of Podcasts.  null indicates an error.
-    */
-    /**
-    public synchronized static List<Podcast> readFavoritePodcasts() {
-
-        // If the Podcasts have not changed just return what we have in the cache.
-        if (!cacheIsDirty) {
-            Log.getInstance().write(Log.LOGLEVEL_ALL, "Podcast.readFavoritePodcasts: cache is clean");
-            return PodcastCache;
-        }
-
-        Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "Podcast.readFavoritePodcasts: cache is dirty");
-
-        // Create the database file if it does not exist.
-        File file = new File(FavoriteDB);
-        if (!file.exists()) {
-            try {
-                file.createNewFile();
-            } catch (Exception e) {
-                Log.getInstance().write(Log.LOGLEVEL_ERROR, "Podcast.readFavoritePodcasts: Error creating new FavoriteDB file.");
-                return null;
-            }
-        }
-
-        // Clear the cache to reclaim the memory.
-        PodcastCache.clear();
-        PodcastCache = null;
-        cacheIsDirty = true;
-        cacheDate = new Date();
-
-        // Create the List to hold the elements.
-        List<Podcast> favoritePodcasts = new ArrayList<Podcast>();
-
-        FileInputStream fileStream = null;
-
-        try {
-            fileStream = new FileInputStream(FavoriteDB);
-        } catch (Exception e) {
-            Log.getInstance().write(Log.LOGLEVEL_ERROR, "Podcast.readFavoritePodcasts: Error opening FileInputStream.");
-            PodcastCache = favoritePodcasts;
-            cacheIsDirty = false;
-            cacheDate = new Date();
-            return null;
-        }
-
-        ObjectInputStream objectStream;
-
-        try {
-            objectStream = new ObjectInputStream(fileStream);
-        } catch (EOFException eof) {
-            Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "Podcast.readFavoritePodcasts: No Podcasts to read.");
-            try {fileStream.close();} catch (Exception ex) {}
-            cacheIsDirty = false;
-            PodcastCache = favoritePodcasts;
-            cacheDate = new Date();
-            return favoritePodcasts;
-        } catch (Exception e) {
-            Log.getInstance().write(Log.LOGLEVEL_ERROR, "Podcast.readFavoritePodcasts: Exception " + e.getMessage());
-            try {fileStream.close();} catch (Exception ex) {}
-            cacheIsDirty = false;
-            PodcastCache = favoritePodcasts;
-            cacheDate = new Date();
-            return favoritePodcasts;
-        }
-
-        Object p = null;
-        Podcast podcast = null;
-
-        try {
-            while ((p=objectStream.readObject()) != null) {
-                podcast = new Podcast((PodcastData)p);
-                if (!favoritePodcasts.add(podcast))
-                    Log.getInstance().write(Log.LOGLEVEL_TRACE, "Podcast.readFavoritePodcasts: Element already in set.");
-        }
-
-        } catch(EOFException eof) {
-            Log.getInstance().write(Log.LOGLEVEL_ALL, "Podcast.readFavoritePodcasts: Complete.");
-        } catch (InvalidClassException ic) {
-            Log.getInstance().write(Log.LOGLEVEL_WARN, "Podcast.readFavoritePodcasts: Objects in DB are invalid.");
-        } catch (Exception e) {
-            Log.getInstance().write(Log.LOGLEVEL_ERROR, "Podcast.readFavoritePodcasts: Exception " + e.getMessage());
-        }
-
-        try {
-            objectStream.close();
-            fileStream.close();
-        } catch (Exception e) {
-            Log.getInstance().write(Log.LOGLEVEL_ERROR, "Podcast.readFavoritePodcasts: Exception closing. " + e.getMessage());
-        }
-
-        Log.getInstance().write(Log.LOGLEVEL_ALL, "Podcast.readFavoritePodcasts: found " + favoritePodcasts.size());
-
-        // Update the cache.
-        PodcastCache = favoritePodcasts;
-        cacheDate = new Date();
-        cacheIsDirty = false;
-        Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "Podcast.readFavoritePodcasts: Updated Podcast cache.");
-
-        return favoritePodcasts;
-    }
-
-     */
-
-    /**
-    public synchronized static List<PodcastKey> getAllPodcastKeys() {
-
-        Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "Podcast.getAllPodcastKeys: Looking.");
-
-        // Create the database file if it does not exist.
-        File file = new File(FavoriteDB);
-        if (!file.exists()) {
-            try {
-                file.createNewFile();
-            } catch (Exception e) {
-                Log.getInstance().write(Log.LOGLEVEL_ERROR, "Podcast.getAllPodcastKeys: Error creating new FavoriteDB file.");
-                return null;
-            }
-        }
-
-        // Create the List to hold the elements.
-        List<PodcastKey> keyList = new ArrayList<PodcastKey>();
-
-        FileInputStream fileStream = null;
-
-        try {
-            fileStream = new FileInputStream(FavoriteDB);
-        } catch (Exception e) {
-            Log.getInstance().write(Log.LOGLEVEL_ERROR, "Podcast.getAllPodcastKeys: Error opening FileInputStream.");
-            return null;
-        }
-
-        ObjectInputStream objectStream;
-
-        try {
-            objectStream = new ObjectInputStream(fileStream);
-        } catch (EOFException eof) {
-            Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "Podcast.getAllPodcastKeys: No Podcasts to read.");
-            try {fileStream.close();} catch (Exception ex) {}
-            return keyList;
-        } catch (Exception e) {
-            Log.getInstance().write(Log.LOGLEVEL_ERROR, "Podcast.getAllPodcastKeys: Exception " + e.getMessage());
-            try {fileStream.close();} catch (Exception ex) {}
-            return keyList;
-        }
-
-        Object p = null;
-        Podcast podcast = null;
-
-        try {
-            while ((p=objectStream.readObject()) != null) {
-                podcast = new Podcast((PodcastData)p);
-                PodcastKey key = new PodcastKey(podcast.getOnlineVideoType(), podcast.getOnlineVideoItem(), podcast.getFeedContext());
-                if (!keyList.add(key))
-                    Log.getInstance().write(Log.LOGLEVEL_ERROR, "Podcast.getAllPodcastKeys: Failed to add key.");
-        }
-
-        } catch(EOFException eof) {
-            Log.getInstance().write(Log.LOGLEVEL_ALL, "Podcast.getAllPodcastKeys: complete.");
-        } catch (InvalidClassException ic) {
-            Log.getInstance().write(Log.LOGLEVEL_WARN, "Podcast.getAllFavoritePodcastKeys: Objects in DB are invalid.");
-        } catch (Exception e) {
-            Log.getInstance().write(Log.LOGLEVEL_ERROR, "Podcast.getAllPodcastKeys: exception " + e.getMessage());
-        }
-
-        try {
-            objectStream.close();
-            fileStream.close();
-        } catch (Exception e) {
-            Log.getInstance().write(Log.LOGLEVEL_ERROR, "Podcast.getAllPodcastKeys: Exception closing. " + e.getMessage());
-        }
-
-        Log.getInstance().write(Log.LOGLEVEL_ALL, "Podcast.getAllPodcastKeys: found " + keyList.size());
-        return keyList;
-    }
-
-    public synchronized static Podcast readPodcastFromDataBase(PodcastKey key) {
-
-        // Create the database file if it does not exist.
-        File file = new File(FavoriteDB);
-        if (!file.exists()) {
-            try {
-                file.createNewFile();
-            } catch (Exception e) {
-                Log.getInstance().write(Log.LOGLEVEL_ERROR, "Podcast.readPodcastFromDataBase: Error creating new FavoriteDB file.");
-                return null;
-            }
-        }
-
-        FileInputStream fileStream = null;
-
-        try {
-            fileStream = new FileInputStream(FavoriteDB);
-        } catch (Exception e) {
-            Log.getInstance().write(Log.LOGLEVEL_ERROR, "Podcast.readPodcastFromDataBase: Error opening FileInputStream.");
-            return null;
-        }
-
-        ObjectInputStream objectStream;
-
-        try {
-            objectStream = new ObjectInputStream(fileStream);
-        } catch (EOFException eof) {
-            Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "Podcast.readPodcastFromDataBase: No Podcasts to read.");
-            try {fileStream.close();} catch (Exception ex) {}
-            return null;
-        } catch (Exception e) {
-            Log.getInstance().write(Log.LOGLEVEL_ERROR, "Podcast.readPodcastFromDataBase: Exception " + e.getMessage());
-            try {fileStream.close();} catch (Exception ex) {}
-            return null;
-        }
-
-        Object p = null;
-        Podcast podcast = null;
-
-        try {
-            boolean found = false;
-            while ((p=objectStream.readObject()) != null && !found) {
-                podcast = new Podcast((PodcastData)p);
-                PodcastKey thisKey = podcast.getKey();
-                if (key.equals(thisKey)) {
-                    found = true;
-                    Log.getInstance().write(Log.LOGLEVEL_TRACE, "Podcast.readPodcastFromDataBase: Found Podcast");
-                }
-            }
-        } catch(EOFException eof) {
-            Log.getInstance().write(Log.LOGLEVEL_ALL, "Podcast.readPodcastFromDataBase: complete.");
-        } catch (InvalidClassException ic) {
-            Log.getInstance().write(Log.LOGLEVEL_WARN, "Podcast.readPodcastFromDataBase: Objects in DB are invalid.");
-        } catch (Exception e) {
-            Log.getInstance().write(Log.LOGLEVEL_ERROR, "Podcast.readPodcastFromDataBase: exception " + e.getMessage());
-        }
-
-        try {
-            objectStream.close();
-            fileStream.close();
-        } catch (Exception e) {
-            Log.getInstance().write(Log.LOGLEVEL_ERROR, "Podcast.readPodcastFromDataBase: Exception closing. " + e.getMessage());
-        }
-
-        Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "Podcast.readPodcastFromDataBase: Done.");
-
-        return podcast;
-    }
-     */

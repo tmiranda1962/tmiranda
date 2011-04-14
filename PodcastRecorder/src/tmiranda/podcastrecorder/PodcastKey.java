@@ -13,6 +13,8 @@ import java.io.*;
  */
 public class PodcastKey implements Serializable {
 
+    private static final long serialVersionUID = 1L;
+
     String OVT;
     String OVI;
     String FeedContext;

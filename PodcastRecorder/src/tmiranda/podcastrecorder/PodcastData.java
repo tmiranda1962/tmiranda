@@ -14,6 +14,8 @@ import java.util.*;
  */
 public class PodcastData implements Serializable {
 
+    private static final long serialVersionUID = 1L;
+
     Set<UnrecordedEpisodeData>  episodesOnWebServer = null;
     Set<EpisodeData>            episodesEverRecorded = null;
 

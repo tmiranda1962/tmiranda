@@ -16,6 +16,8 @@ import sagex.api.*;
  */
  public class UnrecordedEpisode extends Episode implements Serializable {
 
+     private static final long serialVersionUID = 1L;
+
 
     /**
      * Constructor.
