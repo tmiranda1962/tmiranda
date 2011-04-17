@@ -17,10 +17,10 @@ import sagex.api.*;
 public class API {
 
     // This is the default title that GetAiringTitle() will return for timed recordings.
-    private static final String TIMED_RECORDING = "Timed Record";
+    static final String TIMED_RECORDING = "Timed Record";
 
     // This is the ManualRecordProperty or MediaFileProperty that will be used to store the name.
-    private static final String PROPERTY_NAME = "TimedRecordingName";
+    static final String PROPERTY_NAME = "TimedRecordingName";
 
     /**
      * This method should be used in place of the core GetAiringTitle() method.
@@ -39,7 +39,7 @@ public class API {
             return title;
 
         // If it's not a timed recording just return the original title.
-        if (!title.equalsIgnoreCase(TIMED_RECORDING))
+        if (title==null || !title.equalsIgnoreCase(TIMED_RECORDING))
             return title;
 
         // We know it's a timed recording so try to find its name.
