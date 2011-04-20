@@ -126,8 +126,8 @@ public class Plugin implements sage.SageTVPlugin, SageTVEventListener {
     public static final String SETTING_REC_MGR_MANUAL_RUN       = "ManualRun";
     public static final String SETTING_UPDATE_DB                = "UpdateDB";
 
-    public static boolean DBDumped = false;
-    public static boolean DBUpdated = false;
+    public static boolean DBDumped      = false;
+    public static boolean DBUpdated     = false;
 
     public static final String SETTING_MESSAGE_AFTER_RECORD     = "RecordMessage";
     public static final String PROPERTY_MESSAGE_AFTER_RECORD    = "podcastrecorder/record_message";

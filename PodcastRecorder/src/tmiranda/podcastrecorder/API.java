@@ -590,6 +590,21 @@ public class API {
         return names;
     }
 
+    public static List<Podcast> GetAllPodcasts() {
+
+        Log.Write(Log.LOGLEVEL_VERBOSE, "GetAllPodcasts: Begin.");
+
+        List<Podcast> allPodcasts;
+
+        if (Global.IsClient()) {
+            allPodcasts = getFavoritePodcastsFromServer();
+        } else {
+            allPodcasts = DataStore.getAllPodcasts();
+        }
+
+        return allPodcasts;
+    }
+
     public static String[] SortPodcastsByName(Properties properties, String[] UnsortedPodcasts) {
         if (UnsortedPodcasts==null || UnsortedPodcasts.length==0) {
             return UnsortedPodcasts;
@@ -1862,6 +1877,32 @@ System.out.println("MARKASUNREC: podcast EER Size " + podcast.getEpisodesEverRec
     public synchronized static boolean CreatePodcast(Object OnlineVideoType, Object OnlineVideoItem, Object FeedContext, Object RecordNew, Object DeleteDuplicates, Object KeepNewest, Object ReRecordDeleted, Object MaxToRecord, Object AutoDelete, Object RecordDir, Object RecordSubdir, Object ShowTitle, Object UseShowTitleAsSubdir, Object UseShowTitleInFileName) {
         Boolean result = _CreatePodcast(ObjToString(OnlineVideoType), ObjToString(OnlineVideoItem), ObjToString(FeedContext), ObjToBool(RecordNew), ObjToBool(DeleteDuplicates), ObjToBool(KeepNewest), ObjToBool(ReRecordDeleted), ObjToInteger(MaxToRecord), ObjToBool(AutoDelete), ObjToString(RecordDir), ObjToString(RecordSubdir), ObjToString(ShowTitle), ObjToBool(UseShowTitleAsSubdir), ObjToBool(UseShowTitleInFileName));
         return (result==null ? false : result);
+    }
+
+    public synchronized static boolean DestroyPodcast(String OVT, String OVI) {
+
+        Log.Write(Log.LOGLEVEL_VERBOSE, "DestroyPodcast:");
+
+        if (SageUtil.isNull(OVT, OVI)) {
+            Log.Write(Log.LOGLEVEL_ERROR, "DestroyPodcast: null parameter " + OVT + ":" + OVI);
+            return false;
+        }
+
+        if (Global.IsClient()) {
+            Log.Write(Log.LOGLEVEL_VERBOSE, "DestroyPodcast: Destroying on server.");
+            GetMQDataGetter().invokeMethodOnServer(THIS_CLASS, "DestroyPodcast", new Object[] {OVT, OVI});
+            return true;
+        }
+
+        Podcast podcast = GetPodcast(OVT, OVI);
+
+        if (podcast == null) {
+            Log.Write(Log.LOGLEVEL_TRACE, "DestroyPodcast: null podcast.");
+            return false;
+        }
+
+        PodcastCache.remove(podcast);
+        return DataStore.removePodcast(podcast);
     }
 
     public synchronized static void ShowClass(Object OnlineVideoType, Object OnlineVideoItem, Object FeedContext, Object bRecordNew, Object bDeleteDuplicates, Object bKeepNewest, Object bReRecordDeleted, Object MaxToRecord, Object bAutoDelete, Object RecordDir, Object RecordSubdir, Object ShowTitle, Object bUseShowTitleAsSubdir, Object bUseShowTitleInFileName) {

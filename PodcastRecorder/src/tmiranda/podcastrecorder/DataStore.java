@@ -435,6 +435,7 @@ public class DataStore {
 
         podcastMap.remove(key);
         podcastLock.remove(key);
+        podcastLockTime.remove(key);
         cacheDate = new Date();
         return writePodcastsToDisk();
     }
