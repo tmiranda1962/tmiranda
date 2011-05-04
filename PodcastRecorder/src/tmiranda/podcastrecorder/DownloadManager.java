@@ -48,8 +48,8 @@ public class DownloadManager {
         /*
          * If the DownloadThread is already running or this is a SageClient, go no further.
          */
-        if (Global.IsClient()) {
-            Log.getInstance().write(Log.LOGLEVEL_ERROR, "DownloadManager: Attempt to access Downloadmanager on SageClient.");
+        if (Global.IsClient() || Global.IsServerUI()) {
+            Log.getInstance().write(Log.LOGLEVEL_ERROR, "DownloadManager: Attempt to access Downloadmanager on SageClient or ServerUI.");
             //MQDataGetter = new MQDataGetter();
             //DefaultMQTimeout = SageUtil.GetLongProperty("podcastrecorder/default_mq_timeout", 1000L);
             return;

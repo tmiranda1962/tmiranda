@@ -5,6 +5,7 @@ import java.util.*;
 import java.io.*;
 import sage.media.rss.*;
 import sagex.api.*;
+import sagex.UIContext;
 
 /**
  * This class presents the API that can be used in a STV.
@@ -72,7 +73,7 @@ public class API {
      * false otherwise.
      */
     public static boolean IsServerAlive() {
-        if (Global.IsClient()) {
+        if (Global.IsClient() || Global.IsServerUI()) {
             Object RC = GetMQDataGetter().getDataFromServer(THIS_CLASS, "IsServerAlive", DEFAULT_TIMEOUT);
             return (RC==null || !(RC instanceof Boolean) ? false : (Boolean)RC);
         } else {
@@ -93,7 +94,7 @@ public class API {
 
     public static String GetServerVersion() {
 
-        if (Global.IsClient()) {
+        if (Global.IsClient() || Global.IsServerUI()) {
             Object RC = GetMQDataGetter().getDataFromServer(THIS_CLASS, "GetServerVersion", new Object[] {}, DEFAULT_TIMEOUT);
             return (RC==null || !(RC instanceof String) ? "ERROR" : (String)RC);
         } else {
@@ -212,7 +213,7 @@ public class API {
      */
     public static void RecordManagerManualRun() {
         Log.Write(Log.LOGLEVEL_TRACE, "RecordManagerManualRun: Running RecordManager.");
-        if (Global.IsClient()) {
+        if (Global.IsClient() || Global.IsServerUI()) {
             GetMQDataGetter().invokeMethodOnServer(THIS_CLASS, "RecordManagerManualRun");
         } else {
             Plugin.RecordManagerManualRun();
@@ -279,7 +280,7 @@ public class API {
             return false;
         }
 
-        if (Global.IsClient()) {
+        if (Global.IsClient() || Global.IsServerUI()) {
             return GetMQDataGetter().getDataFromServer(THIS_CLASS, "GetMediaFileForRSSItem", new Object[] {Item}, TEN_SECOND_TIMEOUT);
         } else {
             return RSSHelper.getMediaFileForRSSItem(Item);
@@ -292,7 +293,7 @@ public class API {
             return false;
         }
 
-        if (Global.IsClient()) {
+        if (Global.IsClient() || Global.IsServerUI()) {
             Object RC = GetMQDataGetter().getDataFromServer(THIS_CLASS, "DeleteMediaFileForRSSItem", new Object[] {Item}, TEN_SECOND_TIMEOUT);
             return (RC==null || !(RC instanceof Boolean) ? false : (Boolean)RC);
         } else {
@@ -312,7 +313,7 @@ public class API {
             return false;
         }
 
-        if (Global.IsClient()) {
+        if (Global.IsClient() || Global.IsServerUI()) {
             Object RC = GetMQDataGetter().getDataFromServer(THIS_CLASS, "IsRSSItemOnDisk", new Object[] {Item}, TEN_SECOND_TIMEOUT);
             return (RC==null || !(RC instanceof Boolean) ? false : (Boolean)RC);
         } else {
@@ -342,7 +343,7 @@ public class API {
      * @return true if any podcast is being recorded, false otherwise.
      */
     public static boolean IsRecording() {
-        if (Global.IsClient()) {
+        if (Global.IsClient() || Global.IsServerUI()) {
             Object RC = GetMQDataGetter().getDataFromServer(THIS_CLASS, "IsRecording", DEFAULT_TIMEOUT);
             return (RC==null || !(RC instanceof Boolean) ? false : (Boolean)RC);
         } else {
@@ -362,7 +363,7 @@ public class API {
      * @return The number of bytes downloaded.
      */
     public static Long GetCurrentDownloadSize() {
-        if (Global.IsClient()) {
+        if (Global.IsClient() || Global.IsServerUI()) {
             Object RC = GetMQDataGetter().getDataFromServer(THIS_CLASS, "GetCurrentDownloadSize", DEFAULT_TIMEOUT);
             return (RC==null || !(RC instanceof Long) ? 0 : (Long)RC);
         } else {
@@ -377,7 +378,7 @@ public class API {
      */
     @SuppressWarnings("unchecked")
     public static List<RSSItem> GetRSSItemsForCurrent() {
-        if (Global.IsClient()) {
+        if (Global.IsClient() || Global.IsServerUI()) {
             Object RC = GetMQDataGetter().getDataFromServer(THIS_CLASS, "GetRSSItemsForCurrent", DEFAULT_TIMEOUT);
             return (RC==null || !(RC instanceof List) ? null : (List<RSSItem>)RC);
         } else {
@@ -391,7 +392,7 @@ public class API {
             return false;
         }
 
-        if (Global.IsClient()) {
+        if (Global.IsClient() || Global.IsServerUI()) {
             Object RC = GetMQDataGetter().getDataFromServer(THIS_CLASS, "IsRecordingNow", new Object[] {RSSItem}, DEFAULT_TIMEOUT);
             Log.Write(Log.LOGLEVEL_VERBOSE, "IsRecordingNow: Returning " + RC);
             return (RC==null || !(RC instanceof Boolean) ? false : (Boolean)RC);
@@ -403,7 +404,7 @@ public class API {
     }
 
     public static void AbortCurrentDownload() {
-        if (Global.IsClient()) {
+        if (Global.IsClient() || Global.IsServerUI()) {
             GetMQDataGetter().invokeMethodOnServer(THIS_CLASS, "AbortCurrentDownload");
         } else {
             DownloadManager.getInstance().abortCurrentDownload();
@@ -415,7 +416,7 @@ public class API {
      * Active = In the download queue.
      */
     public static Integer GetSizeActive() {
-        if (Global.IsClient()) {
+        if (Global.IsClient() || Global.IsServerUI()) {
             Object RC = GetMQDataGetter().getDataFromServer(THIS_CLASS, "GetSizeActive", DEFAULT_TIMEOUT);
             return (RC==null || !(RC instanceof Integer) ? 0 : (Integer)RC);
         } else {
@@ -425,7 +426,7 @@ public class API {
 
     @SuppressWarnings("unchecked")
     public static List<RSSItem> GetRSSItemsForActive() {
-        if (Global.IsClient()) {
+        if (Global.IsClient() || Global.IsServerUI()) {
             Object RC = GetMQDataGetter().getDataFromServer(THIS_CLASS, "GetRSSItemsForActive", DEFAULT_TIMEOUT);
             return (RC==null || !(RC instanceof List) ? null : (List<RSSItem>)RC);
         } else {
@@ -439,7 +440,7 @@ public class API {
             return false;
         }
 
-        if (Global.IsClient()) {
+        if (Global.IsClient() || Global.IsServerUI()) {
             Object RC = GetMQDataGetter().getDataFromServer(THIS_CLASS, "IsInQueue", new Object[] {RSSItem}, DEFAULT_TIMEOUT);
             Log.Write(Log.LOGLEVEL_VERBOSE, "IsInQueue: Returning " + RC);
             return (RC==null || !(RC instanceof Boolean) ? false : (Boolean)RC);
@@ -456,7 +457,7 @@ public class API {
             return;
         }
 
-        if (Global.IsClient()) {
+        if (Global.IsClient() || Global.IsServerUI()) {
             GetMQDataGetter().invokeMethodOnServer(THIS_CLASS, "RemoveFromQueue", new Object[] {RSSItem});
         } else {
             DownloadManager.getInstance().removeFromQueue(RSSItem);
@@ -468,7 +469,7 @@ public class API {
      */
     @SuppressWarnings("unchecked")
     public static List<RSSItem> GetRSSItemsForCompleted() {
-        if (Global.IsClient()) {
+        if (Global.IsClient() || Global.IsServerUI()) {
             Object RC = GetMQDataGetter().getDataFromServer(THIS_CLASS, "GetRSSItemsForCompleted", DEFAULT_TIMEOUT);
             return (RC==null || !(RC instanceof List) ? null : (List<RSSItem>)RC);
         } else {
@@ -477,7 +478,7 @@ public class API {
     }
     
     public static Integer GetSizeCompleted() {
-        if (Global.IsClient()) {
+        if (Global.IsClient() || Global.IsServerUI()) {
             Object RC = GetMQDataGetter().getDataFromServer(THIS_CLASS, "GetSizeCompleted", DEFAULT_TIMEOUT);
             return (RC==null || !(RC instanceof Integer) ? 0 : (Integer)RC);
         } else {
@@ -491,7 +492,7 @@ public class API {
      */
     @SuppressWarnings("unchecked")
     public static List<RSSItem> GetRSSItemsForFailed() {
-        if (Global.IsClient()) {
+        if (Global.IsClient() || Global.IsServerUI()) {
             Object RC = GetMQDataGetter().getDataFromServer(THIS_CLASS, "GetRSSItemsForFailed", DEFAULT_TIMEOUT);
             return (RC==null || !(RC instanceof List) ? null : (List<RSSItem>)RC);
         } else {
@@ -500,7 +501,7 @@ public class API {
     }
    
     public static Integer GetSizeFailed() {
-        if (Global.IsClient()) {
+        if (Global.IsClient() || Global.IsServerUI()) {
             Object RC = GetMQDataGetter().getDataFromServer(THIS_CLASS, "GetSizeFailed", DEFAULT_TIMEOUT);
             return (RC==null || !(RC instanceof Integer) ? 0 : (Integer)RC);
         } else {
@@ -570,7 +571,7 @@ public class API {
 
         List<Podcast> favoritePodcasts;
 
-        if (Global.IsClient()) {
+        if (Global.IsClient() || Global.IsServerUI()) {
             favoritePodcasts = getFavoritePodcastsFromServer();
         } else {
             favoritePodcasts = DataStore.getAllPodcasts();
@@ -596,7 +597,7 @@ public class API {
 
         List<Podcast> allPodcasts;
 
-        if (Global.IsClient()) {
+        if (Global.IsClient() || Global.IsServerUI()) {
             allPodcasts = getFavoritePodcastsFromServer();
         } else {
             allPodcasts = DataStore.getAllPodcasts();
@@ -849,7 +850,7 @@ public class API {
 
         List<Podcast> favoritePodcasts = null;
 
-        if (Global.IsClient()) {
+        if (Global.IsClient() || Global.IsServerUI()) {
             favoritePodcasts = getFavoritePodcastsFromServer();
         } else {
             favoritePodcasts = DataStore.getAllPodcasts();
@@ -891,7 +892,7 @@ public class API {
             return null;
         }
 
-        if (Global.IsClient()) {
+        if (Global.IsClient() || Global.IsServerUI()) {
             Log.Write(Log.LOGLEVEL_VERBOSE, "GetPodcast: Executing GetPodcast on server.");
             Object RC = GetMQDataGetter().getDataFromServer(THIS_CLASS, "GetPodcast", new Object[] {OVT, OVI}, DEFAULT_TIMEOUT);
             return (RC==null || !(RC instanceof Podcast) ? null : (Podcast)RC);
@@ -908,7 +909,7 @@ public class API {
             return null;
         }
 
-        if (Global.IsClient()) {
+        if (Global.IsClient() || Global.IsServerUI()) {
             Log.Write(Log.LOGLEVEL_VERBOSE, "GetPodcast: Executing GetPodcast on server.");
             Object RC = GetMQDataGetter().getDataFromServer(THIS_CLASS, "GetPodcast", new Object[] {FeedContext}, DEFAULT_TIMEOUT);
             return (RC==null || !(RC instanceof Podcast) ? null : (Podcast)RC);
@@ -971,7 +972,7 @@ public class API {
             return false;
         }
 
-        if (Global.IsClient()) {
+        if (Global.IsClient() || Global.IsServerUI()) {
             Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "MarkAsRecorded: Marking as Recorded on server.");
             GetMQDataGetter().invokeMethodOnServer(THIS_CLASS, "MarkAsRecorded", new Object[] {OVT, OVI, ChanItem});
             return true;
@@ -1006,7 +1007,7 @@ System.out.println("MARKASUNREC: " + OVT + ":" + OVI + ":" + RSSHelper.makeID(Ch
             return false;
         }
 
-        if (Global.IsClient()) {
+        if (Global.IsClient() || Global.IsServerUI()) {
             Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "MarkAsUnecorded: Marking as Unrecorded on server.");
             GetMQDataGetter().invokeMethodOnServer(THIS_CLASS, "MarkAsUnrecorded", new Object[] {OVT, OVI, ChanItem});
             return true;
@@ -1040,7 +1041,7 @@ System.out.println("MARKASUNREC: podcast EER Size " + podcast.getEpisodesEverRec
             return false;
         }
 
-        if (Global.IsClient()) {
+        if (Global.IsClient() || Global.IsServerUI()) {
             Object result = GetMQDataGetter().getDataFromServer(THIS_CLASS, "HasBeenRecorded", new Object[] {OVT, OVI, ChanItem}, DEFAULT_TIMEOUT);
             return (result==null || !(result instanceof Boolean) ? false : (Boolean)result);
         }
@@ -1064,7 +1065,7 @@ System.out.println("MARKASUNREC: podcast EER Size " + podcast.getEpisodesEverRec
         if (Channel == null)
             return recordedMap;
 
-        if (Global.IsClient()) {
+        if (Global.IsClient() || Global.IsServerUI()) {
             Object result = GetMQDataGetter().getDataFromServer(THIS_CLASS, "GetHasBeenRecorded", new Object[] {Channel}, DEFAULT_TIMEOUT);
 
             //@SuppressWarnings("unchecked")
@@ -1163,7 +1164,7 @@ System.out.println("MARKASUNREC: podcast EER Size " + podcast.getEpisodesEverRec
             return false;
         }
 
-        if (Global.IsClient()) {
+        if (Global.IsClient() || Global.IsServerUI()) {
             Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "_SetIsFavoriteOnServer: Setting Isfavorite on server.");
             GetMQDataGetter().invokeMethodOnServer(THIS_CLASS, "_SetIsFavorite", new Object[] {OVT, OVI, Favorite});
             return true;
@@ -1221,7 +1222,7 @@ System.out.println("MARKASUNREC: podcast EER Size " + podcast.getEpisodesEverRec
             return false;
         }
 
-        if (Global.IsClient()) {
+        if (Global.IsClient() || Global.IsServerUI()) {
             Log.Write(Log.LOGLEVEL_VERBOSE, "RemoveFavorite: Removing favorite on server.");
             GetMQDataGetter().invokeMethodOnServer(THIS_CLASS, "RemoveFavorite", new Object[] {OVT, OVI});
             return true;
@@ -1247,7 +1248,7 @@ System.out.println("MARKASUNREC: podcast EER Size " + podcast.getEpisodesEverRec
             return false;
         }
 
-        if (Global.IsClient()) {
+        if (Global.IsClient() || Global.IsServerUI()) {
             Log.Write(Log.LOGLEVEL_VERBOSE, "DisableFavorite: Disabling favorite on server.");
             GetMQDataGetter().invokeMethodOnServer(THIS_CLASS, "DisableFavorite", new Object[] {OVT, OVI});
             return true;
@@ -1305,7 +1306,7 @@ System.out.println("MARKASUNREC: podcast EER Size " + podcast.getEpisodesEverRec
             return false;
         }
 
-        if (Global.IsClient()) {
+        if (Global.IsClient() || Global.IsServerUI()) {
             Log.Write(Log.LOGLEVEL_VERBOSE, "SetRecordNew: Setting record new on server.");
             GetMQDataGetter().invokeMethodOnServer(THIS_CLASS, "_SetRecordNew", new Object[] {OVT, OVI, RecordNew});
             return true;
@@ -1346,7 +1347,7 @@ System.out.println("MARKASUNREC: podcast EER Size " + podcast.getEpisodesEverRec
             return false;
         }
 
-        if (Global.IsClient()) {
+        if (Global.IsClient() || Global.IsServerUI()) {
             Log.Write(Log.LOGLEVEL_VERBOSE, "SetReRecord: Setting ReRecord on server.");
             GetMQDataGetter().invokeMethodOnServer(THIS_CLASS, "_SetReRecord", new Object[] {OVT, OVI, ReRecord});
             return true;
@@ -1392,7 +1393,7 @@ System.out.println("MARKASUNREC: podcast EER Size " + podcast.getEpisodesEverRec
             return false;
         }
 
-        if (Global.IsClient()) {
+        if (Global.IsClient() || Global.IsServerUI()) {
             Log.Write(Log.LOGLEVEL_VERBOSE, "SetAutoDelete: Setting AutoDelete on server.");
             GetMQDataGetter().invokeMethodOnServer(THIS_CLASS, "_SetAutoDelete", new Object[] {OVT, OVI, AutoDelete});
             return true;
@@ -1438,7 +1439,7 @@ System.out.println("MARKASUNREC: podcast EER Size " + podcast.getEpisodesEverRec
             return false;
         }
 
-        if (Global.IsClient()) {
+        if (Global.IsClient() || Global.IsServerUI()) {
             Log.Write(Log.LOGLEVEL_VERBOSE, "SetKeepNewest: Setting KeepNewest on server.");
             GetMQDataGetter().invokeMethodOnServer(THIS_CLASS, "_SetKeepNewest", new Object[] {OVT, OVI, Keep});
             return true;
@@ -1485,7 +1486,7 @@ System.out.println("MARKASUNREC: podcast EER Size " + podcast.getEpisodesEverRec
             return false;
         }
 
-        if (Global.IsClient()) {
+        if (Global.IsClient() || Global.IsServerUI()) {
             Log.Write(Log.LOGLEVEL_VERBOSE, "SetRemoveDuplicates: Setting RemoveDuplicates on server.");
             GetMQDataGetter().invokeMethodOnServer(THIS_CLASS, "_SetRemoveDuplicates", new Object[] {OVT, OVI, Remove});
             return true;
@@ -1532,7 +1533,7 @@ System.out.println("MARKASUNREC: podcast EER Size " + podcast.getEpisodesEverRec
             return false;
         }
 
-        if (Global.IsClient()) {
+        if (Global.IsClient() || Global.IsServerUI()) {
             Log.Write(Log.LOGLEVEL_VERBOSE, "SetUseTitleAsSubdir: Setting UseTitleAsSubdir on server.");
             GetMQDataGetter().invokeMethodOnServer(THIS_CLASS, "_SetUseTitleAsSubdir", new Object[] {OVT, OVI, Use});
             return true;
@@ -1567,7 +1568,7 @@ System.out.println("MARKASUNREC: podcast EER Size " + podcast.getEpisodesEverRec
             return false;
         }
 
-        if (Global.IsClient()) {
+        if (Global.IsClient() || Global.IsServerUI()) {
             Log.Write(Log.LOGLEVEL_VERBOSE, "SetUseTitleInFileName: Setting UseTitleInFileName on server.");
             GetMQDataGetter().invokeMethodOnServer(THIS_CLASS, "_SetUseTitleInFileName", new Object[] {OVT, OVI, Use});
             return true;
@@ -1626,7 +1627,7 @@ System.out.println("MARKASUNREC: podcast EER Size " + podcast.getEpisodesEverRec
             return false;
         }
 
-        if (Global.IsClient()) {
+        if (Global.IsClient() || Global.IsServerUI()) {
             Log.Write(Log.LOGLEVEL_VERBOSE, "SetShowTitle: Setting ShowTitle on server.");
             GetMQDataGetter().invokeMethodOnServer(THIS_CLASS, "SetShowTitle", new Object[] {OVT, OVI, Title});
             return true;
@@ -1681,7 +1682,7 @@ System.out.println("MARKASUNREC: podcast EER Size " + podcast.getEpisodesEverRec
             return false;
         }
 
-        if (Global.IsClient()) {
+        if (Global.IsClient() || Global.IsServerUI()) {
             Log.Write(Log.LOGLEVEL_VERBOSE, "SetKeepAtMost:  Setting on server.");
             GetMQDataGetter().invokeMethodOnServer(THIS_CLASS, "_SetKeepAtMost", new Object[] {OVT, OVI, Keep});
             return true;
@@ -1723,7 +1724,7 @@ System.out.println("MARKASUNREC: podcast EER Size " + podcast.getEpisodesEverRec
             return false;
         }
 
-        if (Global.IsClient()) {
+        if (Global.IsClient() || Global.IsServerUI()) {
             Log.Write(Log.LOGLEVEL_VERBOSE, "SetRecDir:  Setting on server.");
             GetMQDataGetter().invokeMethodOnServer(THIS_CLASS, "SetRecDir", new Object[] {OVT, OVI, Dir});
             return true;
@@ -1770,7 +1771,7 @@ System.out.println("MARKASUNREC: podcast EER Size " + podcast.getEpisodesEverRec
             return false;
         }
 
-        if (Global.IsClient()) {
+        if (Global.IsClient() || Global.IsServerUI()) {
             Log.Write(Log.LOGLEVEL_VERBOSE, "SetSubdir: Setting on server.");
             GetMQDataGetter().invokeMethodOnServer(THIS_CLASS, "SetSubdir", new Object[] {OVT, OVI, Subdir});
             return true;
@@ -1827,7 +1828,7 @@ System.out.println("MARKASUNREC: podcast EER Size " + podcast.getEpisodesEverRec
                                         bUseShowTitleAsSubdir + ":" +
                                         bUseShowTitleInFileName);
 
-        if (Global.IsClient()) {
+        if (Global.IsClient() || Global.IsServerUI()) {
             return createPodcastOnServer(OnlineVideoType, OnlineVideoItem, FeedContext, bRecordNew, bDeleteDuplicates, bKeepNewest, bReRecordDeleted, MaxToRecord, bAutoDelete, RecordDir, RecordSubdir, ShowTitle, bUseShowTitleAsSubdir, bUseShowTitleInFileName);
         }
 
@@ -1888,7 +1889,7 @@ System.out.println("MARKASUNREC: podcast EER Size " + podcast.getEpisodesEverRec
             return false;
         }
 
-        if (Global.IsClient()) {
+        if (Global.IsClient() || Global.IsServerUI()) {
             Log.Write(Log.LOGLEVEL_VERBOSE, "DestroyPodcast: Destroying on server.");
             GetMQDataGetter().invokeMethodOnServer(THIS_CLASS, "DestroyPodcast", new Object[] {OVT, OVI});
             return true;
@@ -1962,7 +1963,7 @@ System.out.println("MARKASUNREC: podcast EER Size " + podcast.getEpisodesEverRec
      */
     public static boolean _Record(String OnlineVideoType, String OnlineVideoItem, String FeedContext, String RecordDir, String RecordSubdir, String ShowTitle, Boolean UseShowTitleAsSubdir, Boolean UseShowTitleInFileName, RSSItem ChanItem) {
        
-        if (Global.IsClient()) {
+        if (Global.IsClient() || Global.IsServerUI()) {
             return recordOnServer(OnlineVideoType, OnlineVideoItem, FeedContext, RecordDir, RecordSubdir, ShowTitle, UseShowTitleAsSubdir, UseShowTitleInFileName, ChanItem);
         }
 
@@ -2094,5 +2095,26 @@ System.out.println("MARKASUNREC: podcast EER Size " + podcast.getEpisodesEverRec
     public static void showFavoriteDatabase() {
         Podcast podcast = new Podcast();
         podcast.dumpFavorites();
+    }
+
+    private static Object watch(String URL, String ContextName) {
+
+        if (URL==null || URL.isEmpty())
+            return "Null URL.";
+
+        if (ContextName==null || ContextName.isEmpty())
+            return "null UIContextName";
+
+        // Stop any file download that is currently in progress.
+        Global.CancelFileDownload();
+
+        UIContext context = new UIContext(ContextName);
+
+        // Stop whatever is playing now.
+        MediaPlayerAPI.CloseAndWaitUntilClosed(context);
+
+        //MediaPlayerAPI.Watch(context, Content);
+
+        return true;
     }
 }

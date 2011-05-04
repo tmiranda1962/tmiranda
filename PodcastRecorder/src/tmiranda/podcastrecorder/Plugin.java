@@ -68,7 +68,7 @@ import ortus.mq.EventListener;
  */
 public class Plugin implements sage.SageTVPlugin, SageTVEventListener {
 
-    final static String VERSION = "0.70 04.XX.2011";
+    final static String VERSION = "0.80 04.XX.2011";
 
     private DataStore   dataStore;
 
@@ -84,8 +84,7 @@ public class Plugin implements sage.SageTVPlugin, SageTVEventListener {
 
     // Define all of the properties used in this plugin.
     public static final String PROPERTY_LOGLEVEL                    = "podcastrecorder/loglevel";
-    public static final String PROPERTY_RECORD_MANAGER_CYCLE_TIME   = "podcastrecorder/record_manager_cycle_time";
-    public static final String PROPERTY_DEFAULT_RECORD_MANAGER_CYCLE_TIME = "43200000";
+
     public static final String PROPERTY_ENABLE_CLEANUP_THREAD       = "podcastrecorder/enable_cleanup_thread";
     public static final String PROPERTY_CLEANUP_THREAD_DELAY        = "podcastrecorder/cleanup_thread_delay";
     public static final String PROPERTY_CLEANUP_MAX_AGE_OF_TEMPFILE = "podcastrecorder/max_age_of_tempfile";  // Not implemented in Plugin
@@ -111,7 +110,6 @@ public class Plugin implements sage.SageTVPlugin, SageTVEventListener {
     public static final String SETTING_SHOWTITLEINFILENAME      = "ShowTitleInFileName";
     public static final String SETTING_MAXFILENAMELENGTH        = "MaxFileNameLength";
     public static final String SETTING_RECORDAFTERWATCHED       = "RecordAfterWatched";
-    public static final String SETTING_SRMCYCLETIME             = "SRMCycleTime";
     public static final String SETTING_LOGLEVEL                 = "LogLevel";
     public static final String SETTING_ENABLE_CLEANUP_THREAD    = "EnableCleanup";
     public static final String SETTING_RERECORD_DELETED         = "ReRecord";
@@ -134,6 +132,14 @@ public class Plugin implements sage.SageTVPlugin, SageTVEventListener {
 
     public static final String SETTING_MESSAGE_IF_NEW_AVAIL     = "NewAvailMessage";
     public static final String PROPERTY_MESSAGE_IF_NEW_AVAIL    = "podcastrecorder/new_avail_message";
+
+    public static final String SETTING_RECORD_MANAGER_CYCLE_TIME            = "SRMCycleTime";
+    public static final String PROPERTY_RECORD_MANAGER_CYCLE_TIME           = "podcastrecorder/record_manager_cycle_time";
+    public static final String PROPERTY_DEFAULT_RECORD_MANAGER_CYCLE_TIME   = "43200000";
+
+    public static final String SETTING_RECORD_MANAGER_START_TIME    = "SRMStartTime";
+    public static final String PROPERTY_RECORD_MANAGER_START_TIME   = "podcastrecorder/record_manager_start_time";
+    public static final String PROPERTY_DEFAULT_RECORD_MANAGER_START_TIME = "0";
 
     // Settings that are not yet implemented and not noted above in the properties.
     //   Manual run of cleanup thread.
@@ -190,8 +196,8 @@ public class Plugin implements sage.SageTVPlugin, SageTVEventListener {
         // Initialize the DataStore by creating an instance.
         //DataStore = DataStore.getInstance();
 
-        if (Global.IsClient()) {
-            Log.getInstance().write(Log.LOGLEVEL_TRACE, "Plugin running as a SageClient.");
+        if (Global.IsClient() || Global.IsServerUI()) {
+            Log.getInstance().write(Log.LOGLEVEL_TRACE, "Plugin running as a SageClient or ServerUI.");
             return;
         }
         
@@ -209,7 +215,7 @@ public class Plugin implements sage.SageTVPlugin, SageTVEventListener {
         RecordManager = new RecordManager();
         RecordManagerTimer = new Timer();
         Long sleeptime = SageUtil.GetLongProperty(PROPERTY_RECORD_MANAGER_CYCLE_TIME, PROPERTY_DEFAULT_RECORD_MANAGER_CYCLE_TIME);
-        RecordManagerTimer.scheduleAtFixedRate(RecordManager, 60000L, sleeptime);
+        startRecordManager(Configuration.GetServerProperty(PROPERTY_RECORD_MANAGER_START_TIME, PROPERTY_DEFAULT_RECORD_MANAGER_START_TIME));
         Log.getInstance().write(Log.LOGLEVEL_TRACE, "Plugin: RecordManager cycle time " + sleeptime + ":" + sleeptime/1000/60);
     }
 
@@ -227,7 +233,7 @@ public class Plugin implements sage.SageTVPlugin, SageTVEventListener {
         CleanupTimer.cancel();                          // Don't start the CleanupThread anymore.
         CleanupThread.cancel();                         // Kill off the currently running CleaupThread.
 
-        if (!Global.IsClient()) {
+        if (!Global.IsClient() && !Global.IsServerUI()) {
             DownloadManager.getInstance().destroy();    // Stop any download in progress.
             RecordManagerTimer.cancel();                // Don't start the RecordManager anymore.
             RecordManager.cancel();                     // Kill off the currently running RecordManager.
@@ -240,7 +246,7 @@ public class Plugin implements sage.SageTVPlugin, SageTVEventListener {
     @Override
     public void destroy() {
         Log.getInstance().write(Log.LOGLEVEL_TRACE, "Plugin: Destroy received from Plugin Manager.");
-        if (!Global.IsClient()) {
+        if (!Global.IsClient() && !Global.IsServerUI()) {
             RecordManager = null;
             RecordManagerTimer = null;
             DownloadManager.getInstance().destroy();
@@ -272,8 +278,9 @@ public class Plugin implements sage.SageTVPlugin, SageTVEventListener {
         CommandList.add(SETTING_MAXFILENAMELENGTH);
         CommandList.add(SETTING_RERECORD_DELETED);
 
-        if (!Global.IsClient()) {
-            CommandList.add(SETTING_SRMCYCLETIME);
+        if (!Global.IsClient() && !Global.IsServerUI()) {
+            CommandList.add(SETTING_RECORD_MANAGER_START_TIME);
+            CommandList.add(SETTING_RECORD_MANAGER_CYCLE_TIME);
         }
         
         CommandList.add(SETTING_ENABLE_CLEANUP_THREAD);
@@ -286,7 +293,7 @@ public class Plugin implements sage.SageTVPlugin, SageTVEventListener {
 
 
             // Can't do these actions from a SageClient.
-            if (!Global.IsClient()) {
+            if (!Global.IsClient() && !Global.IsServerUI()) {
                 CommandList.add(SETTING_REC_MGR_MANUAL_RUN);
                 CommandList.add(SETTING_UPDATE_DB);
                 CommandList.add(SETTING_DUMP_DB);
@@ -339,7 +346,9 @@ public class Plugin implements sage.SageTVPlugin, SageTVEventListener {
             } else {
                 return "Run Now";
             }
-        } else if (setting.startsWith(SETTING_SRMCYCLETIME)) {
+        } else if (setting.startsWith(SETTING_RECORD_MANAGER_START_TIME)) {
+            return Configuration.GetServerProperty(PROPERTY_RECORD_MANAGER_START_TIME, PROPERTY_DEFAULT_RECORD_MANAGER_START_TIME);
+        } else if (setting.startsWith(SETTING_RECORD_MANAGER_CYCLE_TIME)) {
             String ms = Configuration.GetServerProperty(PROPERTY_RECORD_MANAGER_CYCLE_TIME, PROPERTY_DEFAULT_RECORD_MANAGER_CYCLE_TIME);
             Long hours = java.lang.Long.parseLong(ms) / 60L / 60L / 1000L;
             return hours.toString();
@@ -415,7 +424,9 @@ public class Plugin implements sage.SageTVPlugin, SageTVEventListener {
             return CONFIG_INTEGER;
         else if (setting.startsWith(SETTING_RECORDAFTERWATCHED))
             return CONFIG_CHOICE;
-        else if (setting.startsWith(SETTING_SRMCYCLETIME))
+        else if (setting.startsWith(SETTING_RECORD_MANAGER_START_TIME))
+            return CONFIG_TEXT;
+        else if (setting.startsWith(SETTING_RECORD_MANAGER_CYCLE_TIME))
             return CONFIG_INTEGER;
         else if (setting.startsWith(SETTING_LOGLEVEL))
             return CONFIG_CHOICE;
@@ -505,7 +516,9 @@ public class Plugin implements sage.SageTVPlugin, SageTVEventListener {
             }
             
             Configuration.SetServerProperty(PROPERTY_MAX_RECORD, max.toString());
-        } else if (setting.startsWith(SETTING_SRMCYCLETIME)) {
+        } else if (setting.startsWith(SETTING_RECORD_MANAGER_START_TIME)) {
+            startRecordManager(value);
+        } else if (setting.startsWith(SETTING_RECORD_MANAGER_CYCLE_TIME)) {
             Long ms = 0L;
             int hours = 0;
 
@@ -524,12 +537,14 @@ public class Plugin implements sage.SageTVPlugin, SageTVEventListener {
 
             Log.getInstance().write(Log.LOGLEVEL_TRACE, "Plugin: Setting cycle time to " + ms.toString());
             Configuration.SetServerProperty(PROPERTY_RECORD_MANAGER_CYCLE_TIME, ms.toString());
-            
+
+            startRecordManager(Configuration.GetServerProperty(PROPERTY_RECORD_MANAGER_START_TIME, PROPERTY_DEFAULT_RECORD_MANAGER_START_TIME));
+
             // Cancel the currently scheduled runs and reset the schedule.
-            RecordManagerTimer.cancel();
-            RecordManagerTimer = new Timer();
-            Long sleeptime = SageUtil.GetLongProperty(PROPERTY_RECORD_MANAGER_CYCLE_TIME, PROPERTY_DEFAULT_RECORD_MANAGER_CYCLE_TIME);
-            RecordManagerTimer.scheduleAtFixedRate(RecordManager, 60000L, sleeptime);
+            //RecordManagerTimer.cancel();
+            //RecordManagerTimer = new Timer();
+            //Long sleeptime = SageUtil.GetLongProperty(PROPERTY_RECORD_MANAGER_CYCLE_TIME, PROPERTY_DEFAULT_RECORD_MANAGER_CYCLE_TIME);
+            //RecordManagerTimer.scheduleAtFixedRate(RecordManager, 60000L, sleeptime);
 
         } else if (setting.startsWith(SETTING_LOGLEVEL)) {
             if (value.startsWith("None"))
@@ -547,6 +562,97 @@ public class Plugin implements sage.SageTVPlugin, SageTVEventListener {
             else
                 Log.getInstance().SetLogLevel(Log.LOGLEVEL_ERROR);
         }
+    }
+
+    /**
+     * Start the RecordManager at the time specified by the given value.  if value is valid
+     * the method will set it as the default value for subsequent runs.
+     * @param value Must be in the format HH:MM or "0" to specify now.
+     */
+    private void startRecordManager(String value) {
+
+        Long sleeptime = SageUtil.GetLongProperty(PROPERTY_RECORD_MANAGER_CYCLE_TIME, PROPERTY_DEFAULT_RECORD_MANAGER_CYCLE_TIME);
+        Log.getInstance().write(Log.LOGLEVEL_TRACE, "startRecordManager: value:sleeptime " + value + ":" + sleeptime);
+
+        if (value == null || value.isEmpty()) {
+            Log.getInstance().write(Log.LOGLEVEL_WARN, "startRecordManager: Null or empty start time, no changes made.");
+            return;
+        }
+
+        // Check for special case of "0".
+        if (value.equals("0")) {
+            Log.getInstance().write(Log.LOGLEVEL_TRACE, "startRecordManager: Resetting RecordManager to now.");
+            Configuration.SetServerProperty(PROPERTY_RECORD_MANAGER_START_TIME, "0");
+            resetRecordManager(0L, sleeptime);
+            return;
+        }
+
+        // Make sure the format is correct, it should be HH:MM.
+        if (!value.contains(":")) {
+            Log.getInstance().write(Log.LOGLEVEL_WARN, "Plugin: Invalid start time, no changes made.");
+            return;
+        }
+
+        String[] HHMM = value.split(":");
+        if (HHMM.length != 2) {
+            Log.getInstance().write(Log.LOGLEVEL_WARN, "Plugin: Invalid start time, no changes made.");
+            return;
+        }
+
+        int HH = 0;
+        int MM = 0;
+
+        try {
+            HH = Integer.parseInt(HHMM[0]);
+        } catch (NumberFormatException e) {
+            Log.getInstance().write(Log.LOGLEVEL_WARN, "Plugin: Invalid Hours, no changes made.");
+            return;
+        }
+
+        try {
+            MM = Integer.parseInt(HHMM[1]);
+        } catch (NumberFormatException e) {
+            Log.getInstance().write(Log.LOGLEVEL_WARN, "Plugin: Invalid Minutes, no changes made.");
+            return;
+        }
+
+        if (HH < 0 || HH > 23 || MM < 0 || MM > 59) {
+            Log.getInstance().write(Log.LOGLEVEL_WARN, "Plugin: Invalid start time, no changes made.");
+            return;
+        }
+
+        Configuration.SetServerProperty(PROPERTY_RECORD_MANAGER_CYCLE_TIME, value);
+        Log.getInstance().write(Log.LOGLEVEL_TRACE, "Plugin: Selected start time is " + HH + ":" + MM);
+
+        // Get the current hour and minute.
+        Calendar now = Calendar.getInstance();
+        int nowHour = now.get(Calendar.HOUR);
+        int nowMinute = now.get(Calendar.MINUTE);
+
+        // Calculate the time to wait until we get from now until when we are supposed to start
+        // the RecordManager.
+        long delayUntilStartTime = 0;
+
+        int hoursUntilStartHour = nowHour < HH ? HH - nowHour : (24 - nowHour) + HH;
+        Log.getInstance().write(Log.LOGLEVEL_TRACE, "Plugin: Hours until start hour " + hoursUntilStartHour);
+
+        int minutesUntilStartMinute = nowMinute < MM ? MM - nowMinute : (60 - nowMinute) + MM;
+        Log.getInstance().write(Log.LOGLEVEL_TRACE, "Plugin: Minutes until start minute " + minutesUntilStartMinute);
+
+        delayUntilStartTime = (hoursUntilStartHour*60*60*1000) + (minutesUntilStartMinute*60*1000);
+        resetRecordManager(delayUntilStartTime, sleeptime);
+    }
+
+    /**
+     * Start the RecordManager after a specific delay.  Cancels any current runs that may be scheduled.
+     * @param delay The number of milliseconds to delay before the initial run.
+     * @param sleeptime The amount of milliseconds between runs.
+     */
+    private void resetRecordManager(long delay, long sleeptime) {
+        if (RecordManagerTimer != null)
+            RecordManagerTimer.cancel();
+        RecordManagerTimer = new Timer();
+        RecordManagerTimer.scheduleAtFixedRate(RecordManager, delay, sleeptime);
     }
 
     // Sets a configuration values for this plugin for a multiselect choice
@@ -602,7 +708,9 @@ public class Plugin implements sage.SageTVPlugin, SageTVEventListener {
             return "The maximum number of characters in the file name. (Some Podcasts use very long names. This will truncate them.)";
         } else if (setting.startsWith(SETTING_RECORDAFTERWATCHED)) {
             return "Automatically Record Podcasts after Watching Them.";
-        } else if (setting.startsWith(SETTING_SRMCYCLETIME)) {
+        } else if (setting.startsWith(SETTING_RECORD_MANAGER_START_TIME)) {
+            return "The time to begin checking for new Episodes of your Favorite podcasts. Enter 0 for now.";
+        } else if (setting.startsWith(SETTING_RECORD_MANAGER_CYCLE_TIME)) {
             return "The number of hours to wait before checking for new Episodes of your Favorite podcasts.";
         } else if (setting.startsWith(SETTING_LOGLEVEL)) {
             return "Set the Debug Logging Level.";
@@ -648,7 +756,9 @@ public class Plugin implements sage.SageTVPlugin, SageTVEventListener {
             return "Maximum Length of File Name";
         } else if (setting.startsWith(SETTING_RECORDAFTERWATCHED)) {
             return "Record Podcasts After Watching Them";
-        } else if (setting.startsWith(SETTING_SRMCYCLETIME)) {
+        } else if (setting.startsWith(SETTING_RECORD_MANAGER_START_TIME)) {
+            return "Favorite Recording Download Start Time.  Use 24 hour format HH:MM";
+        } else if (setting.startsWith(SETTING_RECORD_MANAGER_CYCLE_TIME)) {
             return "Favorite Recording Cycle Time (Hours)";
         } else if (setting.startsWith(SETTING_ENABLE_CLEANUP_THREAD)) {
             return "Enable Cleanup";
