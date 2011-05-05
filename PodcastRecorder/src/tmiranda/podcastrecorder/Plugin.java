@@ -68,7 +68,7 @@ import ortus.mq.EventListener;
  */
 public class Plugin implements sage.SageTVPlugin, SageTVEventListener {
 
-    final static String VERSION = "0.80 04.XX.2011";
+    final static String VERSION = "0.71 05.04.2011";
 
     private DataStore   dataStore;
 
@@ -589,13 +589,13 @@ public class Plugin implements sage.SageTVPlugin, SageTVEventListener {
 
         // Make sure the format is correct, it should be HH:MM.
         if (!value.contains(":")) {
-            Log.getInstance().write(Log.LOGLEVEL_WARN, "Plugin: Invalid start time, no changes made.");
+            Log.getInstance().write(Log.LOGLEVEL_WARN, "startRecordManager: Invalid start time, no changes made.");
             return;
         }
 
         String[] HHMM = value.split(":");
         if (HHMM.length != 2) {
-            Log.getInstance().write(Log.LOGLEVEL_WARN, "Plugin: Invalid start time, no changes made.");
+            Log.getInstance().write(Log.LOGLEVEL_WARN, "startRecordManager: Invalid start time, no changes made.");
             return;
         }
 
@@ -605,40 +605,48 @@ public class Plugin implements sage.SageTVPlugin, SageTVEventListener {
         try {
             HH = Integer.parseInt(HHMM[0]);
         } catch (NumberFormatException e) {
-            Log.getInstance().write(Log.LOGLEVEL_WARN, "Plugin: Invalid Hours, no changes made.");
+            Log.getInstance().write(Log.LOGLEVEL_WARN, "startRecordManager: Invalid Hours, no changes made.");
             return;
         }
 
         try {
             MM = Integer.parseInt(HHMM[1]);
         } catch (NumberFormatException e) {
-            Log.getInstance().write(Log.LOGLEVEL_WARN, "Plugin: Invalid Minutes, no changes made.");
+            Log.getInstance().write(Log.LOGLEVEL_WARN, "startRecordManager: Invalid Minutes, no changes made.");
             return;
         }
 
         if (HH < 0 || HH > 23 || MM < 0 || MM > 59) {
-            Log.getInstance().write(Log.LOGLEVEL_WARN, "Plugin: Invalid start time, no changes made.");
+            Log.getInstance().write(Log.LOGLEVEL_WARN, "startRecordManager: Invalid start time, no changes made.");
             return;
         }
 
-        Configuration.SetServerProperty(PROPERTY_RECORD_MANAGER_CYCLE_TIME, value);
-        Log.getInstance().write(Log.LOGLEVEL_TRACE, "Plugin: Selected start time is " + HH + ":" + MM);
+        Configuration.SetServerProperty(PROPERTY_RECORD_MANAGER_START_TIME, value);
+        Log.getInstance().write(Log.LOGLEVEL_TRACE, "startRecordManager: Selected start time is " + HH + ":" + MM);
 
         // Get the current hour and minute.
         Calendar now = Calendar.getInstance();
-        int nowHour = now.get(Calendar.HOUR);
+        int nowHour = now.get(Calendar.HOUR_OF_DAY);
         int nowMinute = now.get(Calendar.MINUTE);
+        Log.getInstance().write(Log.LOGLEVEL_TRACE, "startRecordManager: It is now " + nowHour + ":" + nowMinute);
 
         // Calculate the time to wait until we get from now until when we are supposed to start
         // the RecordManager.
         long delayUntilStartTime = 0;
 
-        int hoursUntilStartHour = nowHour < HH ? HH - nowHour : (24 - nowHour) + HH;
-        Log.getInstance().write(Log.LOGLEVEL_TRACE, "Plugin: Hours until start hour " + hoursUntilStartHour);
+        int hoursUntilStartHour = nowHour <= HH ? HH - nowHour : (24 - nowHour) + HH;
+        Log.getInstance().write(Log.LOGLEVEL_TRACE, "startRecordManager: (Preliminary) Hours until start hour " + hoursUntilStartHour);
 
-        int minutesUntilStartMinute = nowMinute < MM ? MM - nowMinute : (60 - nowMinute) + MM;
-        Log.getInstance().write(Log.LOGLEVEL_TRACE, "Plugin: Minutes until start minute " + minutesUntilStartMinute);
+        int minutesUntilStartMinute = nowMinute <= MM ? MM - nowMinute : (60 - nowMinute) + MM;
+        Log.getInstance().write(Log.LOGLEVEL_TRACE, "startRecordManager: Minutes until start minute " + minutesUntilStartMinute);
 
+        if (nowMinute < MM && minutesUntilStartMinute != 0) {
+            hoursUntilStartHour -= 1;
+            if (hoursUntilStartHour < 0)
+                hoursUntilStartHour = 23;
+        }
+
+        Log.getInstance().write(Log.LOGLEVEL_TRACE, "startRecordManager: Hours and Minutes until start minute " + hoursUntilStartHour + ":" + minutesUntilStartMinute);
         delayUntilStartTime = (hoursUntilStartHour*60*60*1000) + (minutesUntilStartMinute*60*1000);
         resetRecordManager(delayUntilStartTime, sleeptime);
     }
@@ -649,8 +657,11 @@ public class Plugin implements sage.SageTVPlugin, SageTVEventListener {
      * @param sleeptime The amount of milliseconds between runs.
      */
     private void resetRecordManager(long delay, long sleeptime) {
+        RecordManager = new RecordManager();
+
         if (RecordManagerTimer != null)
             RecordManagerTimer.cancel();
+        
         RecordManagerTimer = new Timer();
         RecordManagerTimer.scheduleAtFixedRate(RecordManager, delay, sleeptime);
     }
@@ -709,7 +720,7 @@ public class Plugin implements sage.SageTVPlugin, SageTVEventListener {
         } else if (setting.startsWith(SETTING_RECORDAFTERWATCHED)) {
             return "Automatically Record Podcasts after Watching Them.";
         } else if (setting.startsWith(SETTING_RECORD_MANAGER_START_TIME)) {
-            return "The time to begin checking for new Episodes of your Favorite podcasts. Enter 0 for now.";
+            return "The time to begin checking for new Episodes of your Favorite podcasts. Enter 0 for immediately.";
         } else if (setting.startsWith(SETTING_RECORD_MANAGER_CYCLE_TIME)) {
             return "The number of hours to wait before checking for new Episodes of your Favorite podcasts.";
         } else if (setting.startsWith(SETTING_LOGLEVEL)) {
@@ -757,7 +768,7 @@ public class Plugin implements sage.SageTVPlugin, SageTVEventListener {
         } else if (setting.startsWith(SETTING_RECORDAFTERWATCHED)) {
             return "Record Podcasts After Watching Them";
         } else if (setting.startsWith(SETTING_RECORD_MANAGER_START_TIME)) {
-            return "Favorite Recording Download Start Time.  Use 24 hour format HH:MM";
+            return "Favorite Recording Download Start Time. HH:MM";
         } else if (setting.startsWith(SETTING_RECORD_MANAGER_CYCLE_TIME)) {
             return "Favorite Recording Cycle Time (Hours)";
         } else if (setting.startsWith(SETTING_ENABLE_CLEANUP_THREAD)) {
@@ -807,6 +818,7 @@ public class Plugin implements sage.SageTVPlugin, SageTVEventListener {
         Configuration.SetServerProperty(PROPERTY_SHOW_ADVANCED, "false");
         Configuration.SetServerProperty(PROPERTY_MESSAGE_AFTER_RECORD, "false");
         Configuration.SetServerProperty(PROPERTY_MESSAGE_IF_NEW_AVAIL, "false");
+        Configuration.SetServerProperty(PROPERTY_RECORD_MANAGER_START_TIME, "0");
         Log.getInstance().SetLogLevel(Log.LOGLEVEL_WARN);
         DBDumped = false;
         DBUpdated = false;

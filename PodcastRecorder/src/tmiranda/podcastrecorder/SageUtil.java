@@ -64,7 +64,17 @@ public class SageUtil {
     */
     public static long GetLongProperty(String Property, String Value) {
         String prop = Configuration.GetServerProperty(Property, Value);
-        return Long.parseLong(prop);
+
+        long value = 0;
+
+        try {
+            value = Long.parseLong(prop);
+        } catch (NumberFormatException e) {
+            Log.getInstance().write(Log.LOGLEVEL_ERROR, "GetLongProperty: Number format exception " + prop);
+            value = 0;
+        }
+
+        return value;     
     }
 
     /**
@@ -76,8 +86,7 @@ public class SageUtil {
     */
     public static long GetLongProperty(String Property, long Value) {
         Long DefaultValue = Value;
-        String prop = Configuration.GetServerProperty(Property, DefaultValue.toString());
-        return Long.parseLong(prop);
+        return GetLongProperty(Property, DefaultValue);
     }
 
     /**
@@ -88,8 +97,7 @@ public class SageUtil {
     * @return           A Long representation of the property.
     */
     public static long GetLongProperty(String Property, Long Value) {
-        String prop = Configuration.GetServerProperty(Property, Value.toString());
-        return Long.parseLong(prop);
+        return GetLongProperty(Property, Value.toString());
     }
 
     public static int GetIntProperty(String Property, String Value) {
