@@ -26,10 +26,10 @@ public class PathMapper {
             return;
         }
 
-        Log.getInstance().write(Log.LOGLEVEL_TRACE, "PathMapper: propertyLine " + propertyLine);
+        Log.getInstance().write(Log.LOGLEVEL_MAX, "PathMapper: propertyLine " + propertyLine);
 
         String pairs[] = propertyLine.split(DELIMITER);
-        Log.getInstance().write(Log.LOGLEVEL_TRACE, "PathMapper: Found pairs " + pairs.length);
+        Log.getInstance().write(Log.LOGLEVEL_MAX, "PathMapper: Found pairs " + pairs.length);
 
         for (String pair : pairs) {
             String parts[] = pair.split(CONNECTOR);
@@ -38,7 +38,7 @@ public class PathMapper {
                 Log.getInstance().write(Log.LOGLEVEL_WARN, "PathMapper: Invalid syntax " + pair);
             } else {
                 pathMap.put(parts[0], parts[1]);
-                Log.getInstance().write(Log.LOGLEVEL_TRACE, "PathMapper: Mapping " + parts[0] + "->" + parts[1]);
+                Log.getInstance().write(Log.LOGLEVEL_MAX, "PathMapper: Mapping " + parts[0] + "->" + parts[1]);
             }
         }
     }
@@ -59,12 +59,12 @@ public class PathMapper {
 
             String prefix = key + DRIVE_SEPARATOR;
             if (unmappedPath.startsWith(prefix)) {
-                Log.getInstance().write(Log.LOGLEVEL_TRACE, "replacePath: Found match " + key);
+                Log.getInstance().write(Log.LOGLEVEL_MAX, "replacePath: Found match " + key);
                 return unmappedPath.replace(key+DRIVE_SEPARATOR, pathMap.get(key));
             }
         }
 
-        Log.getInstance().write(Log.LOGLEVEL_TRACE, "replacePath: No match found for " + unmappedPath);
+        Log.getInstance().write(Log.LOGLEVEL_MAX, "replacePath: No match found for " + unmappedPath);
         return unmappedPath;
     }
 }

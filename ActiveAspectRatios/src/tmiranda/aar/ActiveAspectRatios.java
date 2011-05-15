@@ -10,8 +10,12 @@ import java.util.*;
 import sagex.api.*;
 
 /**
+ * Terminology:
+ * - Ratio: A Float representation of the aspect ratio.
+ * - Time: Time in milliseconds into the recording.  The start time of the recording is
+ *         actually the time the recording was started.
  *
- * @author Default
+ * @author Tom Miranda.
  */
 public class ActiveAspectRatios {
 
@@ -29,6 +33,7 @@ public class ActiveAspectRatios {
         
         isValid = true;
         timeAspectRatioMap = new HashMap<Long, Float>();
+        times = new Long[0];
 
         if (MediaFile==null) {
             isValid = false;
@@ -36,8 +41,8 @@ public class ActiveAspectRatios {
             return;
         }
 
-        Log.getInstance().write(Log.LOGLEVEL_TRACE, "ActiveAspectRatios: Constructor for " + MediaFileAPI.GetMediaTitle(MediaFile));
-Log.getInstance().SetLogLevel(Log.LOGLEVEL_VERBOSE);
+        Log.getInstance().write(Log.LOGLEVEL_MAX, "ActiveAspectRatios: Constructor for " + MediaFileAPI.GetMediaTitle(MediaFile));
+
         int numberOfSegments = MediaFileAPI.GetNumberOfSegments(MediaFile);
 
         long segmentStartTimes[] = new long[numberOfSegments];
@@ -47,18 +52,18 @@ Log.getInstance().SetLogLevel(Log.LOGLEVEL_VERBOSE);
 
         // This throws an exception.  sagex bug?
         //segmentStartTimes = MediaFileAPI.GetStartTimesForSegments(MediaFile);
-        Log.getInstance().write(Log.LOGLEVEL_TRACE, "ActiveAspectRatios: Number of MediaFile start times " + segmentStartTimes.length);
+        Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "ActiveAspectRatios: Number of MediaFile start times " + segmentStartTimes.length);
 
         File files[] = MediaFileAPI.GetSegmentFiles(MediaFile);
-        Log.getInstance().write(Log.LOGLEVEL_TRACE, "ActiveAspectRatios: Number of MediaFile segments " + files.length);
+        Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "ActiveAspectRatios: Number of MediaFile segments " + files.length);
 
         if (files==null || files.length==0) {
-            Log.getInstance().write(Log.LOGLEVEL_ERROR, "ActiveAspectRatios: Null or empty files.");
+            Log.getInstance().write(Log.LOGLEVEL_WARN, "ActiveAspectRatios: Null or empty files.");
             isValid = false;
             return;
         }
 
-        Log.getInstance().write(Log.LOGLEVEL_TRACE, "ActiveAspectRatios: MediaFile start time " + MediaFileAPI.GetFileStartTime(MediaFile));
+        Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "ActiveAspectRatios: MediaFile start time " + MediaFileAPI.GetFileStartTime(MediaFile));
 
         String propertyLine = Configuration.GetProperty(PROPERTY_PATHMAPS, null);
         PathMapper pathMapper = new PathMapper(propertyLine);
@@ -67,10 +72,10 @@ Log.getInstance().SetLogLevel(Log.LOGLEVEL_VERBOSE);
         for (int i=0; i<files.length; i++) {
 
             String path = files[i].getAbsolutePath();
-            Log.getInstance().write(Log.LOGLEVEL_TRACE, "ActiveAspectRatios: MediaFile path " + path);
+            Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "ActiveAspectRatios: MediaFile path " + path);
 
             String mappedPath = pathMapper.replacePath(path);
-            Log.getInstance().write(Log.LOGLEVEL_TRACE, "ActiveAspectRatios: MediaFile mapped path " + mappedPath);
+            Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "ActiveAspectRatios: MediaFile mapped path " + mappedPath);
 
             // Replace the extension with .aspects.
             String basePath = mappedPath.substring(0, mappedPath.lastIndexOf("."));
@@ -85,7 +90,7 @@ Log.getInstance().SetLogLevel(Log.LOGLEVEL_VERBOSE);
 
             // Get the start time for this segment.
             Long segmentStartTime = segmentStartTimes[i];
-            Log.getInstance().write(Log.LOGLEVEL_TRACE, "ActiveAspectRatios: Segment start time " + segmentStartTime);
+            Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "ActiveAspectRatios: Segment start time " + segmentStartTime);
 
             // Loop through all of the timestamps in the segment.
             for (int j=0; j<timestamps.length; j++) {
@@ -93,11 +98,11 @@ Log.getInstance().SetLogLevel(Log.LOGLEVEL_VERBOSE);
                 // Get a timestamp and its corresponding aspect ratio.
                 Long startTime = timestamps[j];
                 Float ratio = segmentInfo.getAspectForTime(startTime);
-                Log.getInstance().write(Log.LOGLEVEL_TRACE, "ActiveAspectRatios: Timestamp and ratio " + startTime + ":" + ratio);
+                Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "ActiveAspectRatios: Timestamp and ratio " + startTime + ":" + ratio);
 
                 // Calculate the start time relative to the beginning of the show.
                 Long realStartTime = segmentStartTime + startTime;
-                Log.getInstance().write(Log.LOGLEVEL_TRACE, "ActiveAspectRatios: Adjusted timestamp " + realStartTime);
+                Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "ActiveAspectRatios: Adjusted timestamp " + realStartTime);
 
                 // Put it into the Map.
                 timeAspectRatioMap.put(realStartTime, ratio);
@@ -105,6 +110,15 @@ Log.getInstance().SetLogLevel(Log.LOGLEVEL_VERBOSE);
         }
 
         times = timeAspectRatioMap.keySet().toArray(new Long[timeAspectRatioMap.keySet().size()]);
+        Arrays.sort(times);
+
+        if (Log.getInstance().GetLogLevel() >= Log.LOGLEVEL_MAX) {
+
+            Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "ActiveAspectRatios: Times:");
+            for (long t : times) {
+                Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "  " + printTime(t));
+            }
+        }
     }
 
     public Float getRatioForExactTime(Long Time) {
@@ -112,22 +126,39 @@ Log.getInstance().SetLogLevel(Log.LOGLEVEL_VERBOSE);
     }
 
     public Float getRatioForTime(Long Time) {
-System.out.println("getRatioForTime checking " + Time);
+
         if (times.length==0)
             return 0F;
 
         Long previousTimestamp = times[0];
 
         for (Long thisTimestamp : times) {
-System.out.println("getRatioForTime this and previous " + thisTimestamp + ":" + previousTimestamp);
+
             if (thisTimestamp > Time) {
-System.out.println("getRatioForTime FOUND IT");
                 return timeAspectRatioMap.get(previousTimestamp);
             } else {
                 previousTimestamp = thisTimestamp;
             }
         }
-System.out.println("getRatioForTime LAST TIMESTAMP.");
+
         return timeAspectRatioMap.get(previousTimestamp);
+    }
+
+    public Long[] getTimes() {
+        return times;
+    }
+
+    public Set<Float> getRatios() {
+        Set<Float> ratios = new HashSet<Float>();
+
+        for (Long time : timeAspectRatioMap.keySet()) {
+            ratios.add(timeAspectRatioMap.get(time));
+        }
+
+        return ratios;
+    }
+
+    private String printTime(long time) {
+        return Utility.PrintTimeFull(time);
     }
 }
