@@ -11,7 +11,6 @@ import sagex.api.*;
 public class RatioModeMapper {
 
     private String PAIR_DELIMITER = "-";
-    public String PROPERTY_RATIO_TOLERANCE = "aar/ratio_tolerance";
 
     private Map<Float, String>  ratioModeMap;
     private String              rawProperty;
@@ -62,6 +61,10 @@ public class RatioModeMapper {
         return ratioModeMap.get(ratio);
     }
 
+    public boolean hasExactMode(Float ratio) {
+        return ratioModeMap.get(ratio) != null;
+    }
+
     public String getMode(Float ratio) {
         String mode = ratioModeMap.get(ratio);
 
@@ -73,7 +76,8 @@ public class RatioModeMapper {
 
     public String getModeWithinTolerance(Float ratio) {
 
-        String toleranceStr = Configuration.GetProperty(PROPERTY_RATIO_TOLERANCE, null);
+        /*******************
+        String toleranceStr = Configuration.GetProperty(PROPERTY_RATIO_TOLERANCE, "0.05");
 
         if (toleranceStr==null || toleranceStr.isEmpty())
             return null;
@@ -87,17 +91,20 @@ public class RatioModeMapper {
             return null;
         }
 
+        if (tolerance==0)
+            return ratioModeMap.get(ratio);
+
         Set<Float> ratios = ratioModeMap.keySet();
 
         if (ratios==null || ratios.isEmpty())
             return null;
 
-        Float closestRatio = 0F;
+        Float closestRatio = Float.MAX_VALUE;
 
         for (Float thisRatio : ratios) {
 
-            Float high = thisRatio * (1 + tolerance);
-            Float low = thisRatio * (1 - tolerance);
+            Float high = thisRatio * (1.0F + tolerance);
+            Float low = thisRatio * (1.0F - tolerance);
 
             if (thisRatio >= low && thisRatio <= high) {
                 Float d1 = Math.abs(thisRatio - ratio);
@@ -105,8 +112,56 @@ public class RatioModeMapper {
                 closestRatio = d1 < d2 ? thisRatio : closestRatio;
             }
         }
+         *****************/
+        Float closestRatio = getClosestRatioWithMode(ratio);
+        return closestRatio == 0F ? null : ratioModeMap.get(closestRatio);
+    }
 
-        return closestRatio != 0F ? ratioModeMap.get(closestRatio) : null;
+    public Float getClosestRatioWithMode(Float ratio) {
+
+        String toleranceStr = Configuration.GetProperty(API.PROPERTY_RATIO_TOLERANCE, "0.05");
+
+        if (toleranceStr==null || toleranceStr.isEmpty())
+            return 0F;
+
+        Float tolerance = 0.0F;
+
+        try {
+            tolerance = Float.parseFloat(toleranceStr);
+        } catch (NumberFormatException e) {
+            Log.getInstance().write(Log.LOGLEVEL_WARN, "getClosestRatioWithMode: Malformed tolerance " + toleranceStr);
+            return 0F;
+        }
+
+        Set<Float> ratios = ratioModeMap.keySet();
+
+        if (ratios==null || ratios.isEmpty())
+            return 0F;
+
+        Float closestRatio = Float.MAX_VALUE;
+        Float smallestDifference = Float.MAX_VALUE;
+
+        for (Float thisRatio : ratios) {
+
+            // Calculate the highest and lowest values that the ratio can be and
+            // still fall within the tolerance guidelines.
+            Float high = thisRatio * (1.0F + tolerance);
+            Float low = thisRatio * (1.0F - tolerance);
+
+            // See if the ratio falls within the tolerance range.
+            if (ratio >= low && ratio <= high) {
+
+                // Calculate how far this is from the ratio.
+                Float d1 = Math.abs(thisRatio - ratio);
+
+                if (d1 < smallestDifference) {
+                    closestRatio = thisRatio;
+                    smallestDifference = d1;
+                }
+            }
+        }
+
+        return closestRatio==Float.MAX_VALUE ? 0F : closestRatio;
     }
 
     public void addRatio(Float ratio, String mode) {

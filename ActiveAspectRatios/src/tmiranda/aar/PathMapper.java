@@ -22,7 +22,7 @@ public class PathMapper {
         pathMap = new HashMap<String, String>();
 
         if (propertyLine==null || propertyLine.isEmpty() || !Global.IsWindowsOS()) {
-            Log.getInstance().write(Log.LOGLEVEL_ERROR, "PathMapper: Null or empty propertyLine, or not Windows OS. " + propertyLine);
+            Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "PathMapper: Null or empty propertyLine, or not Windows OS. " + propertyLine);
             return;
         }
 

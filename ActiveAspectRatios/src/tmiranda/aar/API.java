@@ -2,6 +2,7 @@
 package tmiranda.aar;
 
 import java.util.*;
+import java.io.*;
 import sagex.api.*;
 
 /**
@@ -11,9 +12,39 @@ import sagex.api.*;
  */
 public class API {
 
-    public static String PROPERTY_MODE_MAP          = "aar/mode_map";
-    public static String PROPERTY_EXCLUDED_CHANNELS = "aar/excluded_channels";
-    public static String PROPERTY_EXCLUDED_SHOWS    = "aar/exluded_shows";
+    public static final String VERSION                      = "0.01";
+    public static final String PROPERTY_MODE_MAP            = "aar/mode_map";
+    public static final String PROPERTY_EXCLUDED_CHANNELS   = "aar/excluded_channels";
+    public static final String PROPERTY_EXCLUDED_SHOWS      = "aar/exluded_shows";
+    public static final String PROPERTY_RATIO_TOLERANCE     = "aar/ratio_tolerance";
+    public static final String ASPECTS_EXTENSION            = "aspects";
+    public static final String PROPERTY_PATHMAPS            = "aar/path_maps";
+
+    public static String getVersion() {
+        return VERSION;
+    }
+
+    public static boolean hasAspectsFile(Object MediaFile) {
+        if (MediaFile==null)
+            return false;
+
+        File files[] = MediaFileAPI.GetSegmentFiles(MediaFile);
+
+        String propertyLine = Configuration.GetProperty(API.PROPERTY_PATHMAPS, null);
+        PathMapper pathMapper = new PathMapper(propertyLine);
+
+        for (File segmentFile : files) {
+            String path = segmentFile.getAbsolutePath();
+            String mappedPath = pathMapper.replacePath(path);
+            String basePath = mappedPath.substring(0, mappedPath.lastIndexOf("."));
+            String aspectsPath = basePath + "." + API.ASPECTS_EXTENSION;
+            File aspectsFile = new File(aspectsPath);
+            if (aspectsFile.exists())
+                return true;
+        }
+
+        return false;
+    }
 
     public static Set<Float> getAllRatiosWithoutModes() {
         Set<Float> ratios = new HashSet<Float>();
@@ -92,5 +123,18 @@ public class API {
         ShowExcluder excluder = new ShowExcluder(PROPERTY_EXCLUDED_SHOWS);
         excluder.removeExcludedShow(Show);
         return;
+    }
+
+    public static String convertMillisToTimeString(long time) {
+
+        String s = Utility.PrintDurationWithSeconds(time);
+
+        if (s==null || s.isEmpty())
+            return s;
+
+        s = s.replace("hour", "hr");
+        s = s.replace("minute", "mn");
+        s = s.replace("second", "sec");
+        return s;
     }
 }

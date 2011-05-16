@@ -19,21 +19,22 @@ import sagex.api.*;
  */
 public class ActiveAspectRatios {
 
-    public String ASPECTS_EXTENSION = "aspects";
-    public String PROPERTY_PATHMAPS = "aar/path_maps";
-
     private boolean     isValid = true;
 
     // Key = A time in the MediaFile, relative to the start time.
     // Value = The aspect ratio.
     private Map<Long, Float> timeAspectRatioMap;
     private Long[]           times;
+    private long             mediaFileStartTime;
+    private long             mediaFileEndTime;
+    private float            tolerance;
 
     public ActiveAspectRatios(Object MediaFile) {
         
         isValid = true;
         timeAspectRatioMap = new HashMap<Long, Float>();
         times = new Long[0];
+        tolerance = 0F;
 
         if (MediaFile==null) {
             isValid = false;
@@ -42,6 +43,9 @@ public class ActiveAspectRatios {
         }
 
         Log.getInstance().write(Log.LOGLEVEL_MAX, "ActiveAspectRatios: Constructor for " + MediaFileAPI.GetMediaTitle(MediaFile));
+
+        mediaFileStartTime = MediaFileAPI.GetStartForSegment(MediaFile, 0);
+        mediaFileEndTime = MediaFileAPI.GetFileEndTime(MediaFile);
 
         int numberOfSegments = MediaFileAPI.GetNumberOfSegments(MediaFile);
 
@@ -65,7 +69,7 @@ public class ActiveAspectRatios {
 
         Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "ActiveAspectRatios: MediaFile start time " + MediaFileAPI.GetFileStartTime(MediaFile));
 
-        String propertyLine = Configuration.GetProperty(PROPERTY_PATHMAPS, null);
+        String propertyLine = Configuration.GetProperty(API.PROPERTY_PATHMAPS, null);
         PathMapper pathMapper = new PathMapper(propertyLine);
 
         // Loop through all of the segments to build the complete aspect ratio map.
@@ -79,7 +83,7 @@ public class ActiveAspectRatios {
 
             // Replace the extension with .aspects.
             String basePath = mappedPath.substring(0, mappedPath.lastIndexOf("."));
-            String aspectsPath = basePath + "." + ASPECTS_EXTENSION;
+            String aspectsPath = basePath + "." + API.ASPECTS_EXTENSION;
 
             // Get all of the information for this segment.  All times are relative to the
             // beginning of the segment.
@@ -119,6 +123,18 @@ public class ActiveAspectRatios {
                 Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "  " + printTime(t));
             }
         }
+
+        String toleranceStr = Configuration.GetProperty(API.PROPERTY_RATIO_TOLERANCE, "0.05");
+
+        if (toleranceStr!=null && !toleranceStr.isEmpty()) {
+            try {
+                tolerance = Float.parseFloat(toleranceStr);
+            } catch (NumberFormatException e) {
+                Log.getInstance().write(Log.LOGLEVEL_WARN, "ActiveAspectRatios: Malformed tolerance " + toleranceStr);
+            }
+        }
+
+        Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "ActiveAspectRatios: Tolerance " + tolerance);
     }
 
     public Float getRatioForExactTime(Long Time) {
@@ -156,6 +172,95 @@ public class ActiveAspectRatios {
         }
 
         return ratios;
+    }
+
+    public boolean hasExactRatio(Float Ratio) {
+
+        for (Long time : times)
+            if (timeAspectRatioMap.get(time) == Ratio)
+                return true;
+
+        return false;
+    }
+
+    public long getExactDurationOfRatio(Float Ratio) {
+
+        Map<Float, Long> ratioTimeMap = new HashMap<Float, Long>();
+
+        for (int i=0; i<times.length-1; i++) {
+            Long thisTime = times[i];
+            Long nextTime = i+1 < times.length ? times[i+1] : mediaFileEndTime;
+
+            Float thisRatio = timeAspectRatioMap.get(thisTime);
+            Long thisRatioCumulativeTime = ratioTimeMap.get(thisRatio);
+
+            if (thisRatioCumulativeTime == null)
+                thisRatioCumulativeTime = 0L;
+
+            Long thisRatioNewTime = thisRatioCumulativeTime + (nextTime - thisTime);
+
+            ratioTimeMap.put(thisRatio, thisRatioNewTime);
+        }
+
+        return ratioTimeMap.get(Ratio);
+    }
+
+    public long getDurationOfRatio(Float Ratio) {
+        return getExactDurationOfRatio(getClosestRatioWithinTolerance(Ratio));
+    }
+
+    private List<Float> getRatiosWithinTolerance(Float Ratio) {
+
+        List<Float> ratiosWithinTolerance = new ArrayList<Float>();
+
+        // If there is no tolerance look for an exact match.
+        if (tolerance==0F) {
+            for (Long time : times) {
+                Float thisRatio = timeAspectRatioMap.get(time);
+                if (thisRatio==Ratio) {
+                    ratiosWithinTolerance.add(Ratio);
+                    return ratiosWithinTolerance;
+                }
+            }
+            
+            return ratiosWithinTolerance;
+        }
+
+        for (Long time : times) {
+            Float thisRatio = timeAspectRatioMap.get(time);
+
+            Float high = thisRatio * (1.0F + tolerance);
+            Float low = thisRatio * (1.0F - tolerance);
+
+            if (thisRatio >= low && thisRatio <= high) {
+                ratiosWithinTolerance.add(thisRatio);
+            }     
+        }
+
+        return ratiosWithinTolerance;
+    }
+
+    /**
+     * Get the ratio closest to the ratio specified.
+     * @param Ratio
+     * @return -1 if none within tolerance;
+     */
+    public Float getClosestRatioWithinTolerance(Float Ratio) {
+
+        List<Float> ratiosWithinTolerance = getRatiosWithinTolerance(Ratio);
+
+        if (ratiosWithinTolerance==null || ratiosWithinTolerance.isEmpty())
+            return -1F;
+
+        Float closestRatio = Float.MAX_VALUE;
+
+        for (Float thisRatio : ratiosWithinTolerance) {
+            Float d1 = Math.abs(thisRatio - Ratio);
+            Float d2 = Math.abs(closestRatio - Ratio);
+            closestRatio = d1 < d2 ? thisRatio : closestRatio;
+        }
+
+        return closestRatio;
     }
 
     private String printTime(long time) {
