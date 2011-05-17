@@ -19,6 +19,8 @@ public class API {
     public static final String PROPERTY_RATIO_TOLERANCE     = "aar/ratio_tolerance";
     public static final String ASPECTS_EXTENSION            = "aspects";
     public static final String PROPERTY_PATHMAPS            = "aar/path_maps";
+    public static final String PROPERTY_FIXED_CHANNELS      = "aar/fixed_channels";
+    public static final String PROPERTY_FIXED_SHOWS         = "aar/fixed_shows";
 
     public static String getVersion() {
         return VERSION;
@@ -124,6 +126,53 @@ public class API {
         excluder.removeExcludedShow(Show);
         return;
     }
+
+
+    public static boolean isChannelFixed(String ChannelName) {
+        FixedChannels FC = new FixedChannels(PROPERTY_FIXED_CHANNELS);
+        return FC.isFixed(ChannelName);
+    }
+
+    public static String getModeForChannel(String ChannelName) {
+        FixedChannels FC = new FixedChannels(PROPERTY_FIXED_CHANNELS);
+        return FC.getMode(ChannelName);
+    }
+
+    public static void setModeForChannel(String ChannelName, String Mode) {
+        FixedChannels FC = new FixedChannels(PROPERTY_FIXED_CHANNELS);
+        FC.add(ChannelName, Mode);
+        return;
+    }
+
+    public static void removeFixedChannel(String ChannelName) {
+        FixedChannels FC = new FixedChannels(PROPERTY_FIXED_CHANNELS);
+        FC.remove(ChannelName);
+        return;
+    }
+
+
+    public static boolean isShowFixed(String Show) {
+        FixedChannels FC = new FixedChannels(PROPERTY_FIXED_SHOWS);
+        return FC.isFixed(Show);
+    }
+
+    public static String getModeForShow(String Show) {
+        FixedChannels FC = new FixedChannels(PROPERTY_FIXED_SHOWS);
+        return FC.getMode(Show);
+    }
+
+    public static void setModeForShow(String Show, String Mode) {
+        FixedChannels FC = new FixedChannels(PROPERTY_FIXED_SHOWS);
+        FC.add(Show, Mode);
+        return;
+    }
+
+    public static void removeFixedShow(String Show) {
+        FixedChannels FC = new FixedChannels(PROPERTY_FIXED_SHOWS);
+        FC.remove(Show);
+        return;
+    }
+
 
     public static String convertMillisToTimeString(long time) {
 

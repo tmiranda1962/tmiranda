@@ -39,7 +39,7 @@ public class RatioModeMapper {
             String ratioMode[] = element.split(PAIR_DELIMITER);
 
             if (ratioMode==null || ratioMode.length!=2) {
-                Log.getInstance().write(Log.LOGLEVEL_WARN, "RatioModeMapper: Invalid ratio-mode entry " + element);
+                Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "RatioModeMapper: Invalid ratio-mode entry " + element);
             } else {
 
                 Float ratio;
@@ -51,7 +51,7 @@ public class RatioModeMapper {
                     Log.getInstance().write(Log.LOGLEVEL_WARN, "RatioModeMapper: Malformed aspect " + ratioMode[0]);
                 }
 
-                Log.getInstance().write(Log.LOGLEVEL_TRACE, "RatioModeMapper: Found " + ratio + ":" + ratioMode[1]);
+                Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "RatioModeMapper: Found " + ratio + ":" + ratioMode[1]);
                 ratioModeMap.put(ratio, ratioMode[1]);
             }
         }
