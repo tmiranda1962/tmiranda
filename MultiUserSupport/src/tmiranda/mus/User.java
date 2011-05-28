@@ -17,19 +17,21 @@ public class User {
 
     static final String STORE      = "MultiUser.User"; // Record Key is UserID.
 
-    //private static final String KEY           = "Key";
-    private static final String KEY_USERID    = "UserID";
-    private static final String KEY_PASSWORD  = "Password";
-    private static final String KEY_IR        = "IntelligentRecording";
-    private static final String KEY_SHOW_IMPORTS = "ShowImportedVideos";
-    private static final String KEY_UICONTEXT = "UIContext";
-    private static final String KEY_WATCHING  = "Watching";
+    private static final String KEY_USERID          = "UserID";
+    private static final String KEY_PASSWORD        = "Password";
+    private static final String KEY_IR              = "IntelligentRecording";
+    private static final String KEY_SHOW_IMPORTS    = "ShowImportedVideos";
+    private static final String KEY_UICONTEXT       = "UIContext";
+    private static final String KEY_WATCHING        = "Watching";
+    private static final String KEY_PRIMARY_WATCH   = "PrimaryWatch";
+    private static final String KEY_START_WATCH     = "StartWatch";
+    private static final String KEY_WATCH_TIME      = "WatchTime";
+    private static final String KEY_WATCH_LIMIT     = "WatchLimit";
+    private static final String KEY_WATCH_PERIOD    = "WatchPeriod";
 
     private String  user    = null;
-    //private Object  record  = null;
     private boolean isValid = true;
     private DatabaseRecord  database = null;
-    //private String  UIContext = null;
 
     public User(String UserID) {
 
@@ -47,11 +49,7 @@ public class User {
 
         user = UserID;
         database = new DatabaseRecord(STORE, user);
-        //record = UserRecordAPI.GetUserRecord(STORE, user);
-
-        //if (record==null) {
-            //Log.getInstance().write(Log.LOGLEVEL_WARN, "User: null record.");
-        //}
+        return;
     }
 
     void logOn() {
@@ -84,6 +82,9 @@ public class User {
         database.setRecordData(KEY_USERID, user);
         database.setRecordData(KEY_PASSWORD, Password);
         database.setRecordData(KEY_SHOW_IMPORTS, "true");
+        database.setRecordData(KEY_WATCH_TIME, "0");
+        database.setRecordData(KEY_WATCH_LIMIT, "0");
+        database.setRecordData(KEY_WATCH_PERIOD, "DAILY");
 
         Boolean Intelligent = Configuration.IsIntelligentRecordingDisabled();
         database.setRecordData(KEY_IR, Intelligent.toString());
@@ -161,7 +162,7 @@ public class User {
     void initializeInDataBase() {
 
         if (!isValid) {
-            Log.getInstance().write(Log.LOGLEVEL_WARN, "initializeINDatabase: Can't initialize invalid User.");
+            Log.getInstance().write(Log.LOGLEVEL_WARN, "initializeInDatabase: Can't initialize invalid User.");
             return;
         }
 
@@ -171,7 +172,7 @@ public class User {
         return;
     }
 
-    /**
+    /*
      *
      */
     boolean removeFromDataBase() {
@@ -222,6 +223,117 @@ public class User {
 
     String getWatching() {
         return database.getRecordData(KEY_WATCHING);
+    }
+
+
+    void setPrimaryWatch() {
+        database.setRecordData(KEY_PRIMARY_WATCH, "true");
+    }
+
+    void clearPrimaryWatch() {
+        database.setRecordData(KEY_PRIMARY_WATCH, null);
+    }
+
+    boolean isPrimaryWatch() {
+        String primary = database.getRecordData(KEY_PRIMARY_WATCH);
+        return primary!=null && primary.equalsIgnoreCase("true");
+    }
+
+
+    /*
+     * Watch times.
+     */
+
+    enum WatchPeriods {
+        DAILY, WEEKLY, MONTHLY
+    }
+
+    public static List<String> getWatchPeriods() {
+        WatchPeriods[] periods = WatchPeriods.values();
+        List<String> theList = new ArrayList<String>();
+
+        for (WatchPeriods p : periods)
+            theList.add(p.toString());
+
+        return theList;
+    }
+
+    String getWatchPeriod() {
+        return database.getRecordData(KEY_WATCH_PERIOD);
+    }
+
+    void setWatchPeriod(String period) {
+        if (period==null || period.isEmpty())
+            return;
+
+        database.setRecordData(KEY_WATCH_PERIOD, period);
+    }
+
+    long getWatchTime() {
+        String watchTimeString = database.getRecordData(KEY_WATCH_TIME);
+
+        if (watchTimeString==null || watchTimeString.isEmpty())
+            return 0;
+
+        try {
+            long watchTime = Long.parseLong(watchTimeString);
+            return watchTime;
+        } catch (NumberFormatException e) {
+            Log.getInstance().write(Log.LOGLEVEL_WARN, "getWatchTime: Invalid WatchTime " + watchTimeString);
+            database.setRecordData(KEY_WATCH_TIME, "0");
+            return 0;
+        }
+    }
+
+    void setWatchTime(Long watchTime) {
+        if (watchTime==null) {
+            Log.getInstance().write(Log.LOGLEVEL_ERROR, "setWatchTime: null WatchTime.");
+            return;
+        }
+
+        database.setRecordData(KEY_WATCH_TIME, watchTime.toString());
+    }
+
+    void addWatchTime(Long watchTime) {
+        if (watchTime==null) {
+            Log.getInstance().write(Log.LOGLEVEL_ERROR, "addWatchTime: null WatchTime.");
+            return;
+        }
+
+        setWatchTime(getWatchTime() + watchTime);
+    }
+
+    long getWatchLimit() {
+        String watchLimitString = database.getRecordData(KEY_WATCH_LIMIT);
+
+        if (watchLimitString==null || watchLimitString.isEmpty())
+            return 0;
+
+        try {
+            long watchLimit = Long.parseLong(watchLimitString);
+            return watchLimit;
+        } catch (NumberFormatException e) {
+            Log.getInstance().write(Log.LOGLEVEL_WARN, "getWatchLimit: Invalid WatchLimit " + watchLimitString);
+            database.setRecordData(KEY_WATCH_LIMIT, "0");
+            return 0;
+        }
+    }
+
+    void setWatchLimit(Long watchLimit) {
+        if (watchLimit==null) {
+            Log.getInstance().write(Log.LOGLEVEL_ERROR, "setWatchLimit: null WatchTime.");
+            return;
+        }
+
+        database.setRecordData(KEY_WATCH_LIMIT, watchLimit.toString());
+    }
+
+    boolean isOverWatchLimit() {
+        long limit = getWatchLimit();
+        if (limit==0)
+            return false;
+        else
+            return getWatchTime() >= limit;
     }
 
 

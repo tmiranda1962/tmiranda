@@ -14,7 +14,7 @@ public class Plugin implements sage.SageTVPlugin, SageTVEventListener {
     /**
      * The current Plugin version.
      */
-    public static final String  VERSION = "0.12 03.26.2011";
+    public static final String  VERSION = "0.140 05.XX.2011";
 
     /*
      * Constants used throughout the Plugin.
@@ -77,6 +77,11 @@ public class Plugin implements sage.SageTVPlugin, SageTVEventListener {
      */
     public static final String PROPERTY_SECONDARY_USERS = "mus/SecondaryUsers"; // LOCAL property.
     public static final String PROPERTY_LOGIN_SECONDARY_USERS = "mus/LoginSecondaryUsers";
+
+    /**
+     * Property used to store the ID of the default user profile to use if no user is logged on.
+     */
+    public static final String PROPERTY_DEFAULT_NULL_USER = "mus/DefaultNullUser";  // LOCAL property.
 
     private sage.SageTVPluginRegistry   registry;
     private sage.SageTVEventListener    listener;
@@ -452,6 +457,15 @@ public class Plugin implements sage.SageTVPlugin, SageTVEventListener {
                 // The user is no longer watching this MediaFile.
                 User user = new User(UserID);
                 user.clearWatching();
+
+                // See if this is the primary user, if so we need to calculate the watched time.
+                if (user.isPrimaryWatch()) {
+                    user.clearPrimaryWatch();
+                    long watchedTime = MediaTime - sagex.api.AiringAPI.GetWatchedStartTime(MediaFile);
+                    user.addWatchTime(watchedTime);
+                    Log.getInstance().write(Log.LOGLEVEL_TRACE, "sageEvent: Primary user watched for " + watchedTime);
+                    Log.getInstance().write(Log.LOGLEVEL_TRACE, "sageEvent: Primary user total watched minutes " + user.getWatchTime()/60/1000);
+                }
             }
 
             return;
@@ -525,7 +539,7 @@ public class Plugin implements sage.SageTVPlugin, SageTVEventListener {
         // users that have IR enabled.
         if (!AccessGranted && !Configuration.IsIntelligentRecordingDisabled()) {
 
-            Log.getInstance().write(Log.LOGLEVEL_TRACE, "sageEvent: Found an IntelligentRecording. Updaing all Users.");
+            Log.getInstance().write(Log.LOGLEVEL_TRACE, "sageEvent: Found an IntelligentRecording. Updating all Users.");
             for (String ThisUser : Users) {
 
                 User user = new User(ThisUser);

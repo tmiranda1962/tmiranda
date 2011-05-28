@@ -2,13 +2,21 @@ package tmiranda.mus;
 
 import java.util.*;
 import sagex.api.*;
-import sagex.UIContext;
 
 /**
  *
  * @author Tom Miranda.
  */
 public class UserAPI {
+
+    public static String getDefaultNullUser(String User) {
+
+        // If it's not null just return the current user.
+        if (User != null)
+            return User;
+
+        return Configuration.GetProperty(Plugin.PROPERTY_DEFAULT_NULL_USER, null);
+    }
 
     public static void setPassword(String User, String Password) {
 
@@ -151,6 +159,198 @@ public class UserAPI {
         }
             
         return userList;
+    }
+
+    /*
+     * Watch time.
+     */
+
+    public static String getWatchPeriod() {
+        String User = API.getLoggedinUser();
+
+        if (User==null || User.equalsIgnoreCase(Plugin.SUPER_USER)) {
+            return null;
+        }
+
+        return getWatchPeriod(User);
+    }
+
+    public static String getWatchPeriod(String User) {
+        if (User==null || User.equalsIgnoreCase(Plugin.SUPER_USER)) {
+            return null;
+        }
+
+        User user = new User(User);
+        String period = user.getWatchPeriod();
+        return period==null || period.isEmpty() ? "DAILY" : period;
+    }
+
+    public static void setWatchPeriod(String Period) {
+        String User = API.getLoggedinUser();
+
+        if (User==null || User.equalsIgnoreCase(Plugin.SUPER_USER)) {
+            return;
+        }
+
+        if (Period==null || Period.isEmpty()) {
+            return;
+        }
+
+        setWatchPeriod(User, Period);
+    }
+
+    public static void setWatchPeriod(String User, String Period) {
+
+        if (User==null || User.equalsIgnoreCase(Plugin.SUPER_USER)) {
+            return;
+        }
+
+        if (Period==null || Period.isEmpty()) {
+            return;
+        }
+
+        User user = new User(User);
+        user.setWatchPeriod(Period);
+    }
+
+
+    public static long getWatchTime() {
+        String User = API.getLoggedinUser();
+
+        if (User==null || User.equalsIgnoreCase(Plugin.SUPER_USER)) {
+            return 0;
+        }
+
+        return getWatchTime(User);
+    }
+
+    public static long getWatchTime(String User) {
+
+        if (User==null || User.equalsIgnoreCase(Plugin.SUPER_USER)) {
+            return 0;
+        }
+
+        User user = new User(User);
+        return user.getWatchTime();
+    }
+
+    public static void setWatchTime(Long watchTime) {
+        String User = API.getLoggedinUser();
+
+        if (User==null || User.equalsIgnoreCase(Plugin.SUPER_USER)) {
+            return;
+        }
+
+        setWatchTime(User, watchTime);
+        return;
+    }
+
+    public static void setWatchTime(String User, Long watchTime) {
+
+        if (User==null || User.equalsIgnoreCase(Plugin.SUPER_USER)) {
+            return;
+        }
+
+        User user = new User(User);
+        user.setWatchTime(watchTime);
+        return;
+    }
+
+    public static void setWatchTime(String User, Integer watchTime) {
+        setWatchTime(User, watchTime.longValue());
+    }
+
+    public static void addWatchTime(Long watchTime) {
+        String User = API.getLoggedinUser();
+
+        if (User==null || User.equalsIgnoreCase(Plugin.SUPER_USER)) {
+            return;
+        }
+
+        addWatchTime(User, watchTime);
+        return;
+    }
+
+    public static void addWatchTime(String User, Long watchTime) {
+
+        if (User==null || User.equalsIgnoreCase(Plugin.SUPER_USER)) {
+            return;
+        }
+
+        User u = new User(User);
+        u.addWatchTime(watchTime);
+        return;
+    }
+
+    public static void addWatchTime(String User, Integer watchTime) {
+        addWatchTime(User, watchTime.longValue());
+    }
+    
+
+    public static long getWatchLimit() {
+        String User = API.getLoggedinUser();
+
+        if (User==null || User.equalsIgnoreCase(Plugin.SUPER_USER)) {
+            return 0;
+        }
+
+        return getWatchLimit(User);
+    }
+
+    public static long getWatchLimit(String User) {
+
+        if (User==null || User.equalsIgnoreCase(Plugin.SUPER_USER)) {
+            return 0;
+        }
+
+        User u = new User(User);
+        return u.getWatchLimit();
+    }
+
+    public static void setWatchLimit(Long watchLimit) {
+        String User = API.getLoggedinUser();
+
+        if (User==null || User.equalsIgnoreCase(Plugin.SUPER_USER)) {
+            return;
+        }
+
+        setWatchLimit(User, watchLimit);
+        return;
+    }
+
+    public static void setWatchLimit(String User, Long watchLimit) {
+
+        if (User==null || User.equalsIgnoreCase(Plugin.SUPER_USER)) {
+            return;
+        }
+
+        User user = new User(User);
+        user.setWatchLimit(watchLimit);
+        return;
+    }
+
+    public static void setWatchLimit(String User, Integer watchLimit) {
+        setWatchLimit(User, watchLimit.longValue());
+    }
+
+    public static boolean isOverWatchLimit() {
+        String User = API.getLoggedinUser();
+
+        if (User==null || User.equalsIgnoreCase(Plugin.SUPER_USER)) {
+            return false;
+        }
+
+        return isOverWatchLimit(User);
+    }
+
+    public static boolean isOverWatchLimit(String User) {
+
+        if (User==null || User.equalsIgnoreCase(Plugin.SUPER_USER)) {
+            return false;
+        }
+
+        User u = new User(User);
+        return u.isOverWatchLimit();
     }
 
 }

@@ -58,10 +58,24 @@ public class API {
 
     /**
      * Returns the currently logged on user.
-     * @return The currently logged on user.
+     *
+     * @return The currently logged on user. If no user is logged on it will return the
+     * default user profile to use.
      */
     public static String getLoggedinUser() {
-        return SageUtil.getUIProperty(Plugin.PROPERTY_LAST_LOGGEDIN_USER, null);
+        String user = SageUtil.getUIProperty(Plugin.PROPERTY_LAST_LOGGEDIN_USER, null);
+
+        if (user==null)
+            return SageUtil.getUIProperty(Plugin.PROPERTY_DEFAULT_NULL_USER, null);
+        else
+            return user;
+    }
+
+    public static String getLoggedinUser(boolean only) {
+        if (only)
+            return SageUtil.getUIProperty(Plugin.PROPERTY_LAST_LOGGEDIN_USER, null);
+        else
+            return getLoggedinUser();
     }
 
     /**
@@ -71,7 +85,9 @@ public class API {
      */
     public static String getUserAfterReboot() {
         if (SageUtil.GetLocalBoolProperty(Plugin.PROPERTY_LOGIN_LAST_USER, "false")) {
-            String userID = getLoggedinUser();
+            
+            // Make sure we never see the default null user profile.
+            String userID = getLoggedinUser(true);
 
             if (userID==null || userID.isEmpty())
                 return null;
@@ -251,6 +267,13 @@ public class API {
      */
     public static Object watch(String ContextName, Object Content) {
 
+        String User = getLoggedinUser();
+
+        if (UserAPI.isOverWatchLimit(User)) {
+            Log.getInstance().write(Log.LOGLEVEL_WARN, "watch: User has exceeded maximum watch time.");
+            return "You have exceeded your allocated watching time.";
+        }
+
         // Set the secondary users as watching this show as well.
         List<String> secondaryUsers = UserAPI.getLoggedinSecondaryUsers();
 
@@ -259,8 +282,6 @@ public class API {
             User user = new User(secondaryUser);
             user.setWatching(Content);
         }
-
-        String User = getLoggedinUser();
 
         if (User==null || User.equalsIgnoreCase(Plugin.SUPER_USER)) {
             Log.getInstance().write(Log.LOGLEVEL_TRACE, "watch: null user or Admin " + User);
@@ -273,10 +294,12 @@ public class API {
         Log.getInstance().write(Log.LOGLEVEL_TRACE, "watch: Setting primary user watching " + User);
         User user = new User(User);
         user.setWatching(Content);
+        user.setPrimaryWatch();
 
         long WatchedEndTime = 0;
         long RealStartTime = 0;
         int chapter = 0;
+        int title = 0;
 
         if (sagex.api.AiringAPI.IsAiringObject(Content)) {
             Log.getInstance().write(Log.LOGLEVEL_TRACE, "watch: Is an Airing.");
@@ -298,8 +321,9 @@ public class API {
             MMF.setRealWatchedStartTime(Utility.Time());
             WatchedEndTime = MMF.getWatchedEndTime();
             RealStartTime = MMF.getRealWatchedStartTime();
+
             chapter = MMF.getChapterNum();
-            Log.getInstance().write(Log.LOGLEVEL_TRACE, "watch: Setting DVD chapter to " + chapter);
+            title = MMF.getTitleNum();
 
             for (String secondaryUser : secondaryUsers) {
                 MMF = new MultiMediaFile(secondaryUser, Content);
@@ -320,40 +344,164 @@ public class API {
         sagex.api.AiringAPI.ClearWatched(Content);
         sagex.api.AiringAPI.SetWatchedTimes(Content, WatchedEndTime, RealStartTime);
 
-        // If it's a DVD, set the chapter.
-        if (sagex.api.MediaFileAPI.IsDVD(Content)) {
-            sagex.api.MediaPlayerAPI.DVDChapterSet(chapter);
-        }
-
         // Let the core do its thing.
         Log.getInstance().write(Log.LOGLEVEL_TRACE, "watch: About to watch " + ShowAPI.GetShowTitle(Content) + ":" + ShowAPI.GetShowEpisode(Content));
-        return sagex.api.MediaPlayerAPI.Watch(new UIContext(ContextName), Content);
+        Object RC = sagex.api.MediaPlayerAPI.Watch(new UIContext(ContextName), Content);
+
+        // If it's a DVD, set the title and chapter.
+        if (sagex.api.MediaFileAPI.IsDVD(Content)) {
+
+            // See what title is currently playing.
+            int currentTitle = sagex.api.MediaPlayerAPI.GetDVDCurrentTitle(new UIContext(ContextName));
+            Log.getInstance().write(Log.LOGLEVEL_TRACE, "watch: DVD title is currently " + currentTitle + " and target is " + title);
+
+            if (currentTitle != title) {
+
+                Log.getInstance().write(Log.LOGLEVEL_TRACE, "watch: Setting DVD title to " + title);
+
+                // There is no core function to set the title, so see if we need to use
+                // Next() or Previous().
+
+                boolean failed = false;
+
+                do {
+                    // See what title we're on now.
+                    int oldTitle = sagex.api.MediaPlayerAPI.GetDVDCurrentTitle(new UIContext(ContextName));
+
+                    // Change it.
+                    if (currentTitle < title)
+                        MediaPlayerAPI.DVDTitleNext(new UIContext(ContextName));
+                    else
+                        MediaPlayerAPI.DVDTitlePrevious(new UIContext(ContextName));
+
+                    // See if it changed.
+                    currentTitle = MediaPlayerAPI.GetDVDCurrentTitle(new UIContext(ContextName));
+
+                    if (oldTitle==currentTitle) {
+                        Log.getInstance().write(Log.LOGLEVEL_WARN, "watch: Failed to change title number.");
+                        failed = true;
+                    } else {
+                        Log.getInstance().write(Log.LOGLEVEL_TRACE, "watch: Changed title number from " + oldTitle + " to " + currentTitle);
+                    }
+
+                } while (!failed && currentTitle != title);
+            }
+
+            // Set to the correct chapter within the title.
+            if (MediaPlayerAPI.GetDVDCurrentChapter(new UIContext(ContextName)) != chapter) {
+                MediaPlayerAPI.DVDChapterSet(new UIContext(ContextName), chapter);
+                Log.getInstance().write(Log.LOGLEVEL_TRACE, "watch: Setting DVD chapter to " + chapter);
+
+                // Sanity check.
+                if (MediaPlayerAPI.GetDVDCurrentChapter(new UIContext(ContextName)) != chapter)
+                    Log.getInstance().write(Log.LOGLEVEL_WARN, "watch: Failed to set DVD chapter, is on chapter " + MediaPlayerAPI.GetDVDCurrentChapter());
+            }
+        }
+
+        return RC;
     }
 
     /*
      * MediaFile API.
      */
 
-    public static Object getMediaFilesWithImportPrefix(Object Mask, String Prefix, boolean b1, boolean b2, boolean b3) {
+    public static Object getMediaFilesWithImportPrefix(Object Mask, String Prefix, boolean includeFiles, boolean includeFolders, boolean returnMap) {
+
+        Log.getInstance().write(Log.LOGLEVEL_TRACE, "getMediaFilesWithImportPrefix: Begin.");
+
         String user = getLoggedinUser();
 
         if (user==null || user.equalsIgnoreCase(Plugin.SUPER_USER)) {
-            return Database.GetMediaFilesWithImportPrefix(Mask, Prefix, b1, b2, b3);
+            Log.getInstance().write(Log.LOGLEVEL_TRACE, "getMediaFilesWithImportPrefix: Admin or null User.");
+            return Database.GetMediaFilesWithImportPrefix(Mask, Prefix, includeFiles, includeFolders, returnMap);
         }
 
-        List<Object> userMediaFiles = new ArrayList<Object>();
+        // The return Object will either be a Map or a Vector depending on the last parameter.
+        //
+        // If it's a Map the key will be the folder (may be null) and the value for each key
+        // will be a Vector of MediaFiles.
+        //
+        // If it's a Vector it will contain MediaFiles.
+        if (returnMap) {
 
-        Object mediaFiles = Database.GetMediaFilesWithImportPrefix(Mask, Prefix, b1, b2, b3);
+            Log.getInstance().write(Log.LOGLEVEL_TRACE, "getMediaFilesWithImportPrefix: Begin Map processing.");
 
-        if (mediaFiles==null)
-            return null;
+            // This will actually be a LinkedHashMap<String, MediaFile>
+            Map originalMap = (Map)Database.GetMediaFilesWithImportPrefix(Mask, Prefix, includeFiles, includeFolders, returnMap);
 
-        for (Object mediaFile : (Object[]) mediaFiles) {
-            if (isMediaFileForLoggedOnUser(mediaFile))
-                userMediaFiles.add(mediaFile);
+            Log.getInstance().write(Log.LOGLEVEL_TRACE, "getMediaFilesWithImportPrefix: originalMap " + originalMap.size());
+
+            if (originalMap==null || originalMap.isEmpty()) {
+                Log.getInstance().write(Log.LOGLEVEL_TRACE, "getMediaFilesWithImportPrefix: null or empty Map.");
+                return originalMap;
+            }
+
+            Map filteredMap = new LinkedHashMap();
+
+            Set keySet = originalMap.keySet();
+
+            Log.getInstance().write(Log.LOGLEVEL_TRACE, "getMediaFilesWithImportPrefix: keySet " + keySet);
+
+            // Loop through the Vector of MediaFiles for every key and remove the MediaFiles
+            // that are not for the logged on user.
+
+            for (Object key : keySet) {
+
+                // Place to store the filtered MediaFiles.
+                Vector<Object> filteredMediaFiles = new Vector<Object>();
+
+                // Get the unfilted MediaFiles.
+                Vector<Object> allMediaFiles = (Vector<Object>)originalMap.get(key);
+
+                Log.getInstance().write(Log.LOGLEVEL_TRACE, "getMediaFilesWithImportPrefix: key and allMediaFiles " + key + ":" + allMediaFiles.size());
+
+                // Create the filtered Vector of MediaFiles.
+                for (Object mediaFile : allMediaFiles) {
+
+                    if (!sagex.api.MediaFileAPI.IsMediaFileObject(mediaFile)) {
+                        Log.getInstance().write(Log.LOGLEVEL_WARN,"getMediaFilesWithImportPrefix: Found something other than a MediaFile in the Vector " + mediaFile.getClass());
+                    }
+
+                    if (isMediaFileForLoggedOnUser(mediaFile))
+                        filteredMediaFiles.add(mediaFile);
+                }
+
+                // Put the Vector into the Map with the current key.
+                Log.getInstance().write(Log.LOGLEVEL_TRACE, "getMediaFilesWithImportPrefix: Putting Vector of filteredMediaFiles " + filteredMediaFiles.size());
+                filteredMap.put(key, filteredMediaFiles);
+            }
+
+            Log.getInstance().write(Log.LOGLEVEL_TRACE, "getMediaFilesWithImportPrefix: filterMap " + filteredMap.size());
+            return filteredMap;
+
+        } else {
+
+            Log.getInstance().write(Log.LOGLEVEL_TRACE, "getMediaFilesWithImportPrefix: Begin Vector processing.");
+
+            Vector allMediaFiles = (Vector)Database.GetMediaFilesWithImportPrefix(Mask, Prefix, includeFiles, includeFolders, returnMap);
+
+            if (allMediaFiles==null || allMediaFiles.isEmpty()) {
+                Log.getInstance().write(Log.LOGLEVEL_TRACE, "getMediaFilesWithImportPrefix: null or empty Vector.");
+                return allMediaFiles;
+            }
+
+            Vector<Object> filteredMediaFiles = new Vector<Object>();
+
+            Log.getInstance().write(Log.LOGLEVEL_TRACE, "getMediaFilesWithImportPrefix: allMediaFiles " + allMediaFiles.size());
+
+            for (Object mediaFile : allMediaFiles) {
+
+                if (!sagex.api.MediaFileAPI.IsMediaFileObject(mediaFile)) {
+                    Log.getInstance().write(Log.LOGLEVEL_WARN,"getMediaFilesWithImportPrefix: Found something other than a MediaFile in the Vector " + mediaFile.getClass());
+                }
+
+                if (isMediaFileForLoggedOnUser(mediaFile))
+                    filteredMediaFiles.add(mediaFile);
+            }
+
+            Log.getInstance().write(Log.LOGLEVEL_TRACE, "getMediaFilesWithImportPrefix: returnMediaFiles " + filteredMediaFiles.size());
+            return filteredMediaFiles;
         }
-
-        return userMediaFiles.toArray();
     }
 
     public static Object[] getMediaFiles(String Mask) {
@@ -1576,8 +1724,8 @@ public class API {
     }
 
     public static Object addFavorite(   String Title,
-                                        boolean FirstRuns,
-                                        boolean ReRuns,
+                                        Object FirstRuns,
+                                        Object ReRuns,
                                         String Category,
                                         String SubCategory,
                                         String Person,
@@ -1590,7 +1738,10 @@ public class API {
                                         String Timeslot,
                                         String Keyword)
     {
-        Object Favorite = sagex.api.FavoriteAPI.AddFavorite(Title, FirstRuns, ReRuns, Category, SubCategory, Person, RollForPerson, Rated, Year, ParentalRating, Network, ChannelCallSign, Timeslot, Keyword);
+        Log.getInstance().write(Log.LOGLEVEL_TRACE, "addFavorite: Types " + FirstRuns.getClass() + ":" + ReRuns.getClass());
+        boolean FRuns = Boolean.getBoolean(FirstRuns.toString());
+        boolean RRuns = Boolean.getBoolean(ReRuns.toString());
+        Object Favorite = sagex.api.FavoriteAPI.AddFavorite(Title, FRuns, RRuns, Category, SubCategory, Person, RollForPerson, Rated, Year, ParentalRating, Network, ChannelCallSign, Timeslot, Keyword);
 
         if (Favorite!=null)
             addFavorite(Favorite);
@@ -1682,7 +1833,7 @@ public class API {
     public static boolean userExists(String UserID) {
 
         if (UserID == null) {
-            Log.getInstance().write(Log.LOGLEVEL_ERROR, "userExists: null UserID.");
+            Log.getInstance().write(Log.LOGLEVEL_WARN, "userExists: null UserID.");
             return false;
         }
 
