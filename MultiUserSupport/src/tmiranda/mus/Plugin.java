@@ -14,7 +14,7 @@ public class Plugin implements sage.SageTVPlugin, SageTVEventListener {
     /**
      * The current Plugin version.
      */
-    public static final String  VERSION = "0.140 05.XX.2011";
+    public static final String  VERSION = "0.140 05.29.2011";
 
     /*
      * Constants used throughout the Plugin.
@@ -83,6 +83,9 @@ public class Plugin implements sage.SageTVPlugin, SageTVEventListener {
      */
     public static final String PROPERTY_DEFAULT_NULL_USER = "mus/DefaultNullUser";  // LOCAL property.
 
+    private TimerTask   periodChecker;
+    private Timer       periodCheckerTimer;
+
     private sage.SageTVPluginRegistry   registry;
     private sage.SageTVEventListener    listener;
 
@@ -144,6 +147,11 @@ public class Plugin implements sage.SageTVPlugin, SageTVEventListener {
         registry.eventSubscribe(listener, "PlaybackStopped");
         registry.eventSubscribe(listener, "PlaybackFinished");
         registry.eventSubscribe(listener, "MediaFileRemoved");
+
+        // Start the PeriodChecker task to fire every minute.
+        periodChecker = new PeriodChecker();
+        periodCheckerTimer = new Timer();
+        periodCheckerTimer.scheduleAtFixedRate(periodChecker, 10000L, 60000L);
     }
 
     // This method is called when the plugin should shutdown.
@@ -163,11 +171,15 @@ public class Plugin implements sage.SageTVPlugin, SageTVEventListener {
         registry.eventUnsubscribe(listener, "PlaybackStopped");
         registry.eventUnsubscribe(listener, "PlaybackFinished");
         registry.eventUnsubscribe(listener, "MediaFileRemoved");
+
+        periodCheckerTimer.cancel();
     }
 
     // This method is called after plugin shutdown to free any resources used by the plugin.
     @Override
     public void destroy() {
+        periodChecker = null;
+        periodCheckerTimer = null;
         Log.getInstance().write(Log.LOGLEVEL_WARN, "Plugin: Destroy.");
         Log.destroy();
     }

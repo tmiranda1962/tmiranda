@@ -24,14 +24,16 @@ public class User {
     private static final String KEY_UICONTEXT       = "UIContext";
     private static final String KEY_WATCHING        = "Watching";
     private static final String KEY_PRIMARY_WATCH   = "PrimaryWatch";
-    private static final String KEY_START_WATCH     = "StartWatch";
     private static final String KEY_WATCH_TIME      = "WatchTime";
     private static final String KEY_WATCH_LIMIT     = "WatchLimit";
     private static final String KEY_WATCH_PERIOD    = "WatchPeriod";
+    private static final String KEY_PERIOD_START    = "PeriodStart";
 
-    private String  user    = null;
-    private boolean isValid = true;
-    private DatabaseRecord  database = null;
+    private static final String PERIOD_SEPARATOR    = ",";
+
+    private String          user        = null;
+    private boolean         isValid     = true;
+    private DatabaseRecord  database    = null;
 
     public User(String UserID) {
 
@@ -49,6 +51,28 @@ public class User {
 
         user = UserID;
         database = new DatabaseRecord(STORE, user);
+
+        // Initialize watch time information.
+        String watchTime = database.getRecordData(KEY_WATCH_TIME);
+        if (watchTime==null || watchTime.isEmpty()) {
+            database.setRecordData(KEY_WATCH_TIME, "0");
+        }
+
+        String watchLimit = database.getRecordData(KEY_WATCH_LIMIT);
+        if (watchLimit==null || watchLimit.isEmpty()) {
+            database.setRecordData(KEY_WATCH_LIMIT, "0");
+        }
+
+        String watchPeriod = database.getRecordData(KEY_WATCH_PERIOD);
+        if (watchPeriod==null || watchPeriod.isEmpty()) {
+            database.setRecordData(KEY_WATCH_PERIOD, "DAILY");
+        }
+
+        String watchEnd = database.getRecordData(KEY_PERIOD_START);
+        if (watchEnd==null || watchEnd.isEmpty()) {
+            setStartPeriod();
+        }
+
         return;
     }
 
@@ -269,6 +293,132 @@ public class User {
         database.setRecordData(KEY_WATCH_PERIOD, period);
     }
 
+
+    final void setStartPeriod() {
+        Calendar calendar = Calendar.getInstance();
+        setStartPeriod(calendar);
+    }
+
+    final void setStartPeriod(Calendar calendar) {
+        String period = calendarToPeriod(calendar);
+        database.setRecordData(KEY_PERIOD_START, period);
+        Log.getInstance().write(Log.LOGLEVEL_TRACE, "startPeriod: Start of watch period " + period);
+    }
+
+    Calendar getStartPeriod() {
+        String period = database.getRecordData(KEY_PERIOD_START);
+        return periodToCalendar(period);
+    }
+    
+    Calendar getEndPeriod() {
+        String startPeriod = database.getRecordData(KEY_PERIOD_START);
+        Calendar calendar = periodToCalendar(startPeriod);
+        
+        String period = getWatchPeriod();
+        
+        if (period.equalsIgnoreCase("DAILY")) {
+            calendar.add(Calendar.DATE, 1);
+        } else if (period.equalsIgnoreCase("WEEKLY")) {
+            calendar.add(Calendar.DATE, 7);
+        } else if (period.equalsIgnoreCase("MONTHLY")) {
+            calendar.add(Calendar.MONTH, 1);
+        } else {
+            Log.getInstance().write(Log.LOGLEVEL_ERROR, "getEndPeriod: Unknown period " + period);
+        }
+        
+        return calendar;
+    }
+
+    boolean isPeriodOver() {
+        Calendar now = Calendar.getInstance();
+        Calendar over = getEndPeriod();
+        return now.after(over);
+    }
+
+    String printEndPeriod() {
+        Calendar calendar = getEndPeriod();
+        return printEndPeriod(calendar);
+    }
+
+   public static String printEndPeriod(Calendar calendar) {
+        long time = calendar.getTimeInMillis();
+        return Utility.PrintDateShort(time) + "-" + Utility.PrintTimeShort(time);
+    }
+
+
+   public static String printEndPeriod(Calendar calendar, String Period) {
+
+       if (Period==null || Period.isEmpty())
+           return printEndPeriod(calendar);
+
+       Calendar newCal = (Calendar)calendar.clone();
+
+       if (Period.equalsIgnoreCase("DAILY")) {
+            newCal.add(Calendar.DATE, 1);
+       } else if (Period.equalsIgnoreCase("WEEKLY")) {
+           newCal.add(Calendar.DATE, 7);
+       } else if (Period.equalsIgnoreCase("MONTHLY")) {
+           newCal.add(Calendar.MONTH, 1);
+       } else {
+           Log.getInstance().write(Log.LOGLEVEL_ERROR, "printEndPeriod: Invalid period " + Period);
+       }
+
+       return printEndPeriod(newCal);
+   }
+
+    private static String calendarToPeriod(Calendar calendar) {
+        Integer year = calendar.get(Calendar.YEAR);
+        Integer month = calendar.get(Calendar.MONTH);
+        Integer day = calendar.get(Calendar.DATE);
+        Integer hour = calendar.get(Calendar.HOUR_OF_DAY);
+        Integer minute = calendar.get(Calendar.MINUTE);
+        Integer second = calendar.get(Calendar.SECOND);
+
+        String period = year.toString() + PERIOD_SEPARATOR +
+                        month.toString() + PERIOD_SEPARATOR +
+                        day.toString() + PERIOD_SEPARATOR +
+                        hour.toString() + PERIOD_SEPARATOR +
+                        minute.toString() + PERIOD_SEPARATOR +
+                        second.toString();
+
+        Log.getInstance().write(Log.LOGLEVEL_TRACE, "calendarToPeriod: Period " + period);
+        return period;
+    }
+
+    private static Calendar periodToCalendar(String period) {
+
+        if (period==null || period.isEmpty()) {
+            Log.getInstance().write(Log.LOGLEVEL_ERROR, "periodToCalendar: null period.");
+            return null;
+        }
+
+        String[] parts = period.split(PERIOD_SEPARATOR);
+
+        if (parts==null || parts.length!=6) {
+            Log.getInstance().write(Log.LOGLEVEL_ERROR, "periodToCalendar: malformed period " + period);
+            return null;
+        }
+
+        int year = Integer.parseInt(parts[0]);
+        int month = Integer.parseInt(parts[1]);
+        int day = Integer.parseInt(parts[2]);
+        int hour = Integer.parseInt(parts[3]);
+        int minute = Integer.parseInt(parts[4]);
+        int second = Integer.parseInt(parts[5]);
+
+        Calendar calendar = Calendar.getInstance();
+        calendar.set(Calendar.YEAR, year);
+        calendar.set(Calendar.MONTH, month);
+        calendar.set(Calendar.DATE, day);
+        calendar.set(Calendar.HOUR_OF_DAY, hour);
+        calendar.set(Calendar.MINUTE, minute);
+        calendar.set(Calendar.SECOND, second);
+
+        Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "periodToCalendar: Calendar " + calendar.toString());
+        return calendar;
+    }
+
+
     long getWatchTime() {
         String watchTimeString = database.getRecordData(KEY_WATCH_TIME);
 
@@ -303,6 +453,7 @@ public class User {
         setWatchTime(getWatchTime() + watchTime);
     }
 
+
     long getWatchLimit() {
         String watchLimitString = database.getRecordData(KEY_WATCH_LIMIT);
 
@@ -334,6 +485,10 @@ public class User {
             return false;
         else
             return getWatchTime() >= limit;
+    }
+
+    boolean hasWatchLimit() {
+        return getWatchLimit() != 0;
     }
 
 

@@ -213,6 +213,39 @@ public class UserAPI {
         user.setWatchPeriod(Period);
     }
 
+    public static String printEndPeriod(String User) {
+
+        if (User==null || User.equalsIgnoreCase(Plugin.SUPER_USER)) {
+            return null;
+        }
+
+        User user = new User(User);
+        return user.printEndPeriod();
+    }
+
+    public static Calendar getStartPeriod(String User) {
+        if (User==null || User.equalsIgnoreCase(Plugin.SUPER_USER)) {
+            return null;
+        }
+
+        User user = new User(User);
+        return user.getStartPeriod();
+    }
+
+    public static Calendar nowCalendar() {
+        return Calendar.getInstance();
+    }
+
+    public static void setStartPeriod(String User, Calendar calendar) {
+        if (User==null || User.equalsIgnoreCase(Plugin.SUPER_USER)) {
+            return;
+        }
+
+        User user = new User(User);
+        user.setStartPeriod(calendar);
+        return;
+    }
+
 
     public static long getWatchTime() {
         String User = API.getLoggedinUser();
