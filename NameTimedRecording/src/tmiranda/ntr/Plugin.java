@@ -14,7 +14,7 @@ import sagex.api.*;
  */
 public class Plugin implements sage.SageTVPlugin, SageTVEventListener {
 
-    final static String VERSION = "1.10 04.17.2011";
+    final static String VERSION = "1.20 05.29.2011";
 
     private sage.SageTVPluginRegistry registry;
     private sage.SageTVEventListener listener;
@@ -231,17 +231,28 @@ public class Plugin implements sage.SageTVPlugin, SageTVEventListener {
 
         String title = AiringAPI.GetAiringTitle(MediaFile);
 
-        // All timed recordings will have the same title.  If it's not a timed
+        // All timed recordings will start with the same thing.  If it's not a timed
         // recording there is nothing to do.
-        if (title==null || !title.equalsIgnoreCase(API.TIMED_RECORDING))
+        if (title==null || !title.startsWith(API.TIMED_RECORDING)) {
+            System.out.println("NameTimedRecording: Not a timed recording " + MediaFileAPI.GetMediaTitle(MediaFile));
             return;
+        }
 
-        // The name will be stored in the ManualRecordProperty of the Airing.
+        // The name will be stored in the ManualRecordProperty of the Airing or if it's
+        // a recurring recording we will have to look into the property map.
         String airingName = AiringAPI.GetManualRecordProperty(Airing, API.PROPERTY_NAME);
 
         if (airingName==null || airingName.isEmpty()) {
-            System.out.println("NameTimedRecording: null airingName for Airing " + AiringAPI.GetAiringTitle(Airing));
-            return;
+
+            // If there is no ManualRecordProperty it may be a recurring timed recording.
+            System.out.println("NameTimedRecording: No ManualRecordProperty for Airing " + AiringAPI.GetAiringTitle(Airing));
+            
+            airingName = API.getNameForRecurring(Airing);
+            
+            if (airingName==null || airingName.isEmpty()) {
+                System.out.println("NameTimedRecording: No NameForRecurring.");
+                return;
+            }
         }
 
         // Store the name in the MediaFile metadata.

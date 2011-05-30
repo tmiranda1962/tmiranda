@@ -22,6 +22,10 @@ public class API {
     // This is the ManualRecordProperty or MediaFileProperty that will be used to store the name.
     static final String PROPERTY_NAME = "TimedRecordingName";
 
+    // This is the property that is used to keep track of the names of recurring timed recordings.
+    static final String PROPERTY_RECURRING_RECORDINGS = "ntr/RecurringRecordings";
+    static final String DELIMITER = "-";
+
     /**
      * This method should be used in place of the core GetAiringTitle() method.
      *
@@ -35,92 +39,32 @@ public class API {
         String title = AiringAPI.GetAiringTitle(MediaFile);
 
         // If it's null return whatever the core would have returned.
-        if (MediaFile==null)
+        if (MediaFile==null) {
+            System.out.println("NTR: getAiringTitle: null MediaFile");
             return title;
+        }
 
         // If it's not a timed recording just return the original title.
-        if (title==null || !title.equalsIgnoreCase(TIMED_RECORDING))
+        if (title==null || !title.startsWith(TIMED_RECORDING)) {
             return title;
+        }
+
+        System.out.println("NTR: getAiringTitle: Found a timed recording " + title);
 
         // We know it's a timed recording so try to find its name.
         if (MediaFileAPI.IsMediaFileObject(MediaFile)) {
 
-            // If it's a MediaFile we will try to find the name in the MediaFile properties.
-            // If the MediaFile does not have a name we will try to find one from the
-            // (Airing) ManualRecordProperties.
-
-            // First see if the name has been set in the MediaFile metadata.
-            String mediaFileName = MediaFileAPI.GetMediaFileMetadata(MediaFile, PROPERTY_NAME);
-
-            // If the MediaFile had the name property return it.
-            if (mediaFileName!=null && !mediaFileName.isEmpty())
-                return mediaFileName;
-
-            // The MediaFile did not have a name so see if the Airing has one.
-            Object airing = MediaFileAPI.GetMediaFileAiring(MediaFile);
-
-            // If there is no Airing return the original title.
-            if (airing==null)
-                return title;
-
-            // See if the Airing has a name.
-            String airingName = AiringAPI.GetManualRecordProperty(MediaFile, PROPERTY_NAME);
-
-            // If it has a name return it, otherwise return the original name.
-            if (airingName!=null && !airingName.isEmpty())
-                return airingName;
-            else
-                return title;
+            String mediaFileName = getNameForMediaFile(MediaFile);
+            System.out.println("NTR: getAiringTitle: Name for MediaFile " + mediaFileName);
+            setMediaFileName(MediaFile, mediaFileName);
+            return mediaFileName==null || mediaFileName.isEmpty() ? title : mediaFileName;
 
         } else if (AiringAPI.IsAiringObject(MediaFile)) {
 
-            // If it's an Airing we will try to find the name in the Airing or the
-            // corresponding MediaFile.  If the Airing has a MediaFile we will also set
-            // the name in the MediaFile because the Airing name will be lost as soon as the
-            // Airing is no longer considered to be a manual record.
-
-            // See if the Airing name has been set.
-            String airingName = AiringAPI.GetManualRecordProperty(MediaFile, PROPERTY_NAME);
-
-            // If the Airing does not have a name check if the MediaFile has one.
-            if (airingName==null || airingName.isEmpty()) {
-
-                // The Airing name has not been set, see if the MediaFile has a name.
-                Object mediaFile = AiringAPI.GetMediaFileForAiring(MediaFile);
-
-                // If there is no MediaFile return the original Airing name.
-                if (mediaFile==null)
-                    return title;
-
-                // Get the MediaFileName.
-                String mediaFileName = MediaFileAPI.GetMediaFileMetadata(MediaFile, PROPERTY_NAME);
-
-                // If there is no name return the original Airing title, otherwise
-                // return the MediaFile name.
-                if (mediaFileName==null || mediaFileName.isEmpty())
-                    return title;
-                else
-                    return mediaFileName;
-
-            } else {
-
-                // The Airing has a name.  Set the name in the MediaFile if there is one.
-                Object mediaFile = MediaFileAPI.GetMediaFileAiring(MediaFile);
-
-                if (mediaFile != null) {
-
-                    // Get the existing name.
-                    String mediaFileName = MediaFileAPI.GetMediaFileMetadata(mediaFile, PROPERTY_NAME);
-
-                    // If it doesn't have one or it's different, set the name to the same
-                    // name as the Airing.
-                    if (mediaFileName==null || mediaFileName.isEmpty() || !mediaFileName.equals(airingName))
-                        MediaFileAPI.SetMediaFileMetadata(mediaFile, PROPERTY_NAME, airingName);
-                }
-
-                return airingName;
-
-            }
+            String airingName = getNameForAiring(MediaFile);
+            System.out.println("NTR: getAiringTitle: Name for Airing " + airingName);
+            setAiringMediaFileName(MediaFile, airingName);
+            return airingName==null || airingName.isEmpty() ? title : airingName;
 
         } else {
 
@@ -129,6 +73,187 @@ public class API {
         }
     }
 
+    public static void addRecurring(Object Airing) {
+
+        if (Airing==null)
+            return;
+
+        String channel = AiringAPI.GetAiringChannelName(Airing);
+        String recurrance = AiringAPI.GetScheduleRecordingRecurrence(Airing);
+
+        String name = AiringAPI.GetManualRecordProperty(Airing, PROPERTY_NAME);
+
+        if (name==null || name.isEmpty()) {
+            System.out.println("NTR: addRecurring: Failed to get name for Airing.");
+        } else {
+            PropertyElement.addPropertyElement(channel+recurrance, name);
+            System.out.println("NTR: addRecurring: Added " + channel+recurrance + DELIMITER + name);
+        }
+    }
+
+    public static void cancelRecord(Object Airing) {
+        
+        if (Airing==null) {
+            AiringAPI.CancelRecord(Airing);
+            return;
+        }
+        
+        Map<String, String> nameMap = PropertyElement.getNameMap();
+        
+        String channel = AiringAPI.GetAiringChannelName(Airing);
+        String recurrance = AiringAPI.GetScheduleRecordingRecurrence(Airing);
+        
+        String name = nameMap.get(channel+recurrance);
+
+        if (name!=null) {
+            PropertyElement.removePropertyElement(channel+recurrance, name);
+            System.out.println("NTR: cancelRecord: Removed " + channel+recurrance + DELIMITER + name);
+        }
+
+        AiringAPI.CancelRecord(Airing);
+    }
+
+    public static String stripIllegalCharacters(String name) {
+
+        if (name==null || name.isEmpty())
+            return null;
+
+        return name.replaceAll(DELIMITER, "").replaceAll(";", "").replace(TIMED_RECORDING, "");
+    }
+
+    /*
+     * Looks in MediaFileMetadata, then Airing ManualRecordProperty, then property map.
+     */
+    static String getNameForMediaFile(Object MediaFile) {
+
+        // First see if the name has been set in the MediaFile metadata.
+        String mediaFileName = MediaFileAPI.GetMediaFileMetadata(MediaFile, PROPERTY_NAME);
+
+        // If the MediaFile had the name property return it.
+        if (mediaFileName!=null && !mediaFileName.isEmpty())
+            return mediaFileName;
+
+        // The MediaFile did not have a name so see if the Airing has one.
+        Object airing = MediaFileAPI.GetMediaFileAiring(MediaFile);
+
+        if (airing==null)
+            return null;
+
+        // See if the Airing has a name.
+        mediaFileName = AiringAPI.GetManualRecordProperty(MediaFile, PROPERTY_NAME);
+
+        return mediaFileName==null || mediaFileName.isEmpty() ? getNameForRecurring(MediaFile) : mediaFileName;
+    }
+
+    /*
+     * Looks in ManualRecordProperty, then property map, then MediaFileMetadata.
+     */
+    static String getNameForAiring(Object Airing) {
+
+        // See if the Airing name has been set.
+        String airingName = AiringAPI.GetManualRecordProperty(Airing, PROPERTY_NAME);
+
+        if (airingName!=null && !airingName.isEmpty())
+            return airingName;
+
+        airingName = getNameForRecurring(Airing);
+
+        if (airingName!=null && !airingName.isEmpty())
+            return airingName;
+
+        // The Airing has a name.  Set the name in the MediaFile if there is one.
+        Object mediaFile = MediaFileAPI.GetMediaFileAiring(Airing);
+
+        if (mediaFile==null)
+            return null;
+        else
+            return MediaFileAPI.GetMediaFileMetadata(mediaFile, PROPERTY_NAME);
+    }
+
+    /*
+     * Looks in the property map.
+     */
+    static String getNameForRecurring(Object Airing) {
+        if (Airing==null)
+            return null;
+
+        // Get the recurrence.
+        String recurrence = AiringAPI.GetScheduleRecordingRecurrence(Airing);
+
+        // If it has no recurrence, or is only a one-shot manual, see if the ManualRecordProperty
+        // has been set.
+        if (recurrence==null || recurrence.isEmpty() || recurrence.equalsIgnoreCase("Once")) {
+            String airingName = AiringAPI.GetManualRecordProperty(Airing, PROPERTY_NAME);
+
+            if (airingName!=null && !airingName.isEmpty())
+                return airingName;
+        }
+
+        // It must be a recurring recording, so see if it's in the property file.
+        Object channel = AiringAPI.GetChannel(Airing);
+
+        String channelName = ChannelAPI.GetChannelName(channel);
+
+        Map<String, String> nameMap = PropertyElement.getNameMap();
+
+        String airingName = nameMap.get(channelName+recurrence);
+        return airingName;
+    }
+
+    /*
+     * Set MediaFileMetadata for a MediaFile.
+     */
+    static void setMediaFileName(Object MediaFile, String Name) {
+
+        if (MediaFile==null || Name==null || Name.isEmpty())
+            return;
+
+        MediaFileAPI.SetMediaFileMetadata(MediaFile, PROPERTY_NAME, Name);
+        return;
+    }
+
+    /*
+     * Set MediaFileMetadata for an Airing.
+     */
+    static void setAiringMediaFileName(Object Airing, String Name) {
+
+        Object MediaFile = AiringAPI.GetMediaFileForAiring(Airing);
+
+        if (MediaFile!=null)
+            setMediaFileName(MediaFile, Name);
+
+        return;
+    }
+
+    public static List<String> getSuggestedNames(Object Channel, long startTime, long endTime) {
+
+        List<String> names = new ArrayList<String>();
+
+        if (Channel==null)
+            return names;
+
+        Object[] airings = Database.GetAiringsOnChannelAtTime(Channel, startTime, endTime, false);
+
+        if (airings==null || airings.length==0)
+            return names;
+
+        for (Object airing : airings) {
+            String name = stripIllegalCharacters(AiringAPI.GetAiringTitle(airing));
+            if (name!=null && !name.isEmpty())
+                names.add(name);
+        }
+
+        return names;
+    }
+
+    /**
+     * The default STV stores the method names that are used as filters in the properties
+     * file.  This method is used to change GetAiringTitle to getAiringTitle in the properties
+     * file.
+     * @param OldValue The original value of the property.
+     * @param NewValue The new value for the property.
+     * @return
+     */
     public static int changePropertyValue(String OldValue, String NewValue) {
 
         if (OldValue==null || OldValue.isEmpty() || NewValue==null || NewValue.isEmpty())
