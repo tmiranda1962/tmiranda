@@ -14,7 +14,7 @@ import sagex.api.*;
  */
 public class Plugin implements sage.SageTVPlugin, SageTVEventListener {
 
-    final static String VERSION = "1.20 05.29.2011";
+    final static String VERSION = "1.20 05.30.2011";
 
     private sage.SageTVPluginRegistry registry;
     private sage.SageTVEventListener listener;

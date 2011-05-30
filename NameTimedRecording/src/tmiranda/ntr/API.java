@@ -108,17 +108,15 @@ public class API {
         if (name!=null) {
             PropertyElement.removePropertyElement(channel+recurrance, name);
             System.out.println("NTR: cancelRecord: Removed " + channel+recurrance + DELIMITER + name);
+        } else {
+            System.out.println("NTR: cancelRecord: Failed to find " + channel+recurrance);
         }
 
         AiringAPI.CancelRecord(Airing);
     }
 
     public static String stripIllegalCharacters(String name) {
-
-        if (name==null || name.isEmpty())
-            return null;
-
-        return name.replaceAll(DELIMITER, "").replaceAll(";", "").replace(TIMED_RECORDING, "");
+        return name==null || name.isEmpty() ? null : name.replaceAll(DELIMITER, "").replaceAll(";", "").replace(TIMED_RECORDING, "");
     }
 
     /*
@@ -161,7 +159,6 @@ public class API {
         if (airingName!=null && !airingName.isEmpty())
             return airingName;
 
-        // The Airing has a name.  Set the name in the MediaFile if there is one.
         Object mediaFile = MediaFileAPI.GetMediaFileAiring(Airing);
 
         if (mediaFile==null)
@@ -246,6 +243,10 @@ public class API {
         return names;
     }
 
+    public static String getVersion() {
+        return Plugin.VERSION;
+    }
+    
     /**
      * The default STV stores the method names that are used as filters in the properties
      * file.  This method is used to change GetAiringTitle to getAiringTitle in the properties
