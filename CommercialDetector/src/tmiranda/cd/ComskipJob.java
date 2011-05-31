@@ -93,17 +93,18 @@ public class ComskipJob implements Runnable {
     public Object getMediaFile() {
         Object MediaFile = MediaFileAPI.GetMediaFileForID(MediaFileID);
         if (MediaFile==null) {
-            Log.getInstance().write(Log.LOGLEVEL_ERROR, "run: null MediaFile for ID " + MediaFileID);
+            Log.getInstance().write(Log.LOGLEVEL_ERROR, "ComskipJob.getMediaFile: null MediaFile for ID " + MediaFileID);
         }
         return MediaFile;
     }
 
+    @Override
     public void run() {
-        Log.getInstance().write(Log.LOGLEVEL_TRACE, "Starting new ComskipJob");
+        Log.getInstance().write(Log.LOGLEVEL_TRACE, "ComskipJob: Starting new ComskipJob");
 
         // Stop this job immediately if soemthing went wrong in the constructor.
         if (Job==null || JobStats==null) {
-            Log.getInstance().write(Log.LOGLEVEL_ERROR, "run: Error in constructor.");
+            Log.getInstance().write(Log.LOGLEVEL_ERROR, "ComskipJob: Error in constructor.");
             ComskipManager.getInstance().jobComplete(this, false);
             return;
         }
@@ -128,9 +129,9 @@ public class ComskipJob implements Runnable {
         else if (ProgramToUse.equalsIgnoreCase("default"))
             executeUsingDefault(Job);
         else if (ProgramToUse.equalsIgnoreCase("none"))
-            Log.getInstance().write(Log.LOGLEVEL_TRACE, "run: Skipping, Channel overridden.");
+            Log.getInstance().write(Log.LOGLEVEL_TRACE, "ComskipJob: Skipping, Channel overridden.");
         else {
-            Log.getInstance().write(Log.LOGLEVEL_WARN, "run: Unknown ProgramToUse " + ProgramToUse);
+            Log.getInstance().write(Log.LOGLEVEL_WARN, "ComskipJob: Unknown ProgramToUse " + ProgramToUse);
             executeUsingDefault(Job);
         }
 
@@ -158,9 +159,9 @@ public class ComskipJob implements Runnable {
             }
 
             if (!ComskipManager.getInstance().addToQueue(Job)) {
-                Log.getInstance().write(Log.LOGLEVEL_ERROR, "run: Error adding back failed job.");
+                Log.getInstance().write(Log.LOGLEVEL_ERROR, "ComskipJob: Error adding back failed job.");
             } else {
-                Log.getInstance().write(Log.LOGLEVEL_TRACE, "run: Adding stopped job back to queue.");
+                Log.getInstance().write(Log.LOGLEVEL_TRACE, "ComskipJob: Adding stopped job back to queue.");
             }
         }
     }
@@ -209,31 +210,31 @@ public class ComskipJob implements Runnable {
         if (!(OtherParms==null || OtherParms.isEmpty())) {
             String[] Parms = OtherParms.split(" ");
             if (Parms==null || Parms.length==0) {
-                Log.getInstance().write(Log.LOGLEVEL_ERROR, "run: Malformed paramter list " + OtherParms);
+                Log.getInstance().write(Log.LOGLEVEL_ERROR, "ComskipJob.executeComskipWindows: Malformed paramter list " + OtherParms);
             } else {
                 for (int i=0; i<Parms.length; i++) {
                     CommandList.add(Parms[i]);
-                    Log.getInstance().write(Log.LOGLEVEL_TRACE, "run: Adding paramter " + Parms[i]);
+                    Log.getInstance().write(Log.LOGLEVEL_TRACE, "ComskipJob.executeComskipWindows: Adding paramter " + Parms[i]);
                 }
             }
         }
 
         List<String> FileNames = Job.getFileName();
-        Log.getInstance().write(Log.LOGLEVEL_TRACE, "run: Job parts " + Job.getFileName().size());
+        Log.getInstance().write(Log.LOGLEVEL_TRACE, "ComskipJob.executeComskipWindows: Job parts " + Job.getFileName().size());
 
         // Process all the individual files that make up the MediaFile.
         for (int i=0; i<Job.getFileName().size() && !Stop; i++) {
             String FileName = FileNames.get(i);
-            Log.getInstance().write(Log.LOGLEVEL_TRACE, "run: Processing " + FileName);
+            Log.getInstance().write(Log.LOGLEVEL_TRACE, "ComskipJob.executeComskipWindows: Processing " + FileName);
 
             File F = new File(FileName);
             if (F==null) {
-                Log.getInstance().write(Log.LOGLEVEL_ERROR, "run: null File.");
+                Log.getInstance().write(Log.LOGLEVEL_ERROR, "ComskipJob.executeComskipWindows: null File.");
                 return;
             }
 
             if (!F.exists() || ComskipManager.getInstance().hasAnEdlOrTxtFile(FileName)) {
-                Log.getInstance().write(Log.LOGLEVEL_WARN, "run: File no longer exists or has been processed " + FileName);
+                Log.getInstance().write(Log.LOGLEVEL_WARN, "ComskipJob.executeComskipWindows: File no longer exists or has been processed " + FileName);
             } else {
 
                 //String s = "\"" + FileName + "\"";
@@ -241,10 +242,10 @@ public class ComskipJob implements Runnable {
 
                 String[] Command = (String[])CommandList.toArray(new String[CommandList.size()]);
 
-                Log.getInstance().write(Log.LOGLEVEL_TRACE, "run: Command " + CommandList);
+                Log.getInstance().write(Log.LOGLEVEL_TRACE, "ComskipJob.executeComskipWindows: Command " + CommandList);
 
                 try {process = Runtime.getRuntime().exec(Command); } catch (IOException e) {
-                    Log.getInstance().write(Log.LOGLEVEL_ERROR, "run: Exception starting comskip " + e.getMessage());
+                    Log.getInstance().write(Log.LOGLEVEL_ERROR, "ComskipJob.executeComskipWindows: Exception starting comskip " + e.getMessage());
                     ComskipManager.getInstance().jobComplete(this, false);
                 }
 
@@ -255,7 +256,7 @@ public class ComskipJob implements Runnable {
 
                 int status = 0;
                 try {status=process.waitFor(); } catch (InterruptedException e) {
-                    Log.getInstance().write(Log.LOGLEVEL_WARN, "run: comskip.exe was interrupted " + e.getMessage());
+                    Log.getInstance().write(Log.LOGLEVEL_WARN, "ComskipJob.executeComskipWindows: comskip.exe was interrupted " + e.getMessage());
                     stop();
                     ComskipManager.getInstance().jobComplete(this, false);
                 }
@@ -265,9 +266,9 @@ public class ComskipJob implements Runnable {
                     return;
                 }
 
-                Log.getInstance().write(Log.LOGLEVEL_TRACE, "run: comskip return code = " + status);
+                Log.getInstance().write(Log.LOGLEVEL_TRACE, "ComskipJob.executeComskipWindows: comskip return code = " + status);
                 if (status>1) {
-                    Log.getInstance().write(Log.LOGLEVEL_ERROR, "run: comskip failed with return code = " + status);
+                    Log.getInstance().write(Log.LOGLEVEL_ERROR, "ComskipJob.executeComskipWindows: comskip failed with return code = " + status);
                 }
             }
 
@@ -287,7 +288,7 @@ public class ComskipJob implements Runnable {
 
             String User = Configuration.GetServerProperty("cd/wine_user", "");
             if (User==null || User.isEmpty()) {
-                Log.getInstance().write(Log.LOGLEVEL_ERROR, "run: null wine_user.");
+                Log.getInstance().write(Log.LOGLEVEL_ERROR, "ComskipJob.executeComskipLinux: null wine_user.");
                 return;
             }
 
@@ -299,7 +300,7 @@ public class ComskipJob implements Runnable {
 
         String ComskipLocation = Configuration.GetServerProperty("cd/comskip_location", plugin.getDefaultComskipLocation() + File.separator + "comskip" + File.separator + "comskip.exe");
         if (ComskipLocation==null || ComskipLocation.isEmpty()) {
-            Log.getInstance().write(Log.LOGLEVEL_ERROR, "run: null comskip_location.");
+            Log.getInstance().write(Log.LOGLEVEL_ERROR, "ComskipJob.executeComskipLinux: null comskip_location.");
             return;
         }
 
@@ -319,47 +320,47 @@ public class ComskipJob implements Runnable {
         if (!(OtherParms==null || OtherParms.isEmpty())) {
             String[] Parms = OtherParms.split(" ");
             if (Parms==null || Parms.length==0) {
-                Log.getInstance().write(Log.LOGLEVEL_ERROR, "run: Malformed paramter list " + OtherParms);
+                Log.getInstance().write(Log.LOGLEVEL_ERROR, "ComskipJob.executeComskipLinux: Malformed paramter list " + OtherParms);
             } else {
                 for (int i=0; i<Parms.length; i++) {
                     CommandLine = CommandLine + Parms[i] + " ";
-                    Log.getInstance().write(Log.LOGLEVEL_TRACE, "run: Adding paramter " + Parms[i]);
+                    Log.getInstance().write(Log.LOGLEVEL_TRACE, "ComskipJob.executeComskipLinux: Adding paramter " + Parms[i]);
                 }
             }
         }
 
         String WinePath = Configuration.GetServerProperty("cd/wine_home", plugin.getDefaultWineHome());
-        Log.getInstance().write(Log.LOGLEVEL_TRACE, "run: WinePath " + WinePath);
+        Log.getInstance().write(Log.LOGLEVEL_TRACE, "ComskipJob.executeComskipLinux: WinePath " + WinePath);
 
         String[] env = {"WINEPREFIX="+WinePath,"WINEPATH="+WinePath};
 
         List<String> FileNames = Job.getFileName();
-        Log.getInstance().write(Log.LOGLEVEL_TRACE, "run: Job parts " + Job.getFileName().size());
+        Log.getInstance().write(Log.LOGLEVEL_TRACE, "ComskipJob.executeComskipLinux: Job parts " + Job.getFileName().size());
 
         String CommandLineToExecute = null;
 
         // Process all the individual files that make up the MediaFile.
         for (int i=0; i<Job.getFileName().size() && !Stop; i++) {
             String FileName = FileNames.get(i);
-            Log.getInstance().write(Log.LOGLEVEL_TRACE, "run: Processing " + FileName);
+            Log.getInstance().write(Log.LOGLEVEL_TRACE, "ComskipJob.executeComskipLinux: Processing " + FileName);
 
             File F = new File(FileName);
             if (F==null) {
-                Log.getInstance().write(Log.LOGLEVEL_ERROR, "run: null File.");
+                Log.getInstance().write(Log.LOGLEVEL_ERROR, "ComskipJob.executeComskipLinux: null File.");
                 return;
             }
 
             if (!F.exists() || ComskipManager.getInstance().hasAnEdlOrTxtFile(FileName)) {
-                Log.getInstance().write(Log.LOGLEVEL_WARN, "run: File no longer exists or has been processed " + FileName);
+                Log.getInstance().write(Log.LOGLEVEL_WARN, "ComskipJob.executeComskipLinux: File no longer exists or has been processed " + FileName);
             } else {
 
                 CommandLineToExecute = CommandLine + FileName;
 
-                Log.getInstance().write(Log.LOGLEVEL_TRACE, "run: Command " + CommandLineToExecute);
+                Log.getInstance().write(Log.LOGLEVEL_TRACE, "ComskipJob.executeComskipLinux: Command " + CommandLineToExecute);
 
                 try {process = Runtime.getRuntime().exec(CommandLineToExecute); } catch (IOException e) {
                 //try {process = Runtime.getRuntime().exec(CommandLineToExecute, env); } catch (IOException e) {
-                    Log.getInstance().write(Log.LOGLEVEL_ERROR, "run: Exception starting comskip " + e.getMessage());
+                    Log.getInstance().write(Log.LOGLEVEL_ERROR, "ComskipJob.executeComskipLinux: Exception starting comskip " + e.getMessage());
                     ComskipManager.getInstance().jobComplete(this, false);
                 }
 
@@ -370,7 +371,7 @@ public class ComskipJob implements Runnable {
 
                 int status = 0;
                 try {status=process.waitFor(); } catch (InterruptedException e) {
-                    Log.getInstance().write(Log.LOGLEVEL_WARN, "run: comskip.exe was interrupted " + e.getMessage());
+                    Log.getInstance().write(Log.LOGLEVEL_WARN, "ComskipJob.executeComskipLinux: comskip.exe was interrupted " + e.getMessage());
                     stop();
                     ComskipManager.getInstance().jobComplete(this, false);
                 }
@@ -380,9 +381,9 @@ public class ComskipJob implements Runnable {
                     return;
                 }
 
-                Log.getInstance().write(Log.LOGLEVEL_TRACE, "run: comskip return code = " + status);
+                Log.getInstance().write(Log.LOGLEVEL_TRACE, "ComskipJob.executeComskipLinux: comskip return code = " + status);
                 if (status>1) {
-                    Log.getInstance().write(Log.LOGLEVEL_ERROR, "run: comskip failed with return code = " + status);
+                    Log.getInstance().write(Log.LOGLEVEL_ERROR, "ComskipJob.executeComskipLinux: comskip failed with return code = " + status);
                 }
             }
         }
@@ -394,29 +395,29 @@ public class ComskipJob implements Runnable {
 
         String ShowAnalyzerLocation = Configuration.GetServerProperty("cd/showanalyzer_location", "Select");
         if (ShowAnalyzerLocation.startsWith("Select")) {
-            Log.getInstance().write(Log.LOGLEVEL_ERROR, "run: No ShowAnalyzer location has been set.");
+            Log.getInstance().write(Log.LOGLEVEL_ERROR, "ComkipJob.executeShowAnalyzerWindows: No ShowAnalyzer location has been set.");
             return;
         }
 
         List<String> FileNames = Job.getFileName();
 
-        Log.getInstance().write(Log.LOGLEVEL_TRACE, "run: Job parts " + Job.getFileName().size());
+        Log.getInstance().write(Log.LOGLEVEL_TRACE, "ComkipJob.executeShowAnalyzerWindows: Job parts " + Job.getFileName().size());
 
         String ProfileLocation = Job.getShowAnalyzerProfile();
 
         // Process all the individual files that make up the MediaFile.
         for (int i=0; i<Job.getFileName().size() && !Stop; i++) {
             String FileName = FileNames.get(i);
-            Log.getInstance().write(Log.LOGLEVEL_TRACE, "run: Processing " + FileName);
+            Log.getInstance().write(Log.LOGLEVEL_TRACE, "ComkipJob.executeShowAnalyzerWindows: Processing " + FileName);
 
             File F = new File(FileName);
             if (F==null) {
-                Log.getInstance().write(Log.LOGLEVEL_ERROR, "run: null File.");
+                Log.getInstance().write(Log.LOGLEVEL_ERROR, "ComkipJob.executeShowAnalyzerWindows: null File.");
                 return;
             }
 
             if (!F.exists() || ComskipManager.getInstance().hasAnEdlOrTxtFile(FileName)) {
-                Log.getInstance().write(Log.LOGLEVEL_WARN, "run: File no longer exists or has been processed " + FileName);
+                Log.getInstance().write(Log.LOGLEVEL_WARN, "ComkipJob.executeShowAnalyzerWindows: File no longer exists or has been processed " + FileName);
             } else {
 
                 //String[] Command = (String[])CommandList.toArray(new String[CommandList.size()]);
@@ -434,10 +435,10 @@ public class ComskipJob implements Runnable {
 
                 String[] Command = (String[])CommandList.toArray(new String[CommandList.size()]);
 
-                Log.getInstance().write(Log.LOGLEVEL_TRACE, "run: Command " + CommandList);
+                Log.getInstance().write(Log.LOGLEVEL_TRACE, "ComkipJob.executeShowAnalyzerWindows: Command " + CommandList);
 
                 try {process = Runtime.getRuntime().exec(Command); } catch (IOException e) {
-                    Log.getInstance().write(Log.LOGLEVEL_ERROR, "run: Exception starting ShowAnalyer " + e.getMessage());
+                    Log.getInstance().write(Log.LOGLEVEL_ERROR, "ComkipJob.executeShowAnalyzerWindows: Exception starting ShowAnalyer " + e.getMessage());
                     ComskipManager.getInstance().jobComplete(this, false);
                 }
 
@@ -448,7 +449,7 @@ public class ComskipJob implements Runnable {
 
                 int status = 0;
                 try {status=process.waitFor(); } catch (InterruptedException e) {
-                    Log.getInstance().write(Log.LOGLEVEL_WARN, "run: ShowAnalyzer was interrupted " + e.getMessage());
+                    Log.getInstance().write(Log.LOGLEVEL_WARN, "ComkipJob.executeShowAnalyzerWindows: ShowAnalyzer was interrupted " + e.getMessage());
                     stop();
                     ComskipManager.getInstance().jobComplete(this, false);
                 }
@@ -458,7 +459,7 @@ public class ComskipJob implements Runnable {
                     return;
                 }
 
-                Log.getInstance().write(Log.LOGLEVEL_TRACE, "run: ShowAnalyzer return code = " + status);
+                Log.getInstance().write(Log.LOGLEVEL_TRACE, "ComkipJob.executeShowAnalyzerWindows: ShowAnalyzer return code = " + status);
             }
         }
     }
@@ -467,29 +468,29 @@ public class ComskipJob implements Runnable {
 
         String ShowAnalyzerLocation = Configuration.GetServerProperty("cd/showanalyzer_location", "Select");
         if (ShowAnalyzerLocation.startsWith("Select")) {
-            Log.getInstance().write(Log.LOGLEVEL_ERROR, "run: No ShowAnalyzer location has been set.");
+            Log.getInstance().write(Log.LOGLEVEL_ERROR, "ComskipJob.executeShowAnalyzerWindowsString: No ShowAnalyzer location has been set.");
             return;
         }
 
         List<String> FileNames = Job.getFileName();
 
-        Log.getInstance().write(Log.LOGLEVEL_TRACE, "run: Job parts " + Job.getFileName().size());
+        Log.getInstance().write(Log.LOGLEVEL_TRACE, "ComskipJob.executeShowAnalyzerWindowsString: Job parts " + Job.getFileName().size());
 
         String ProfileLocation = Job.getShowAnalyzerProfile();
 
         // Process all the individual files that make up the MediaFile.
         for (int i=0; i<Job.getFileName().size() && !Stop; i++) {
             String FileName = FileNames.get(i);
-            Log.getInstance().write(Log.LOGLEVEL_TRACE, "run: Processing " + FileName);
+            Log.getInstance().write(Log.LOGLEVEL_TRACE, "ComskipJob.executeShowAnalyzerWindowsString: Processing " + FileName);
 
             File F = new File(FileName);
             if (F==null) {
-                Log.getInstance().write(Log.LOGLEVEL_ERROR, "run: null File.");
+                Log.getInstance().write(Log.LOGLEVEL_ERROR, "ComskipJob.executeShowAnalyzerWindowsString: null File.");
                 return;
             }
 
             if (!F.exists() || ComskipManager.getInstance().hasAnEdlOrTxtFile(FileName)) {
-                Log.getInstance().write(Log.LOGLEVEL_WARN, "run: File no longer exists or has been processed " + FileName);
+                Log.getInstance().write(Log.LOGLEVEL_WARN, "ComskipJob.executeShowAnalyzerWindowsString: File no longer exists or has been processed " + FileName);
             } else {
 
                 //String[] Command = (String[])CommandList.toArray(new String[CommandList.size()]);
@@ -500,10 +501,10 @@ public class ComskipJob implements Runnable {
                     CommandLine = CommandLine + " --profile " + ProfileLocation;
                 }
 
-                Log.getInstance().write(Log.LOGLEVEL_TRACE, "run: Command " + CommandLine);
+                Log.getInstance().write(Log.LOGLEVEL_TRACE, "ComskipJob.executeShowAnalyzerWindowsString: Command " + CommandLine);
 
                 try {process = Runtime.getRuntime().exec(CommandLine); } catch (IOException e) {
-                    Log.getInstance().write(Log.LOGLEVEL_ERROR, "run: Exception starting ShowAnalyer " + e.getMessage());
+                    Log.getInstance().write(Log.LOGLEVEL_ERROR, "ComskipJob.executeShowAnalyzerWindowsString: Exception starting ShowAnalyer " + e.getMessage());
                     ComskipManager.getInstance().jobComplete(this, false);
                 }
 
@@ -514,17 +515,17 @@ public class ComskipJob implements Runnable {
 
                 int status = 0;
                 try {status=process.waitFor(); } catch (InterruptedException e) {
-                    Log.getInstance().write(Log.LOGLEVEL_WARN, "run: ShowAnalyzer was interrupted " + e.getMessage());
+                    Log.getInstance().write(Log.LOGLEVEL_WARN, "ComskipJob.executeShowAnalyzerWindowsString: ShowAnalyzer was interrupted " + e.getMessage());
                     stop();
                     ComskipManager.getInstance().jobComplete(this, false);
                 }
 
-                // If the Stop flag is set do nothing else.  Sage is probably shuttoing down.
+                // If the Stop flag is set do nothing else.  Sage is probably shutting down.
                 if (Stop) {
                     return;
                 }
 
-                Log.getInstance().write(Log.LOGLEVEL_TRACE, "run: ShowAnalyzer return code = " + status);
+                Log.getInstance().write(Log.LOGLEVEL_TRACE, "ComskipJob.executeShowAnalyzerWindowsString: ShowAnalyzer return code = " + status);
             }
         }
     }
@@ -541,7 +542,7 @@ public class ComskipJob implements Runnable {
 
             String User = Configuration.GetServerProperty("cd/wine_user", "");
             if (User==null || User.isEmpty()) {
-                Log.getInstance().write(Log.LOGLEVEL_ERROR, "run: null wine_user.");
+                Log.getInstance().write(Log.LOGLEVEL_ERROR, "ComskipJob.executeShowAnalyzerLinux: null wine_user.");
                 return;
             }
 
@@ -552,7 +553,7 @@ public class ComskipJob implements Runnable {
 
         String ShowAnalyzerLocation = Configuration.GetServerProperty("cd/showanalyzer_location", "");
         if (ShowAnalyzerLocation==null || ShowAnalyzerLocation.isEmpty()) {
-            Log.getInstance().write(Log.LOGLEVEL_ERROR, "run: null showanalyzer_location.");
+            Log.getInstance().write(Log.LOGLEVEL_ERROR, "ComskipJob.executeShowAnalyzerLinux: null showanalyzer_location.");
             return;
         }
 
@@ -560,33 +561,33 @@ public class ComskipJob implements Runnable {
 
         String ProfileLocation = Configuration.GetServerProperty("cd/profile_location", "");
         if (ProfileLocation==null || ProfileLocation.isEmpty() || ProfileLocation.equalsIgnoreCase("select")) {
-            Log.getInstance().write(Log.LOGLEVEL_ERROR, "run: null profile_location.");
+            Log.getInstance().write(Log.LOGLEVEL_ERROR, "ComskipJob.executeShowAnalyzerLinux: null profile_location.");
             ProfileLocation = null;
         }
 
         String WinePath = Configuration.GetServerProperty("cd/wine_home", plugin.getDefaultWineHome());
-        Log.getInstance().write(Log.LOGLEVEL_TRACE, "run: WinePath " + WinePath);
+        Log.getInstance().write(Log.LOGLEVEL_TRACE, "ComskipJob.executeShowAnalyzerLinux: WinePath " + WinePath);
 
         String[] env = {"WINEPREFIX="+WinePath,"WINEPATH="+WinePath};
 
         List<String> FileNames = Job.getFileName();
-        Log.getInstance().write(Log.LOGLEVEL_TRACE, "run: Job parts " + Job.getFileName().size());
+        Log.getInstance().write(Log.LOGLEVEL_TRACE, "ComskipJob.executeShowAnalyzerLinux: Job parts " + Job.getFileName().size());
 
         String CommandLineToExecute = null;
 
         // Process all the individual files that make up the MediaFile.
         for (int i=0; i<Job.getFileName().size() && !Stop; i++) {
             String FileName = FileNames.get(i);
-            Log.getInstance().write(Log.LOGLEVEL_TRACE, "run: Processing " + FileName);
+            Log.getInstance().write(Log.LOGLEVEL_TRACE, "ComskipJob.executeShowAnalyzerLinux: Processing " + FileName);
 
             File F = new File(FileName);
             if (F==null) {
-                Log.getInstance().write(Log.LOGLEVEL_ERROR, "run: null File.");
+                Log.getInstance().write(Log.LOGLEVEL_ERROR, "ComskipJob.executeShowAnalyzerLinux: null File.");
                 return;
             }
 
             if (!F.exists() || ComskipManager.getInstance().hasAnEdlOrTxtFile(FileName)) {
-                Log.getInstance().write(Log.LOGLEVEL_WARN, "run: File no longer exists or has been processed " + FileName);
+                Log.getInstance().write(Log.LOGLEVEL_WARN, "ComskipJob.executeShowAnalyzerLinux: File no longer exists or has been processed " + FileName);
             } else {
 
                 CommandLineToExecute = CommandLine + FileName;
@@ -594,10 +595,10 @@ public class ComskipJob implements Runnable {
                     CommandLineToExecute = CommandLineToExecute + " --profile " + ProfileLocation;
                 }
 
-                Log.getInstance().write(Log.LOGLEVEL_TRACE, "run: Command " + CommandLineToExecute);
+                Log.getInstance().write(Log.LOGLEVEL_TRACE, "ComskipJob.executeShowAnalyzerLinux: Command " + CommandLineToExecute);
 
                 try {process = Runtime.getRuntime().exec(CommandLineToExecute, env); } catch (IOException e) {
-                    Log.getInstance().write(Log.LOGLEVEL_ERROR, "run: Exception starting ShowAnalyzer " + e.getMessage());
+                    Log.getInstance().write(Log.LOGLEVEL_ERROR, "ComskipJob.executeShowAnalyzerLinux: Exception starting ShowAnalyzer " + e.getMessage());
                     ComskipManager.getInstance().jobComplete(this, false);
                 }
 
@@ -608,7 +609,7 @@ public class ComskipJob implements Runnable {
 
                 int status = 0;
                 try {status=process.waitFor(); } catch (InterruptedException e) {
-                    Log.getInstance().write(Log.LOGLEVEL_WARN, "run: ShowAnalyzer was interrupted " + e.getMessage());
+                    Log.getInstance().write(Log.LOGLEVEL_WARN, "ComskipJob.executeShowAnalyzerLinux: ShowAnalyzer was interrupted " + e.getMessage());
                     stop();
                     ComskipManager.getInstance().jobComplete(this, false);
                 }
@@ -618,7 +619,7 @@ public class ComskipJob implements Runnable {
                     return;
                 }
 
-                Log.getInstance().write(Log.LOGLEVEL_TRACE, "run: ShowAnalyzer return code = " + status);
+                Log.getInstance().write(Log.LOGLEVEL_TRACE, "ComskipJob.executeShowAnalyzerLinux: ShowAnalyzer return code = " + status);
             }
         }
     }
@@ -628,7 +629,7 @@ public class ComskipJob implements Runnable {
      * and setting a flag telling the ComskipJob to terminate gracefully.
      */
     public void stop() {
-        Log.getInstance().write(Log.LOGLEVEL_WARN, "Stopping ComskipJob.");
+        Log.getInstance().write(Log.LOGLEVEL_WARN, "ComskipJob.stop: Stopping ComskipJob.");
 
         // Stop the thread from processing any more.
         Stop = true;
@@ -642,36 +643,36 @@ public class ComskipJob implements Runnable {
 
         // See how logn the job took to complete.
         long jobTime = Utility.Time() - jobStartTime;
-        Log.getInstance().write(Log.LOGLEVEL_TRACE, "run: jobTime " + jobTime + ":" + jobTime/1000/60 + " minutes.");
+        Log.getInstance().write(Log.LOGLEVEL_TRACE, "ComskipJob.updateRatio: jobTime " + jobTime + ":" + jobTime/1000/60 + " minutes.");
 
         // Adjust the time depending on what was happening while the job was being processed.
         long adjustedJobTime = adjustJobTime(jobTime);
-        Log.getInstance().write(Log.LOGLEVEL_TRACE, "run: adjustedJobTime " + adjustedJobTime);
+        Log.getInstance().write(Log.LOGLEVEL_TRACE, "ComskipJob.updateRatio: adjustedJobTime " + adjustedJobTime);
 
         // Get the total length of the MediaFile.
         Object MediaFile = MediaFileAPI.GetMediaFileForID(MediaFileID);
         if (MediaFile==null) {
-            Log.getInstance().write(Log.LOGLEVEL_ERROR, "run: null MediaFile for ID " + MediaFileID);
+            Log.getInstance().write(Log.LOGLEVEL_WARN, "ComskipJob.updateRatio: null MediaFile for ID " + MediaFileID);
             return;
         }
 
         long MediaFileDuration = MediaFileAPI.GetFileDuration(MediaFile);
-        Log.getInstance().write(Log.LOGLEVEL_TRACE, "run: MediaFile duration " + MediaFileDuration + ":" + MediaFileDuration/1000/60 + " minutes.");
+        Log.getInstance().write(Log.LOGLEVEL_TRACE, "ComskipJob.updateRatio: MediaFile duration " + MediaFileDuration + ":" + MediaFileDuration/1000/60 + " minutes.");
 
         if (MediaFileDuration==0 || MediaFileDuration<0) {
-            Log.getInstance().write(Log.LOGLEVEL_ERROR, "run: No duration.");
+            Log.getInstance().write(Log.LOGLEVEL_ERROR, "ComskipJob.updateRatio: No duration.");
             return;
         }
 
         // Calculate the ratio for this recording.
         Float RecordingRatio = (float)adjustedJobTime / (float)MediaFileDuration;
-        Log.getInstance().write(Log.LOGLEVEL_TRACE, "run: Actual ratio " + RecordingRatio);
+        Log.getInstance().write(Log.LOGLEVEL_TRACE, "ComskipJob.updateRatio: Actual ratio " + RecordingRatio);
 
         String Channel = AiringAPI.GetAiringChannelName(MediaFile);
-        Log.getInstance().write(Log.LOGLEVEL_TRACE, "run: Channel for this MediaFile " + Channel);
+        Log.getInstance().write(Log.LOGLEVEL_TRACE, "ComskipJob.updateRatio: Channel for this MediaFile " + Channel);
 
         if (Channel==null) {
-            Log.getInstance().write(Log.LOGLEVEL_ERROR, "run: null Channel.");
+            Log.getInstance().write(Log.LOGLEVEL_ERROR, "ComskipJob.updateRatio: null Channel.");
             return;
         }
 
@@ -679,13 +680,13 @@ public class ComskipJob implements Runnable {
         Float ChannelRatio = plugin.ChannelTimeRatios.get(Channel);
 
         if (ChannelRatio==null || ChannelRatio==0) {
-            Log.getInstance().write(Log.LOGLEVEL_WARN, "run: null ChannelRatio.");
+            Log.getInstance().write(Log.LOGLEVEL_WARN, "ComskipJob.updateRatio: null ChannelRatio.");
             ChannelRatio = plugin.RATIO_DEFAULT;
         }
 
         Float RecordImpactOnChannel = SageUtil.GetFloatProperty(PROPERTY_RECORDING_IMPACT_ON_CHANNEL, PROPERTY_DEFAULT_RECORDING_IMPACT_ON_CHANNEL);
         Float NewRatio = ((1.0F-RecordImpactOnChannel) * ChannelRatio ) + (RecordImpactOnChannel * RecordingRatio);
-        Log.getInstance().write(Log.LOGLEVEL_WARN, "run: Old, Current and new Ratios " + ChannelRatio + ":" + RecordingRatio + ":" + NewRatio);
+        Log.getInstance().write(Log.LOGLEVEL_WARN, "ComskipJob.updateRatio: Old, Current and new Ratios " + ChannelRatio + ":" + RecordingRatio + ":" + NewRatio);
 
         plugin.ChannelTimeRatios.put(Channel, NewRatio);
 
@@ -695,14 +696,14 @@ public class ComskipJob implements Runnable {
     private synchronized void updateRatioProperties() {
 
         if (plugin.ChannelTimeRatios.isEmpty()) {
-            Log.getInstance().write(Log.LOGLEVEL_WARN, "updateRatioProperties: ChannelTimeRatios is empty.");
+            Log.getInstance().write(Log.LOGLEVEL_WARN, "ComskipJob.updateRatioProperties: ChannelTimeRatios is empty.");
             return;
         }
 
         Set<String> Channels = plugin.ChannelTimeRatios.keySet();
 
         if (Channels==null && Channels.isEmpty()) {
-            Log.getInstance().write(Log.LOGLEVEL_ERROR, "updateRatioProperties: null Channels.");
+            Log.getInstance().write(Log.LOGLEVEL_ERROR, "ComskipJob.updateRatioProperties: null Channels.");
             return;
         }
         
@@ -716,7 +717,7 @@ public class ComskipJob implements Runnable {
             String RatioString = Ratio.toString();
 
             String PropElement = Channel + ":" + RatioString;
-            Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "updateRatioProperties: PropElement " + PropElement);
+            Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "ComskipJob.updateRatioProperties: PropElement " + PropElement);
 
             if (NewProperty==null) {
                 NewProperty = PropElement;
@@ -725,7 +726,7 @@ public class ComskipJob implements Runnable {
             }
         }
 
-        Log.getInstance().write(Log.LOGLEVEL_TRACE, "updateRatioProperties: NewProperty " + NewProperty);
+        Log.getInstance().write(Log.LOGLEVEL_TRACE, "ComskipJob.updateRatioProperties: NewProperty " + NewProperty);
 
         Configuration.SetServerProperty(plugin.PROPERTY_TIME_RATIOS, NewProperty);
     }
@@ -741,7 +742,7 @@ public class ComskipJob implements Runnable {
     }
 
     private long adjustJobTime(long actualTime) {
-        Log.getInstance().write(Log.LOGLEVEL_TRACE, "run: Have JobStats " + JobStats.size());
+        Log.getInstance().write(Log.LOGLEVEL_TRACE, "ComskipJob.adjustJobTime: Have JobStats " + JobStats.size());
 
         String S = Configuration.GetServerProperty(PROPERTY_RUNNING_IMPACT, PROPERTY_DEFAULT_RUNNING_IMPACT);
 
@@ -749,7 +750,7 @@ public class ComskipJob implements Runnable {
         try {
             RunningImpact = Float.parseFloat(S);
         } catch (NumberFormatException nfe) {
-            Log.getInstance().write(Log.LOGLEVEL_ERROR, "adjustJobTime: Malformed CPU impact.");
+            Log.getInstance().write(Log.LOGLEVEL_ERROR, "ComskipJob.adjustJobTime: Malformed CPU impact.");
             Configuration.SetServerProperty(PROPERTY_RUNNING_IMPACT, PROPERTY_DEFAULT_RUNNING_IMPACT);
             RunningImpact = PROPERTY_DEFAULT_RUNNING_IMPACT_FLOAT;
         }
@@ -760,12 +761,12 @@ public class ComskipJob implements Runnable {
         try {
             RecordImpact = Float.parseFloat(S);
         } catch (NumberFormatException nfe) {
-            Log.getInstance().write(Log.LOGLEVEL_ERROR, "adjustJobTime: Malformed disk impact.");
+            Log.getInstance().write(Log.LOGLEVEL_ERROR, "ComskipJob.adjustJobTime: Malformed disk impact.");
             Configuration.SetServerProperty(PROPERTY_RECORD_IMPACT, PROPERTY_DEFAULT_RECORD_IMPACT);
             RecordImpact = PROPERTY_DEFAULT_RECORD_IMPACT_FLOAT;
         }
 
-        Log.getInstance().write(Log.LOGLEVEL_TRACE, "adjustJobTime: CPU and Record impact " + RunningImpact + ":" + RecordImpact);
+        Log.getInstance().write(Log.LOGLEVEL_TRACE, "ComskipJob.adjustJobTime: CPU and Record impact " + RunningImpact + ":" + RecordImpact);
 
         // Double check that neither of our impact factors are 0.
         RunningImpact = (RunningImpact==0 ? PROPERTY_DEFAULT_RUNNING_IMPACT_FLOAT : RunningImpact);
@@ -773,7 +774,7 @@ public class ComskipJob implements Runnable {
 
         long Period = SageUtil.GetLongProperty(PROPERTY_JOBPROFILER_PERIOD, PROPERTY_JOBPROFILER_PERIOD);
         if (Period==0) {
-            Log.getInstance().write(Log.LOGLEVEL_ERROR, "adjustJobTime: Malformed Period.");
+            Log.getInstance().write(Log.LOGLEVEL_ERROR, "ComskipJob.adjustJobTime: Malformed Period.");
             Configuration.SetServerProperty(PROPERTY_JOBPROFILER_PERIOD, PROPERTY_JOBPROFILER_PERIOD);
             Period = PROPERTY_JOBPROFILER_PERIOD_DEFAULT_LONG;
         }
@@ -781,7 +782,7 @@ public class ComskipJob implements Runnable {
         Set<Long> Times = JobStats.keySet();
 
         if (Times==null || Times.isEmpty()) {
-            Log.getInstance().write(Log.LOGLEVEL_WARN, "adjustJobTime: Null Times.");
+            Log.getInstance().write(Log.LOGLEVEL_WARN, "ComskipJob.adjustJobTime: Null Times.");
             return actualTime;
         }
 
@@ -791,7 +792,7 @@ public class ComskipJob implements Runnable {
             JobSnapshot Snapshot = JobStats.get(Time);
 
             if (Snapshot==null) {
-                Log.getInstance().write(Log.LOGLEVEL_WARN, "adjustJobTime: null Snapshot.");
+                Log.getInstance().write(Log.LOGLEVEL_WARN, "ComskipJob.adjustJobTime: null Snapshot.");
                 continue;
             }
 
@@ -813,9 +814,9 @@ public class ComskipJob implements Runnable {
             adjustedTime = adjustedTime + (long)(Period * adjustmentRatio);
         }
 
-        Log.getInstance().write(Log.LOGLEVEL_TRACE, "adjustJobTime: Returning " + adjustedTime);
+        Log.getInstance().write(Log.LOGLEVEL_TRACE, "ComskipJob.adjustJobTime: Returning " + adjustedTime);
         float percent = (actualTime - adjustedTime) / actualTime;
-        Log.getInstance().write(Log.LOGLEVEL_TRACE, "adjustJobTime: Percent adjustment " + percent);
+        Log.getInstance().write(Log.LOGLEVEL_TRACE, "ComskipJob.adjustJobTime: Percent adjustment " + percent);
         
         return adjustedTime;
     }

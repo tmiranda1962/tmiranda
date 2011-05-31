@@ -14,6 +14,7 @@ import sagex.api.*;
  */
 public class RestartRestricted extends TimerTask {
 
+    @Override
     public void run() {
         Log.getInstance().write(Log.LOGLEVEL_TRACE, "RestartRestricted: Checking.");
 

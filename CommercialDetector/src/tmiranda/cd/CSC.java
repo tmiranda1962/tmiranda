@@ -5,7 +5,6 @@
 
 package tmiranda.cd;
 
-import java.util.*;
 import sagex.api.*;
 
 /**
@@ -167,7 +166,7 @@ public class CSC {
 
     public synchronized void setStatus(String item, String status) {
         if (item==null) {
-            Log.getInstance().write(Log.LOGLEVEL_ERROR, "CSC setStatus: null item");
+            Log.getInstance().write(Log.LOGLEVEL_ERROR, "CSC.setStatus: null item");
             return;
         }
 
@@ -196,12 +195,12 @@ public class CSC {
      */
     public synchronized void addStatus(String item, int var) {
         if (item==null) {
-            Log.getInstance().write(Log.LOGLEVEL_ERROR, "CSC addStatus: null item");
+            Log.getInstance().write(Log.LOGLEVEL_ERROR, "CSC.addStatus: null item");
             return;
         }
         
         String Status = getStatus(item);
-        Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "CSC addStatus: item before add " + Status);
+        Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "CSC.addStatus: item before add " + Status);
         
         if (Status==null || Status.isEmpty()) {
             setStatus(item, Integer.toString(var));
@@ -209,37 +208,37 @@ public class CSC {
             setStatus(item, Status + "," + Integer.toString(var));
         }
         
-        Log.getInstance().write(Log.LOGLEVEL_TRACE, "CSC addStatus: item after add " + getStatus(item));    
+        Log.getInstance().write(Log.LOGLEVEL_TRACE, "CSC.addStatus: item after add " + getStatus(item));
     }
 
     public synchronized void removeStatus(String item, int var) {
         if (item==null) {
-            Log.getInstance().write(Log.LOGLEVEL_ERROR, "CSC removeStatus: null item.");
+            Log.getInstance().write(Log.LOGLEVEL_ERROR, "CSC.removeStatus: null item.");
             return;
         }
 
         String Status = getStatus(item);
-        Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "CSC removeStatus: item before remove " + Status);
+        Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "CSC.removeStatus: item before remove " + Status);
 
         if (Status==null || Status.isEmpty()) {
-            Log.getInstance().write(Log.LOGLEVEL_WARN, "CSC removeStatus: null Status.");
+            Log.getInstance().write(Log.LOGLEVEL_WARN, "CSC.removeStatus: null Status.");
             return;
         }
 
         String[] items = Status.split(",");
 
         if (items==null || items.length==0) {
-            Log.getInstance().write(Log.LOGLEVEL_WARN, "CSC removeStatus: null items.");
+            Log.getInstance().write(Log.LOGLEVEL_WARN, "CSC.removeStatus: null items.");
             return;
         }
 
-        Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "CSC removeStatus: length of items " + items.length);
+        Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "CSC.removeStatus: length of items " + items.length);
 
         String NewStatus = null;
 
         for (String S : items) {
             if (S==null || S.isEmpty()) {
-                Log.getInstance().write(Log.LOGLEVEL_ERROR, "CSC removeStatus: null entry detected.");
+                Log.getInstance().write(Log.LOGLEVEL_ERROR, "CSC.removeStatus: null entry detected.");
             } else {
 
                 // Convert to int, checking for errors.
@@ -247,7 +246,7 @@ public class CSC {
                 try {
                     i = Integer.parseInt(S);
                 } catch (NumberFormatException e) {
-                    Log.getInstance().write(Log.LOGLEVEL_ERROR, "CSC removeStatus: invalid entry detected " + S);
+                    Log.getInstance().write(Log.LOGLEVEL_ERROR, "CSC.removeStatus: invalid entry detected " + S);
                     i = 0;
                 }
 
@@ -262,9 +261,9 @@ public class CSC {
                         NewStatus = NewStatus + "," + S;
                     }
 
-                    Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "CSC removeStatus: after adding non-match " + NewStatus);
+                    Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "CSC.removeStatus: after adding non-match " + NewStatus);
                 } else {
-                    Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "CSC removeStatus: found item to remove " + NewStatus);
+                    Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "CSC.removeStatus: found item to remove " + NewStatus);
                 }
             }
         }
@@ -273,31 +272,31 @@ public class CSC {
         if (NewStatus !=null && NewStatus.endsWith(",")) {
             int EndPos = NewStatus.lastIndexOf(",");
             NewStatus = NewStatus.substring(0, EndPos);
-            Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "CSC removeStatus: item after removing last comma " + NewStatus);
+            Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "CSC.removeStatus: item after removing last comma " + NewStatus);
         }
 
-        Log.getInstance().write(Log.LOGLEVEL_TRACE, "CSC removeStatus: item after remove " + NewStatus);
+        Log.getInstance().write(Log.LOGLEVEL_TRACE, "CSC.removeStatus: item after remove " + NewStatus);
         setStatus(item, NewStatus);
     }
 
     public synchronized String getFirstStatus(String item) {
         if (item==null) {
-            Log.getInstance().write(Log.LOGLEVEL_ERROR, "CSC getFirstStatus: null item.");
+            Log.getInstance().write(Log.LOGLEVEL_ERROR, "CSC.getFirstStatus: null item.");
             return null;
         }
 
         String Status = getStatus(item);
-        Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "CSC getFirstStatus: item before remove " + Status);
+        Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "CSC.getFirstStatus: item before remove " + Status);
 
         if (Status==null || Status.isEmpty()) {
-            Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "CSC getFirstStatus: null Status.");
+            Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "CSC.getFirstStatus: null Status.");
             return null;
         }
 
         String[] items = Status.split(",");
 
         if (items==null || items.length==0) {
-            Log.getInstance().write(Log.LOGLEVEL_WARN, "CSC getFirstStatus: null items.");
+            Log.getInstance().write(Log.LOGLEVEL_WARN, "CSC.getFirstStatus: null items.");
             return null;
         }
 
@@ -314,12 +313,12 @@ public class CSC {
         try {
             i = Integer.parseInt(FirstItem);
         } catch (NumberFormatException e) {
-            Log.getInstance().write(Log.LOGLEVEL_ERROR, "CSC getFirstStatus: invalid FirstItem " + FirstItem);
+            Log.getInstance().write(Log.LOGLEVEL_ERROR, "CSC.getFirstStatus: invalid FirstItem " + FirstItem);
             i = 0;
         }
 
         removeStatus(item, i);
-        Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "CSC getFirstStatus: item after remove " + getStatus(item));
+        Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "CSC.getFirstStatus: item after remove " + getStatus(item));
         return FirstItem;
     }
         
@@ -331,7 +330,7 @@ public class CSC {
      */
     public synchronized String getStatus(String item) {
         if (item==null) {
-            Log.getInstance().write(Log.LOGLEVEL_ERROR, "CSC getStatus: null item");
+            Log.getInstance().write(Log.LOGLEVEL_ERROR, "CSC.getStatus: null item");
             return null;
         }
 
@@ -340,21 +339,21 @@ public class CSC {
 
     public synchronized boolean statusContains(String item, int var) {
         if (item==null) {
-            Log.getInstance().write(Log.LOGLEVEL_ERROR, "CSC statusContains: null item.");
+            Log.getInstance().write(Log.LOGLEVEL_ERROR, "CSC.statusContains: null item.");
             return false;
         }
 
         String s = getStatus(item);
 
         if (s==null || s.isEmpty()) {
-            Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "CSC statusContains: No items.");
+            Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "CSC.statusContains: No items.");
             return false;
         }
 
         String[] items = s.split(",");
 
         if (items==null || items.length==0) {
-            Log.getInstance().write(Log.LOGLEVEL_ERROR, "CSC statusContains: null items. " + s);
+            Log.getInstance().write(Log.LOGLEVEL_ERROR, "CSC.statusContains: null items. " + s);
             return false;
         }
 
@@ -364,7 +363,7 @@ public class CSC {
                     return true;
                 }
             } catch (NumberFormatException e) {
-                Log.getInstance().write(Log.LOGLEVEL_ERROR, "CSC statusContains: bad S " + S);
+                Log.getInstance().write(Log.LOGLEVEL_ERROR, "CSC.statusContains: bad S " + S);
             }
         }
 

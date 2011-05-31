@@ -10,7 +10,7 @@ import sagex.api.*;
 
 /**
  *
- * @author Default
+ * @author Tom Miranda.
  */
 public class TuneIntelligentScheduling {
 
@@ -68,7 +68,7 @@ public class TuneIntelligentScheduling {
      * a lot of time due to the fact that we need to copy files.
      */
     public void startInitialize() {
-        Log.getInstance().write(Log.LOGLEVEL_TRACE, "TIS: Starting initialization process.");
+        Log.getInstance().write(Log.LOGLEVEL_TRACE, "TIS.startInitialize: Starting initialization process.");
         initISTuner = new InitISTuner();
         new Thread(initISTuner).start();
         return;
@@ -82,12 +82,12 @@ class InitISTuner implements Runnable {
         Log.getInstance().write(Log.LOGLEVEL_TRACE, "TIS: InitISTuner begin.");
 
         if (!createThirtyMinuteFile()) {
-            Log.getInstance().write(Log.LOGLEVEL_TRACE, "TIS: InitISTuner failed to make 30 minute test file.");
+            Log.getInstance().write(Log.LOGLEVEL_TRACE, "TIS.InitISTuner: Failed to make 30 minute test file.");
             return;
         }
 
         if (!createSixtyMinuteFile()) {
-            Log.getInstance().write(Log.LOGLEVEL_TRACE, "TIS: InitISTuner failed to make 60 minute test file.");
+            Log.getInstance().write(Log.LOGLEVEL_TRACE, "TIS.InitISTuner: Failed to make 60 minute test file.");
             return;
         }
     }

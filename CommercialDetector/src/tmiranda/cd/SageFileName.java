@@ -5,8 +5,6 @@
 
 package tmiranda.cd;
 
-import sagex.api.*;
-
 /**
  *
  * @author Tom Miranda
@@ -32,4 +30,27 @@ public class SageFileName {
 
         return MediaFileExt;
     }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (obj == null) {
+            return false;
+        }
+        if (getClass() != obj.getClass()) {
+            return false;
+        }
+        final SageFileName other = (SageFileName) obj;
+        if ((this.FileName == null) ? (other.FileName != null) : !this.FileName.equals(other.FileName)) {
+            return false;
+        }
+        return true;
+    }
+
+    @Override
+    public int hashCode() {
+        int hash = 5;
+        hash = 67 * hash + (this.FileName != null ? this.FileName.hashCode() : 0);
+        return hash;
+    }
+    
 }

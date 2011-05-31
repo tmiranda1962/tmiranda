@@ -35,7 +35,7 @@ public class ComskipManager {
     }
 
     public void destroy() {
-        Log.getInstance().write(Log.LOGLEVEL_TRACE, "ComskipManager destroy: Stopping all jobs.");
+        Log.getInstance().write(Log.LOGLEVEL_TRACE, "ComskipManager.destroy: Stopping all jobs.");
         stopAll();
         instance = null;
     }
@@ -52,21 +52,21 @@ public class ComskipManager {
 
         File Directory = new File(RESOURCES);
         if (Directory==null) {
-            Log.getInstance().write(Log.LOGLEVEL_ERROR, "ComskipManager makeResources: null Directory, fatal error.");
+            Log.getInstance().write(Log.LOGLEVEL_ERROR, "ComskipManager.makeResources: null Directory, fatal error.");
             return;
         }
 
         if (Directory.exists() && Directory.isDirectory()) {
-            Log.getInstance().write(Log.LOGLEVEL_TRACE, "ComskipManager makeResources: Directory exists.");
+            Log.getInstance().write(Log.LOGLEVEL_TRACE, "ComskipManager.makeResources: Directory exists.");
             return;
         }
 
         if (!Directory.mkdir()) {
-            Log.getInstance().write(Log.LOGLEVEL_ERROR, "ComskipManager makeResources: Directory could not be created, fatal error");
+            Log.getInstance().write(Log.LOGLEVEL_ERROR, "ComskipManager.makeResources: Directory could not be created, fatal error");
             return;
         }
 
-        Log.getInstance().write(Log.LOGLEVEL_TRACE, "ComskipManager makeResources: Directory created.");
+        Log.getInstance().write(Log.LOGLEVEL_TRACE, "ComskipManager.makeResources: Directory created.");
     }
 
     public int getNumberRunning() {
@@ -86,68 +86,18 @@ public class ComskipManager {
             return Jobs.size();
     }
 
-    public synchronized boolean OLDqueue(Object MediaFile) {
-
-        File Parent = MediaFileAPI.GetParentDirectory(MediaFile);
-        File[] files = MediaFileAPI.GetSegmentFiles(MediaFile);
-        int ID = MediaFileAPI.GetMediaFileID(MediaFile);
-
-        if (files[0]==null || files.length==0) {
-            Log.getInstance().write(Log.LOGLEVEL_ERROR, "ComskipManager queue: null or empty segment 0.");
-            return false;
-        }
-
-        String Path = Parent.getAbsolutePath();
-        if (Path==null) {
-            Log.getInstance().write(Log.LOGLEVEL_ERROR, "ComskipManager queue: null path.");
-            return false;
-        }
-
-        // Check if we need to remap drives to UNC paths.
-        String UNCMap = Configuration.GetProperty(plugin.PROPERTY_DRIVE_MAP, plugin.PROPERTY_DEFAULT_DRIVE_MAP);
-        if (!(UNCMap==null || UNCMap.isEmpty())) {
-            Log.getInstance().write(Log.LOGLEVEL_TRACE, "ComskipManager queue: Found UNC mappings " + UNCMap);
-            Path = remapDrive(Path, UNCMap);
-        }
-
-        // Get a list of all the files that make up this MediaFile.
-        List<String> FilesToProcess = new ArrayList<String>();
-
-        for (File f : files) {
-            String name = CreateFullPath(Path, f.getName());
-            if (name==null)
-                Log.getInstance().write(Log.LOGLEVEL_WARN, "ComskipManager queue: null name skipped.");
-            else
-                FilesToProcess.add(name);
-        }
-
-        Log.getInstance().write(Log.LOGLEVEL_TRACE, "ComskipManager queue: FilesToProcess = " + FilesToProcess);
-
-        // Add this job to the queue on disk.
-        QueuedJob NewJob = new QueuedJob(FilesToProcess, ID);
-
-        if (!addToQueue(NewJob)) {
-            Log.getInstance().write(Log.LOGLEVEL_ERROR, "ComskipManager queue: Error from addToQueue.");
-            return false;
-        }
-
-        startMaxJobs();
-
-        return true;
-    }
-
     public boolean inRestrictedTime() {
         String S = Configuration.GetServerProperty(plugin.PROPERTY_RESTRICTED_TIMES, plugin.PROPERTY_DEFAULT_RESTRICTED_TIMES);
 
         if (S==null) {
-            Log.getInstance().write(Log.LOGLEVEL_TRACE, "ComskipManager inRestrictedTime: No Restricted times.");
+            Log.getInstance().write(Log.LOGLEVEL_TRACE, "ComskipManager.inRestrictedTime: No Restricted times.");
             return false;
         }
 
         String[] Hours = S.split(",");
 
         if (Hours==null || Hours.length==0) {
-            Log.getInstance().write(Log.LOGLEVEL_ERROR, "ComskipManager inRestrictedTime: Malformed restricted_times " + S);
+            Log.getInstance().write(Log.LOGLEVEL_ERROR, "ComskipManager.inRestrictedTime: Malformed restricted_times " + S);
             return false;
         }
 
@@ -156,19 +106,19 @@ public class ComskipManager {
         SimpleDateFormat formatter = new SimpleDateFormat("H");
 
         String CurrentHour = formatter.format(Now);
-        Log.getInstance().write(Log.LOGLEVEL_TRACE, "ComskipManager inRestrictedTime: Current hour is " + CurrentHour);
+        Log.getInstance().write(Log.LOGLEVEL_TRACE, "ComskipManager.inRestrictedTime: Current hour is " + CurrentHour);
 
         for (String Hour : Hours) {
             String H = Hour.substring(0,2);
-            Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "ComskipManager inRestrictedTime: Restricted hour is " + H);
+            Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "ComskipManager.inRestrictedTime: Restricted hour is " + H);
 
             if (CurrentHour.equals(H)) {
-                Log.getInstance().write(Log.LOGLEVEL_TRACE, "ComskipManager inRestrictedTime: Current hour is restricted.");
+                Log.getInstance().write(Log.LOGLEVEL_TRACE, "ComskipManager.inRestrictedTime: Current hour is restricted.");
                 return true;
             }
         }
 
-        Log.getInstance().write(Log.LOGLEVEL_TRACE, "ComskipManager inRestrictedTime: Current hour is not restricted.");
+        Log.getInstance().write(Log.LOGLEVEL_TRACE, "ComskipManager.inRestrictedTime: Current hour is not restricted.");
         return false;
     }
 
@@ -177,30 +127,30 @@ public class ComskipManager {
         // Split the string into Drive-Path pairs;
         String[] Pairs = UNCMap.split(",");
         if (Pairs==null || Pairs.length==0) {
-            Log.getInstance().write(Log.LOGLEVEL_ERROR, "ComskipManager remapDrive: Invalid mappings.");
+            Log.getInstance().write(Log.LOGLEVEL_ERROR, "ComskipManager.remapDrive: Invalid mappings.");
             return Path;
         }
 
         String[] DrivePath = Path.split(":");
         if (DrivePath==null || DrivePath.length==0) {
-            Log.getInstance().write(Log.LOGLEVEL_ERROR, "ComskipManager remapDrive: Invalid Path.");
+            Log.getInstance().write(Log.LOGLEVEL_ERROR, "ComskipManager.remapDrive: Invalid Path.");
             return Path;
         }
 
-        Log.getInstance().write(Log.LOGLEVEL_TRACE, "ComskipManager remapDrive: Drive = " + DrivePath[0]);
+        Log.getInstance().write(Log.LOGLEVEL_TRACE, "ComskipManager.remapDrive: Drive = " + DrivePath[0]);
 
         for (String Pair : Pairs) {
 
             // Split the string into a Drive and a UNC Path.
             String[] Map = Pair.split("-");
             if (Map==null || Map.length==0) {
-                Log.getInstance().write(Log.LOGLEVEL_ERROR, "ComskipManager remapDrive: No mappings.");
+                Log.getInstance().write(Log.LOGLEVEL_ERROR, "ComskipManager.remapDrive: No mappings.");
                 return Path;
             }
 
             // See if the drive matches the drive in Path.
             if (Map[0].equalsIgnoreCase(DrivePath[0])) {
-                Log.getInstance().write(Log.LOGLEVEL_TRACE, "ComskipManager remapDrive: Found Drive match. Remapping " + DrivePath[0] + "->"+ Map[1] + DrivePath[1]);
+                Log.getInstance().write(Log.LOGLEVEL_TRACE, "ComskipManager.remapDrive: Found Drive match. Remapping " + DrivePath[0] + "->"+ Map[1] + DrivePath[1]);
                 return Map[1] + DrivePath[1];
             }
         }
@@ -212,7 +162,7 @@ public class ComskipManager {
 
         ComskipJob job = ComskipJob.StartComskipJob();
         if (job==null) {
-            Log.getInstance().write(Log.LOGLEVEL_ERROR, "ComskipManager: Error-null job.");
+            Log.getInstance().write(Log.LOGLEVEL_ERROR, "ComskipManager.jobStart: Error-null job.");
             return false;
         }
 
@@ -223,13 +173,13 @@ public class ComskipManager {
 
     // The ComskipJob calls this when completed. Check to see if another job can, and needs to be, started.
     public synchronized void jobComplete(ComskipJob Job, boolean success) {
-        Log.getInstance().write(Log.LOGLEVEL_TRACE, "ComskipManager jobStart: job has completed with status " + success);
+        Log.getInstance().write(Log.LOGLEVEL_TRACE, "ComskipManager.jobComplete: Job has completed with status " + success);
         CurrentJobs.remove(Job);
 
         if (!startFirstInQueue()) {
-            Log.getInstance().write(Log.LOGLEVEL_TRACE, "ComskipManager jobStart: Did not start next job.");
+            Log.getInstance().write(Log.LOGLEVEL_TRACE, "ComskipManager.jobComplete: Did not start next job.");
         } else {
-            Log.getInstance().write(Log.LOGLEVEL_TRACE, "ComskipManager jobStart: Successfully started next job.");
+            Log.getInstance().write(Log.LOGLEVEL_TRACE, "ComskipManager.jobComplete: Successfully started next job.");
         }
 
         return;
@@ -248,12 +198,12 @@ public class ComskipManager {
 
         // Check if there are any jobs in the queue.
         if (getQueueSize(false)==0) {
-            Log.getInstance().write(Log.LOGLEVEL_TRACE, "ComskipManager startFirstInQueue: No jobs queued.");
+            Log.getInstance().write(Log.LOGLEVEL_TRACE, "ComskipManager.startFirstInQueue: No jobs queued.");
             return false;
         }
 
         if (ComskipManager.getInstance().inRestrictedTime()) {
-            Log.getInstance().write(Log.LOGLEVEL_TRACE, "ComskipManager startFirstInQueue: Time is restricted.");
+            Log.getInstance().write(Log.LOGLEVEL_TRACE, "ComskipManager.startFirstInQueue: Time is restricted.");
             return false;
         }
 
@@ -261,11 +211,11 @@ public class ComskipManager {
         int MaxJobs = SageUtil.GetIntProperty("cd/max_jobs", 1);
 
         if (getNumberRunning()>=MaxJobs) {
-            Log.getInstance().write(Log.LOGLEVEL_TRACE, "ComskipManager startFirstInQueue: Above MaxJobs threshhold.");
+            Log.getInstance().write(Log.LOGLEVEL_TRACE, "ComskipManager.startFirstInQueue: Above MaxJobs threshhold.");
             return false;
         }
 
-        Log.getInstance().write(Log.LOGLEVEL_TRACE, "ComskipManager startFirstInQueue: Below MaxJobs threshhold.");
+        Log.getInstance().write(Log.LOGLEVEL_TRACE, "ComskipManager.startFirstInQueue: Below MaxJobs threshhold.");
 
         // Look through the queue to see if any can be started in the time we have available. It is
         // possible that the Queue will be modified while this method is being run so make sure nothing
@@ -276,7 +226,7 @@ public class ComskipManager {
 
         for (Integer i=0; i<QueueSize; i++) {
 
-            Log.getInstance().write(Log.LOGLEVEL_TRACE, "ComskipManager startFirstInQueue: Checking job " + i.toString());
+            Log.getInstance().write(Log.LOGLEVEL_TRACE, "ComskipManager.startFirstInQueue: Checking job " + i.toString());
 
             // Check if there is enough time to complete the next job.
             QueuedJob Job = peekNextJob();
@@ -284,7 +234,7 @@ public class ComskipManager {
             // Job can be null due to an error, or the Queue shrunk while this method is running, or
             // we removed a job because the MediaFile was null (next check.)
             if (Job==null) {
-                Log.getInstance().write(Log.LOGLEVEL_TRACE, "ComskipManager startFirstInQueue: null QueuedJob.");
+                Log.getInstance().write(Log.LOGLEVEL_TRACE, "ComskipManager.startFirstInQueue: null QueuedJob.");
                 continue;
             }
 
@@ -294,30 +244,30 @@ public class ComskipManager {
             // recording after it was queued to get processed.  Handle this situation by removing the job from
             // the queue and processing the next file.
             if (MediaFile==null) {
-                Log.getInstance().write(Log.LOGLEVEL_TRACE, "ComskipManager startFirstInQueue: null MediaFile. Removing job from the queue.");
+                Log.getInstance().write(Log.LOGLEVEL_TRACE, "ComskipManager.startFirstInQueue: null MediaFile. Removing job from the queue.");
                 getNextJob();
                 QueueSize -= 1;
                 continue;
             }
 
             if (isEnoughTime(MediaFile)) {
-                Log.getInstance().write(Log.LOGLEVEL_TRACE, "ComskipManager startFirstInQueue: Enough time to process job " + i.toString());
+                Log.getInstance().write(Log.LOGLEVEL_TRACE, "ComskipManager.startFirstInQueue: Enough time to process job " + i.toString());
                 jobStart();
                 return true;
             }
 
-            Log.getInstance().write(Log.LOGLEVEL_TRACE, "ComskipManager startFirstInQueue: Not enough time to process this job. Cycling Queue.");
+            Log.getInstance().write(Log.LOGLEVEL_TRACE, "ComskipManager.startFirstInQueue: Not enough time to process this job. Cycling Queue.");
             
             if (!cycleQueue()) {
-                Log.getInstance().write(Log.LOGLEVEL_ERROR, "ComskipManager startFirstInQueue: cycleQueue failed.");   
+                Log.getInstance().write(Log.LOGLEVEL_ERROR, "ComskipManager.startFirstInQueue: cycleQueue failed.");
             }
         }
 
         // Could not find any jobs to process.
-        Log.getInstance().write(Log.LOGLEVEL_TRACE, "ComskipManager startFirstInQueue: Not enough time to process any jobs.");
+        Log.getInstance().write(Log.LOGLEVEL_TRACE, "ComskipManager.startFirstInQueue: Not enough time to process any jobs.");
 
         if (QueueSize != getQueueSize(false)) {
-            Log.getInstance().write(Log.LOGLEVEL_WARN, "ComskipManager startFirstInQueue: Queue size changed while method was running.");
+            Log.getInstance().write(Log.LOGLEVEL_WARN, "ComskipManager.startFirstInQueue: Queue size changed while method was running.");
         }
         
         return false;
@@ -329,9 +279,9 @@ public class ComskipManager {
      * @return true if success, false otherwise.
      */
     public synchronized boolean startMaxJobs() {
-        Log.getInstance().write(Log.LOGLEVEL_TRACE, "ComskipManager startMaxJobs: Restarting queued jobs.");
+        Log.getInstance().write(Log.LOGLEVEL_TRACE, "ComskipManager.startMaxJobs: Restarting queued jobs.");
         while (startFirstInQueue()) {
-            Log.getInstance().write(Log.LOGLEVEL_TRACE, "ComskipManager startMaxJobs: Started Job.");
+            Log.getInstance().write(Log.LOGLEVEL_TRACE, "ComskipManager.startMaxJobs: Started Job.");
             SystemStatus.getInstance().printSystemStatus();
         }
         return true;
@@ -339,7 +289,7 @@ public class ComskipManager {
 
     // Stop any jobs that are running.
     public boolean stopAll() {
-        Log.getInstance().write(Log.LOGLEVEL_TRACE, "ComskipManager stopAll: Stopping all queued jobs.");
+        Log.getInstance().write(Log.LOGLEVEL_TRACE, "ComskipManager.stopAll: Stopping all queued jobs.");
 
         // Get a copy of the CurrentJobs to avoid a concurrent modification error that would be caused when
         // job.stop() is invoked.
@@ -353,7 +303,7 @@ public class ComskipManager {
     }
 
     public synchronized boolean clearQueue() {
-        Log.getInstance().write(Log.LOGLEVEL_TRACE, "ComskipManager clearQueue: Clearing all queued jobs.");
+        Log.getInstance().write(Log.LOGLEVEL_TRACE, "ComskipManager.clearQueue: Clearing all queued jobs.");
 
         List<QueuedJob> NewJobList = new ArrayList<QueuedJob>();
 
@@ -376,10 +326,10 @@ public class ComskipManager {
         File file = new File(QUEUE);
         if (!file.exists()) {
             try {
-                Log.getInstance().write(Log.LOGLEVEL_ERROR, "ComskipManager readQueuedJobs: DB file does not exist, creating it.");
+                Log.getInstance().write(Log.LOGLEVEL_ERROR, "ComskipManager.readQueuedJobs: DB file does not exist, creating it.");
                 file.createNewFile();
             } catch (Exception e) {
-                Log.getInstance().write(Log.LOGLEVEL_ERROR, "ComskipManager readQueuedJobs: Error creating new DB file.");
+                Log.getInstance().write(Log.LOGLEVEL_ERROR, "ComskipManager.readQueuedJobs: Error creating new DB file.");
                 return jobs;
             }
         }
@@ -396,7 +346,7 @@ public class ComskipManager {
             try {
                 objectStream = new ObjectInputStream(fileStream);
             } catch (EOFException eof) {
-                Log.getInstance().write(Log.LOGLEVEL_ALL, "ComskipManager readQueuedJobs: No jobs to read. " + eof.getMessage());
+                Log.getInstance().write(Log.LOGLEVEL_ALL, "ComskipManager.readQueuedJobs: No jobs to read. " + eof.getMessage());
                 inputStreamClose(objectStream, fileStream);
                 return jobs;
             }
@@ -410,11 +360,11 @@ public class ComskipManager {
                 }
             } catch(EOFException eof) {
                 // Good, we read all of the objects.
-                Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "ComskipManager readQueuedJobs: complete. " + eof.getMessage());
+                Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "ComskipManager.readQueuedJobs: complete. " + eof.getMessage());
                 inputStreamClose(objectStream, fileStream);
             } catch (InvalidClassException ic) {
                 // If we have an invalid class just delete the DB and return an empty List.
-                Log.getInstance().write(Log.LOGLEVEL_WARN, "ComskipManager readQueuedJobs: Objects in DB are invalid. " + ic.getMessage());
+                Log.getInstance().write(Log.LOGLEVEL_WARN, "ComskipManager.readQueuedJobs: Objects in DB are invalid. " + ic.getMessage());
                 inputStreamClose(objectStream, fileStream);
                 file.delete();
                 return jobs;
@@ -422,10 +372,10 @@ public class ComskipManager {
 
             // Close the stream.
             inputStreamClose(objectStream, fileStream);
-            Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "ComskipManager readQueuedJobs: found " + jobs.size());
+            Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "ComskipManager.readQueuedJobs: found " + jobs.size());
 
         } catch (Exception e) {
-            Log.getInstance().write(Log.LOGLEVEL_ERROR, "ComskipManager readQueuedJobs: Exception. " + e.getMessage());
+            Log.getInstance().write(Log.LOGLEVEL_ERROR, "ComskipManager.readQueuedJobs: Exception. " + e.getMessage());
             e.printStackTrace();
             inputStreamClose(objectStream, fileStream);
         }
@@ -448,7 +398,7 @@ public class ComskipManager {
         try {
             file.createNewFile();
         } catch (Exception e) {
-            Log.getInstance().write(Log.LOGLEVEL_ERROR, "ComskipManager writeQueuedJobs: Error creating new DB file. " + e.getMessage());
+            Log.getInstance().write(Log.LOGLEVEL_ERROR, "ComskipManager.writeQueuedJobs: Error creating new DB file. " + e.getMessage());
             return false;
         }
 
@@ -464,7 +414,7 @@ public class ComskipManager {
             outputStreamClose(objectStream, fileStream);
 
         } catch (Exception e) {
-            Log.getInstance().write(Log.LOGLEVEL_ERROR, "ComskipManager writeQueuedJobs: Exception. " + e.getMessage());
+            Log.getInstance().write(Log.LOGLEVEL_ERROR, "ComskipManager.writeQueuedJobs: Exception. " + e.getMessage());
             e.printStackTrace();
             return false;
         }
@@ -476,7 +426,7 @@ public class ComskipManager {
 
         List<QueuedJob> Jobs = readQueuedJobs();
         if (Jobs==null) {
-            Log.getInstance().write(Log.LOGLEVEL_ERROR, "ComskipManager addToQueue: Error adding job.");
+            Log.getInstance().write(Log.LOGLEVEL_ERROR, "ComskipManager.addToQueue: Error adding job.");
             return false;
         }
 
@@ -490,19 +440,19 @@ public class ComskipManager {
 
         List<QueuedJob> Jobs = readQueuedJobs();
         if (Jobs==null) {
-            Log.getInstance().write(Log.LOGLEVEL_ERROR, "ComskipManager getNextJob: Error getting next job.");
+            Log.getInstance().write(Log.LOGLEVEL_ERROR, "ComskipManager.getNextJob: Error getting next job.");
             return null;
         }
 
         if (Jobs.isEmpty()) {
-            Log.getInstance().write(Log.LOGLEVEL_TRACE, "ComskipManager getNextJob: No more jobs.");
+            Log.getInstance().write(Log.LOGLEVEL_TRACE, "ComskipManager.getNextJob: No more jobs.");
             return null;
         }
 
         QueuedJob Job = Jobs.remove(0);
 
         if (!writeQueuedJobs(Jobs)) {
-            Log.getInstance().write(Log.LOGLEVEL_ERROR, "ComskipManager getNextJob: Error writing jobs.");
+            Log.getInstance().write(Log.LOGLEVEL_ERROR, "ComskipManager.getNextJob: Error writing jobs.");
         }
 
         return Job;
@@ -513,12 +463,12 @@ public class ComskipManager {
 
         List<QueuedJob> Jobs = readQueuedJobs();
         if (Jobs==null) {
-            Log.getInstance().write(Log.LOGLEVEL_ERROR, "ComskipManager peekNextJob: Error getting next job.");
+            Log.getInstance().write(Log.LOGLEVEL_ERROR, "ComskipManager.peekNextJob: Error getting next job.");
             return null;
         }
 
         if (Jobs.isEmpty()) {
-            Log.getInstance().write(Log.LOGLEVEL_TRACE, "ComskipManager peekNextJob: No more jobs.");
+            Log.getInstance().write(Log.LOGLEVEL_TRACE, "ComskipManager.peekNextJob: No more jobs.");
             return null;
         }
 
@@ -534,12 +484,12 @@ public class ComskipManager {
     public synchronized boolean moveToFrontOfQueue(int ID) {
         List<QueuedJob> Jobs = readQueuedJobs();
         if (Jobs==null) {
-            Log.getInstance().write(Log.LOGLEVEL_ERROR, "ComskipManager moveToFrontOfQueue: Error reading queue.");
+            Log.getInstance().write(Log.LOGLEVEL_ERROR, "ComskipManager.moveToFrontOfQueue: Error reading queue.");
             return false;
         }
 
         if (Jobs.isEmpty()) {
-            Log.getInstance().write(Log.LOGLEVEL_ERROR, "ComskipManager moveToFrontOfQueue: No jobs.");
+            Log.getInstance().write(Log.LOGLEVEL_ERROR, "ComskipManager.moveToFrontOfQueue: No jobs.");
             return false;
         }
 
@@ -552,13 +502,13 @@ public class ComskipManager {
                 if (FoundJob==null) {
                     FoundJob = Job;
                 } else {
-                    Log.getInstance().write(Log.LOGLEVEL_ERROR, "ComskipManager moveToFrontOfQueue: Found duplicate.");
+                    Log.getInstance().write(Log.LOGLEVEL_ERROR, "ComskipManager.moveToFrontOfQueue: Found duplicate.");
                 }
             }
         }
 
         if (FoundJob==null) {
-            Log.getInstance().write(Log.LOGLEVEL_ERROR, "ComskipManager moveToFrontOfQueue: Did not find ID " + ID);
+            Log.getInstance().write(Log.LOGLEVEL_ERROR, "ComskipManager.moveToFrontOfQueue: Did not find ID " + ID);
             return false;
         }
         
@@ -578,17 +528,17 @@ public class ComskipManager {
     private synchronized boolean cycleQueue() {
         List<QueuedJob> Jobs = readQueuedJobs();
         if (Jobs==null) {
-            Log.getInstance().write(Log.LOGLEVEL_ERROR, "ComskipManager cycleQueue: Error reading queue.");
+            Log.getInstance().write(Log.LOGLEVEL_ERROR, "ComskipManager.cycleQueue: Error reading queue.");
             return false;
         }
 
         if (Jobs.isEmpty()) {
-            Log.getInstance().write(Log.LOGLEVEL_ERROR, "ComskipManager cycleQueue: No jobs.");
+            Log.getInstance().write(Log.LOGLEVEL_TRACE, "ComskipManager.cycleQueue: No jobs.");
             return false;
         }
         
         if (Jobs.size()==1) {
-            Log.getInstance().write(Log.LOGLEVEL_ERROR, "ComskipManager cycleQueue: Only one job.");
+            Log.getInstance().write(Log.LOGLEVEL_TRACE, "ComskipManager.cycleQueue: Only one job.");
             return false;
         }        
         
@@ -602,7 +552,7 @@ public class ComskipManager {
             if (ois!=null) ois.close();
             if (fis!=null) fis.close();
         } catch (IOException e) {
-            Log.getInstance().write(Log.LOGLEVEL_ERROR, "ComskipManager inputStreamClose: IOException " + e.getMessage());
+            Log.getInstance().write(Log.LOGLEVEL_ERROR, "ComskipManager.inputStreamClose: IOException " + e.getMessage());
         }
     }
 
@@ -611,7 +561,7 @@ public class ComskipManager {
             if (ois!=null) ois.close();
             if (fis!=null) fis.close();
         } catch (IOException e) {
-            Log.getInstance().write(Log.LOGLEVEL_ERROR, "ComskipManager outputStreamClose: IOException " + e.getMessage());
+            Log.getInstance().write(Log.LOGLEVEL_ERROR, "ComskipManager.outputStreamClose: IOException " + e.getMessage());
         }
     }
     
@@ -641,170 +591,38 @@ public class ComskipManager {
         List<String> FileNames = Job.getFileName();
 
         if (FileNames==null || FileNames.isEmpty()) {
-            Log.getInstance().write(Log.LOGLEVEL_ERROR, "ComskipManager getFileNameForJob: null or empty FileNames.");
+            Log.getInstance().write(Log.LOGLEVEL_ERROR, "ComskipManager.getFileNameForJob: null or empty FileNames.");
             return "<Unknown>";
         }
 
         File F = new File(FileNames.get(0));
         if (F==null) {
-            Log.getInstance().write(Log.LOGLEVEL_ERROR, "ComskipManager getFileNameForJob: null File for " + FileNames.get(0));
+            Log.getInstance().write(Log.LOGLEVEL_ERROR, "ComskipManager.getFileNameForJob: null File for " + FileNames.get(0));
             return "<Unknown>";
         }
 
         Object MediaFile = MediaFileAPI.GetMediaFileForFilePath(F);
         if (MediaFile==null) {
-            Log.getInstance().write(Log.LOGLEVEL_ERROR, "ComskipManager getFileNameForJob: null MediaFile for " + F);
+            Log.getInstance().write(Log.LOGLEVEL_ERROR, "ComskipManager.getFileNameForJob: null MediaFile for " + F);
             return "<Unknown>";
         }
 
         String Name = MediaFileAPI.GetMediaTitle(MediaFile);
         if (Name==null) {
-            Log.getInstance().write(Log.LOGLEVEL_ERROR, "ComskipManager getFileNameForJob: null MediaTitle.");
+            Log.getInstance().write(Log.LOGLEVEL_ERROR, "ComskipManager.getFileNameForJob: null MediaTitle.");
             return "<Unknown>";
         }
 
         return Name;
     }
 
-    public boolean OLDcleanup(Object MediaFile) {
-
-        // Get the string of comma delimited video file extensions.
-        String VideoExt = Configuration.GetServerProperty(plugin.PROPERTY_VIDEO_FILE_EXTENSIONS, plugin.PROPERTY_DEFAULT_VIDEO_FILE_EXTENSIONS);
-
-        if (VideoExt==null || VideoExt.isEmpty()) {
-            Log.getInstance().write(Log.LOGLEVEL_TRACE, "ComskipManager cleanup: No video extensions specified. Assuming defaults.");
-            VideoExt = plugin.PROPERTY_DEFAULT_VIDEO_FILE_EXTENSIONS;
-        }
-
-        // Split them up.
-        String[] VideoExtensions = VideoExt.split(",");
-
-        if (VideoExt==null || VideoExt.isEmpty()) {
-            Log.getInstance().write(Log.LOGLEVEL_TRACE, "ComskipManager cleanup: Malformed video extension. Assuming defaults " + VideoExt);
-            VideoExtensions = new String[] {"mpg", "mp4", "avi", "ts", "mkv", "m4v"};
-        }
-
-        // Get the string of comma delimited cleanup extensions.
-        String CleanupExt = Configuration.GetServerProperty(plugin.PROPERTY_CLEANUP_EXTENSIONS, plugin.PROPERTY_DEFAULT_CLEANUP_EXTENSIONS);
-
-        if (CleanupExt==null || CleanupExt.isEmpty()) {
-            Log.getInstance().write(Log.LOGLEVEL_TRACE, "ComskipManager cleanup: No extensions to cleanup.");
-            return true;
-        }
-
-        // Split them up.
-        String[] Extensions = CleanupExt.split(",");
-
-        if (CleanupExt==null || Extensions.length==0) {
-            Log.getInstance().write(Log.LOGLEVEL_ERROR, "ComskipManager cleanup: Invalid cleanup extension string " + CleanupExt);
-            return false;
-        }
-
-        // Get the directory that the file is in.
-        File Parent = MediaFileAPI.GetParentDirectory(MediaFile);
-        if (Parent==null) {
-            Log.getInstance().write(Log.LOGLEVEL_ERROR, "ComskipManager cleanup: null Parent.");
-            return false;
-        }
-
-        // Convert the directory into a String.
-        String Path = Parent.getAbsolutePath();
-        if (Path==null) {
-            Log.getInstance().write(Log.LOGLEVEL_ERROR, "ComskipManager cleanup: null Path.");
-            return false;
-        }
-
-        // Check if we need to remap drives to UNC paths.
-        String UNCMap = Configuration.GetProperty(plugin.PROPERTY_DRIVE_MAP, plugin.PROPERTY_DEFAULT_DRIVE_MAP);
-        if (!(UNCMap==null || UNCMap.isEmpty())) {
-            Log.getInstance().write(Log.LOGLEVEL_TRACE, "ComskipManager cleanup: Found UNC mappings " + UNCMap);
-            Path = remapDrive(Path, UNCMap);
-        }
-
-        // See how many files make up this MediaFile. Sage will always return 1, even if the deleted MediaFile
-        // had multiple segments, so we need to do a manual search for files ending in -XXX.
-
-        int NumberOfSegments = MediaFileAPI.GetNumberOfSegments(MediaFile);
-        Log.getInstance().write(Log.LOGLEVEL_TRACE, "ComskipManager cleanup: Segments for MediaFile " + NumberOfSegments);
-
-        // Cleanup all of the files for all of the segments.
-        for (int Segment=0; Segment<NumberOfSegments; Segment++) {
-
-            // Get the FileName.
-            File FileName = MediaFileAPI.GetFileForSegment(MediaFile, Segment);
-
-            if (FileName==null) {
-                Log.getInstance().write(Log.LOGLEVEL_ERROR, "ComskipManager cleanup: null FileName.");
-                return false;
-            }
-
-            String FullName = CreateFullPath(Path, FileName.getName());
-
-            String[] NameExt = FullName.split("\\.");
-
-            String MediaFileExt = null;
-
-            if (NameExt.length == 2) {
-                // Most common case: "filename.ext"
-                MediaFileExt = NameExt[1];
-            } else {
-                MediaFileExt = FullName.substring(FullName.lastIndexOf(".")+1);
-            }
-
-            String FileNameToDelete = null;
-
-            for (String Extension : Extensions) {
-
-                if (NameExt.length==2) {
-
-                    // Most common case: "filename.ext"
-                    FileNameToDelete = NameExt[0] + "." + Extension;
-
-                } else if (NameExt.length>=2) {
-
-                    // Name has multiple "." in it: "filename.x.y.ext"
-                    FileNameToDelete = NameExt[0] + ".";
-                    for (int i=1; i<(NameExt.length); i++) {
-                        FileNameToDelete = FileNameToDelete + NameExt[i] + ".";
-                    }
-                    FileNameToDelete = FileNameToDelete + Extension;
-                } else {
-
-                    // Something bad happened.
-                    Log.getInstance().write(Log.LOGLEVEL_ERROR, "ComskipManager cleanup: Malformed FullName " + FullName);
-                    FileNameToDelete = "ERROR.ERROR";
-                }
-
-                if (hasAnyVideoFiles(FileNameToDelete, VideoExtensions, MediaFileExt)) {
-                    Log.getInstance().write(Log.LOGLEVEL_TRACE, "ComskipManager cleanup: MediaFile still has corresponding video file.");
-                    return true;
-                }
-
-                Log.getInstance().write(Log.LOGLEVEL_TRACE, "ComskipManager cleanup: Attempting to delete " + FileNameToDelete);
-
-                File FileToDelete = new File(FileNameToDelete);
-                if (FileToDelete==null) {
-                    Log.getInstance().write(Log.LOGLEVEL_ERROR, "ComskipManager cleanup: null FileToDelete.");
-                } else {
-                    if (FileToDelete.delete()) {
-                        Log.getInstance().write(Log.LOGLEVEL_TRACE, "ComskipManager cleanup: File deleted.");
-                    } else {
-                        Log.getInstance().write(Log.LOGLEVEL_TRACE, "ComskipManager: File was not deleted.");
-                    }
-                }
-            }
-        }
-
-        return true;
-    }
-
     private boolean hasAnyVideoFiles(String FileName, String[] VideoExtensions, String MediaFileExt) {
-        Log.getInstance().write(Log.LOGLEVEL_TRACE, "ComskipManager hasAnyVideoFiles: Looking for video file for " + FileName + ":" + MediaFileExt);
+        Log.getInstance().write(Log.LOGLEVEL_TRACE, "ComskipManager.hasAnyVideoFiles: Looking for video file for " + FileName + ":" + MediaFileExt);
 
         int dotPos = FileName.lastIndexOf(".");
 
         if (dotPos<0) {
-            Log.getInstance().write(Log.LOGLEVEL_ERROR, "ComskipManager hasAnyVideoFiles: Failed to find extension." + FileName);
+            Log.getInstance().write(Log.LOGLEVEL_ERROR, "ComskipManager.hasAnyVideoFiles: Failed to find extension." + FileName);
             return false;
         }
 
@@ -815,14 +633,14 @@ public class ComskipManager {
         for (String Extension : VideoExtensions) {
 
             if (Extension.equalsIgnoreCase(MediaFileExt)) {
-                Log.getInstance().write(Log.LOGLEVEL_TRACE, "ComskipManager hasAnyVideoFiles: Skipping deleted file extension " + MediaFileExt);
+                Log.getInstance().write(Log.LOGLEVEL_TRACE, "ComskipManager.hasAnyVideoFiles: Skipping deleted file extension " + MediaFileExt);
             } else {
                 File FileToTry = new File(BaseFileName+Extension);
 
-                Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "ComskipManager hasAnyVideoFiles: Looking for " + BaseFileName+Extension);
+                Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "ComskipManager.hasAnyVideoFiles: Looking for " + BaseFileName+Extension);
 
                 if (FileToTry==null) {
-                    Log.getInstance().write(Log.LOGLEVEL_ERROR, "ComskipManager hasAnyVideoFiles: null FileToTry.");
+                    Log.getInstance().write(Log.LOGLEVEL_ERROR, "ComskipManager.hasAnyVideoFiles: null FileToTry.");
                 } else {
                     if (FileToTry.exists()) {
                         return true;
@@ -846,10 +664,10 @@ public class ComskipManager {
 
     public void runTestCommand(String envString, String commandString) {
 
-        Log.getInstance().write(Log.LOGLEVEL_TRACE, "ComskipManager runTestCommand: " + envString + ":" + commandString);
+        Log.getInstance().write(Log.LOGLEVEL_TRACE, "ComskipManager.runTestCommand: " + envString + ":" + commandString);
 
         if (commandString==null || commandString.isEmpty()) {
-            Log.getInstance().write(Log.LOGLEVEL_ERROR, "ComskipManager runTestCommand: null commandSrting");
+            Log.getInstance().write(Log.LOGLEVEL_ERROR, "ComskipManager.runTestCommand: null commandSrting");
             return;
         }
 
@@ -857,7 +675,7 @@ public class ComskipManager {
         if (!(envString==null || envString.isEmpty())) {
             envArray = envString.split(",");
             if (envArray==null || envArray.length==0) {
-                Log.getInstance().write(Log.LOGLEVEL_ERROR, "ComskipManager runTestCommand: Bad environemnt string.  Must contain at least one comma.");
+                Log.getInstance().write(Log.LOGLEVEL_ERROR, "ComskipManager.runTestCommand: Bad environemnt string.  Must contain at least one comma.");
                 return;
             }
         }
@@ -870,7 +688,7 @@ public class ComskipManager {
 
         Process process = null;
         try {process = Runtime.getRuntime().exec(Command, env); } catch (IOException e) {
-            Log.getInstance().write(Log.LOGLEVEL_ERROR, "ComskipManager executeCommands: Exception " + e.getMessage());
+            Log.getInstance().write(Log.LOGLEVEL_ERROR, "ComskipManager.executeCommands: Exception " + e.getMessage());
         }
 
         StreamGetter ErrorStream = new StreamGetter(process.getErrorStream(),"ERROR");
@@ -880,15 +698,15 @@ public class ComskipManager {
 
         int status = 0;
         try {status=process.waitFor(); } catch (InterruptedException e) {
-            Log.getInstance().write(Log.LOGLEVEL_WARN, "ComskipManager executeCommands: comskip.exe was interrupted " + e.getMessage());
+            Log.getInstance().write(Log.LOGLEVEL_WARN, "ComskipManager.executeCommands: comskip.exe was interrupted " + e.getMessage());
         }
-        Log.getInstance().write(Log.LOGLEVEL_TRACE, "ComskipManager executeCommands: Return code = " + status);
+        Log.getInstance().write(Log.LOGLEVEL_TRACE, "ComskipManager.executeCommands: Return code = " + status);
     }
 
     public void executeCommandLine(String CommandLine, String[] env) {
         Process process = null;
         try {process = Runtime.getRuntime().exec(CommandLine, env); } catch (IOException e) {
-            Log.getInstance().write(Log.LOGLEVEL_ERROR, "ComskipManager executeCommandLine: Exception " + e.getMessage());
+            Log.getInstance().write(Log.LOGLEVEL_ERROR, "ComskipManager.executeCommandLine: Exception " + e.getMessage());
         }
 
         StreamGetter ErrorStream = new StreamGetter(process.getErrorStream(),"ERROR");
@@ -898,23 +716,23 @@ public class ComskipManager {
 
         int status = 0;
         try {status=process.waitFor(); } catch (InterruptedException e) {
-            Log.getInstance().write(Log.LOGLEVEL_WARN, "ComskipManager executeCommandLine: comskip.exe was interrupted " + e.getMessage());
+            Log.getInstance().write(Log.LOGLEVEL_WARN, "ComskipManager.executeCommandLine: comskip.exe was interrupted " + e.getMessage());
         }
-        Log.getInstance().write(Log.LOGLEVEL_TRACE, "ComskipManager executeCommandLine: Return code = " + status);
+        Log.getInstance().write(Log.LOGLEVEL_TRACE, "ComskipManager.executeCommandLine: Return code = " + status);
     }
 
     public Integer[] getIDsForRunningJobs() {
 
         if (CurrentJobs==null || CurrentJobs.isEmpty()) {
-            Log.getInstance().write(Log.LOGLEVEL_TRACE, "ComskipManager getIDsForRunningJobs: No jobs running");
+            Log.getInstance().write(Log.LOGLEVEL_TRACE, "ComskipManager.getIDsForRunningJobs: No jobs running");
             return null;
         }
 
-        Log.getInstance().write(Log.LOGLEVEL_TRACE, "ComskipManager getIDsForRunningJobs: Found running jobs " + CurrentJobs.size());
+        Log.getInstance().write(Log.LOGLEVEL_TRACE, "ComskipManager.getIDsForRunningJobs: Found running jobs " + CurrentJobs.size());
 
         List<Integer> IDList = new ArrayList<Integer>();
         for (ComskipJob J : CurrentJobs) {
-            Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "ComskipManager getIDsForRunningJobs: Adding ID = " + J.getMediaFileID());
+            Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "ComskipManager.getIDsForRunningJobs: Adding ID = " + J.getMediaFileID());
             IDList.add(J.getMediaFileID());
         }
         return (Integer[])IDList.toArray(new Integer[IDList.size()]);
@@ -924,7 +742,7 @@ public class ComskipManager {
 
         List<QueuedJob> Jobs = readQueuedJobs();
         if (Jobs==null || Jobs.isEmpty()) {
-            Log.getInstance().write(Log.LOGLEVEL_TRACE, "ComskipManager getIDsForQueuedJobs: No queued jobs.");
+            Log.getInstance().write(Log.LOGLEVEL_TRACE, "ComskipManager.getIDsForQueuedJobs: No queued jobs.");
             return null;
         }
 
@@ -943,7 +761,7 @@ public class ComskipManager {
         // Get MediaFiles according to the mask.
         Object[] MediaFiles = MediaFileAPI.GetMediaFiles(MediaMask);
         if (MediaFiles==null || MediaFiles.length==0) {
-            Log.getInstance().write(Log.LOGLEVEL_WARN, "ComskipManager getMediaFilesWithout: No MediaFiles.");
+            Log.getInstance().write(Log.LOGLEVEL_WARN, "ComskipManager.getMediaFilesWithout: No MediaFiles.");
             return MediaFilesWithout;
         }
 
@@ -953,14 +771,14 @@ public class ComskipManager {
             // See how many segments (files) are in the MediaFile.
             File[] Files = MediaFileAPI.GetSegmentFiles(MediaFile);
             if (Files==null || Files.length==0) {
-                Log.getInstance().write(Log.LOGLEVEL_WARN, "ComskipManager getMediaFilesWithout: No Files.");
+                Log.getInstance().write(Log.LOGLEVEL_WARN, "ComskipManager.getMediaFilesWithout: No Files.");
             } else {
 
                 // If any of the files do not have an .edl or .txt consider it unprocessed.
                 for (File F : Files) {
                     String FileName = F.getAbsolutePath();
                     if (F==null) {
-                        Log.getInstance().write(Log.LOGLEVEL_WARN, "ComskipManager getMediaFilesWithout: No Files.");
+                        Log.getInstance().write(Log.LOGLEVEL_WARN, "ComskipManager.getMediaFilesWithout: No Files.");
                     } else {
 
                         // If this file does not have an .edl or .txt AND it's not already in the list, add it.
@@ -978,12 +796,12 @@ public class ComskipManager {
     }
 
     public int countAllOrphans() {
-        Log.getInstance().write(Log.LOGLEVEL_TRACE, "ComskipManager countAllOrphans: Counting all orphaned files.");
+        Log.getInstance().write(Log.LOGLEVEL_TRACE, "ComskipManager.countAllOrphans: Counting all orphaned files.");
 
         List<File> OrphanedFiles = getOrphanedFiles();
 
         if (OrphanedFiles == null || OrphanedFiles.isEmpty()) {
-            Log.getInstance().write(Log.LOGLEVEL_TRACE, "ComskipManager countAllOrphans: Nothing to count.");
+            Log.getInstance().write(Log.LOGLEVEL_TRACE, "ComskipManager.countAllOrphans: Nothing to count.");
             return 0;
         } else {
             return OrphanedFiles.size();
@@ -991,20 +809,20 @@ public class ComskipManager {
     }
 
     public void deleteAllOrphans() {
-        Log.getInstance().write(Log.LOGLEVEL_TRACE, "ComskipManager deleteAllOrphans: Deleting all orphaned files.");
+        Log.getInstance().write(Log.LOGLEVEL_TRACE, "ComskipManager.deleteAllOrphans: Deleting all orphaned files.");
 
         List<File> OrphanedFiles = getOrphanedFiles();
 
         if (OrphanedFiles == null || OrphanedFiles.isEmpty()) {
-            Log.getInstance().write(Log.LOGLEVEL_TRACE, "ComskipManager deleteAllOrphans: Nothing to delete.");
+            Log.getInstance().write(Log.LOGLEVEL_TRACE, "ComskipManager.deleteAllOrphans: Nothing to delete.");
             return;
         }
 
         for (File ThisFile : OrphanedFiles) {
             if (ThisFile.delete()) {
-                Log.getInstance().write(Log.LOGLEVEL_TRACE, "ComskipManager deleteAllOrphans: Deleted " + ThisFile.getAbsolutePath());
+                Log.getInstance().write(Log.LOGLEVEL_TRACE, "ComskipManager.deleteAllOrphans: Deleted " + ThisFile.getAbsolutePath());
             } else {
-                Log.getInstance().write(Log.LOGLEVEL_ERROR, "ComskipManager deleteAllOrphans: Failed to deleted " + ThisFile.getAbsolutePath());
+                Log.getInstance().write(Log.LOGLEVEL_ERROR, "ComskipManager.deleteAllOrphans: Failed to deleted " + ThisFile.getAbsolutePath());
             }
         }
     }
@@ -1017,25 +835,25 @@ public class ComskipManager {
         // Get all of the Sage MediaFiles.
         Object[] MediaFiles = MediaFileAPI.GetMediaFiles("VM");
         if (MediaFiles==null || MediaFiles.length==0) {
-            Log.getInstance().write(Log.LOGLEVEL_WARN, "ComskipManager getOrphanedFiles: No MediaFiles.");
+            Log.getInstance().write(Log.LOGLEVEL_WARN, "ComskipManager.getOrphanedFiles: No MediaFiles.");
             return OrphanedFiles;
         }
 
         List<Object> MediaFileList = Arrays.asList(MediaFiles);
-        Log.getInstance().write(Log.LOGLEVEL_TRACE, "ComskipManager getOrphanedFiles: Found MediaFiles " + MediaFileList.size());
+        Log.getInstance().write(Log.LOGLEVEL_TRACE, "ComskipManager.getOrphanedFiles: Found MediaFiles " + MediaFileList.size());
 
         // Get all of the extenstions that we can cleanup.
         String S = Configuration.GetServerProperty(plugin.PROPERTY_CLEANUP_EXTENSIONS, plugin.PROPERTY_DEFAULT_CLEANUP_EXTENSIONS);
 
         if (S==null || S.isEmpty()) {
-            Log.getInstance().write(Log.LOGLEVEL_WARN, "ComskipManager getOrphanedFiles: No cleanup_ext.");
+            Log.getInstance().write(Log.LOGLEVEL_WARN, "ComskipManager.getOrphanedFiles: No cleanup_ext.");
             return OrphanedFiles;
         }
 
         String[] CleanupExtensions = S.split(",");
 
         if (CleanupExtensions==null || CleanupExtensions.length==0) {
-            Log.getInstance().write(Log.LOGLEVEL_WARN, "ComskipManager getOrphanedFiles: Nothing to clean up " + S);
+            Log.getInstance().write(Log.LOGLEVEL_WARN, "ComskipManager.getOrphanedFiles: Nothing to clean up " + S);
             return OrphanedFiles;
         }
 
@@ -1046,22 +864,22 @@ public class ComskipManager {
         List<File> AllFiles = getAllFilesInAllRecordingDirectories();
 
         if (AllFiles==null || AllFiles.isEmpty()) {
-            Log.getInstance().write(Log.LOGLEVEL_WARN, "ComskipManager getOrphanedFiles: No Files in any Sage recording directory.");
+            Log.getInstance().write(Log.LOGLEVEL_WARN, "ComskipManager.getOrphanedFiles: No Files in any Sage recording directory.");
             return OrphanedFiles;
         }
 
-        Log.getInstance().write(Log.LOGLEVEL_TRACE, "ComskipManager getOrphanedFiles: Total files in recording directories " + AllFiles.size());
+        Log.getInstance().write(Log.LOGLEVEL_TRACE, "ComskipManager.getOrphanedFiles: Total files in recording directories " + AllFiles.size());
 
         // Loop through all known files to see if there is a corresponding video file.
         for (File ThisFile : AllFiles) {
 
             if (isCleanable(ThisFile, ExtensionList) && !hasMediaFile(ThisFile, MediaFileList)) {
-                Log.getInstance().write(Log.LOGLEVEL_TRACE, "ComskipManager getOrphanedFiles: Found orphan " + ThisFile.getAbsolutePath());
+                Log.getInstance().write(Log.LOGLEVEL_TRACE, "ComskipManager.getOrphanedFiles: Found orphan " + ThisFile.getAbsolutePath());
                 OrphanedFiles.add(ThisFile);
             }
         }
 
-        Log.getInstance().write(Log.LOGLEVEL_TRACE, "ComskipManager getOrphanedFiles: Total orphans " + OrphanedFiles.size());
+        Log.getInstance().write(Log.LOGLEVEL_TRACE, "ComskipManager.getOrphanedFiles: Total orphans " + OrphanedFiles.size());
 
         return OrphanedFiles;
     }
@@ -1072,13 +890,13 @@ public class ComskipManager {
         File[] AllDirectories = Configuration.GetVideoDirectories();
 
         if (AllDirectories==null || AllDirectories.length==0) {
-            Log.getInstance().write(Log.LOGLEVEL_WARN, "ComskipManager getAllFilesInAllDirectories: No recording directories configured.");
+            Log.getInstance().write(Log.LOGLEVEL_WARN, "ComskipManager.getAllFilesInAllDirectories: No recording directories configured.");
             return AllFiles;
         }
 
         for (File ThisDirectory : AllDirectories) {
             if (!ThisDirectory.isDirectory()) {
-                Log.getInstance().write(Log.LOGLEVEL_WARN, "ComskipManager getAllFilesInAllDirectories: Found non-directory " + ThisDirectory.toString());
+                Log.getInstance().write(Log.LOGLEVEL_WARN, "ComskipManager.getAllFilesInAllDirectories: Found non-directory " + ThisDirectory.toString());
                 continue;
             }
 
@@ -1089,20 +907,20 @@ public class ComskipManager {
             String[] FilesInDirectory = ThisDirectory.list();
 
             if (FilesInDirectory==null || FilesInDirectory.length==0) {
-                Log.getInstance().write(Log.LOGLEVEL_WARN, "ComskipManager getAllFilesInAllDirectories: No files in directory " + ThisDirectory.toString());
+                Log.getInstance().write(Log.LOGLEVEL_WARN, "ComskipManager.getAllFilesInAllDirectories: No files in directory " + ThisDirectory.toString());
                 continue;
             }
 
             for (String FileName : FilesInDirectory) {
                 if (FileName==null || FileName.isEmpty()) {
-                    Log.getInstance().write(Log.LOGLEVEL_WARN, "ComskipManager getAllFilesInAllDirectories: null FileName " + FileName);
+                    Log.getInstance().write(Log.LOGLEVEL_WARN, "ComskipManager.getAllFilesInAllDirectories: null FileName " + FileName);
                     continue;
                 }
 
                 File NewFile = new File(Path + File.separator + FileName);
 
                 if (NewFile==null) {
-                    Log.getInstance().write(Log.LOGLEVEL_WARN, "ComskipManager getAllFilesInAllDirectories: null NewFile.");
+                    Log.getInstance().write(Log.LOGLEVEL_WARN, "ComskipManager.getAllFilesInAllDirectories: null NewFile.");
                     continue;
                 }
 
@@ -1123,7 +941,7 @@ public class ComskipManager {
         int dotPos = ThisFileName.lastIndexOf(".");
         
         if (dotPos<0) {
-            Log.getInstance().write(Log.LOGLEVEL_ERROR, "ComskipManager hasMediaFile: Failed to find extension." + ThisFileName);
+            Log.getInstance().write(Log.LOGLEVEL_ERROR, "ComskipManager.hasMediaFile: Failed to find extension." + ThisFileName);
             return true;
         }
         
@@ -1139,7 +957,7 @@ public class ComskipManager {
                 File MF = MediaFileAPI.GetFileForSegment(MediaFile, Segment);
 
                 if (MF==null) {
-                    Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "ComskipManager hasMediaFile: null File for " + MediaFileAPI.GetMediaTitle(MediaFile));
+                    Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "ComskipManager.hasMediaFile: null File for " + MediaFileAPI.GetMediaTitle(MediaFile));
                     continue;
                 }
 
@@ -1149,7 +967,7 @@ public class ComskipManager {
                 dotPos = FileName.lastIndexOf(".");
 
                 if (dotPos<0) {
-                    Log.getInstance().write(Log.LOGLEVEL_ERROR, "ComskipManager hasMediaFile: Failed to find extension." + FileName);
+                    Log.getInstance().write(Log.LOGLEVEL_ERROR, "ComskipManager.hasMediaFile: Failed to find extension." + FileName);
                     continue;
                 }
 
@@ -1185,14 +1003,14 @@ public class ComskipManager {
         String[] Extensions = {".edl",".txt"};
 
         for (String Ext : Extensions) {
-            Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "ComskipManager hasAnEdlOrTxtFile: Looking for existing file " + BaseName+Ext);
+            Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "ComskipManager.hasAnEdlOrTxtFile: Looking for existing file " + BaseName+Ext);
             File F = new File(BaseName+Ext);
 
             if (F==null) {
-                Log.getInstance().write(Log.LOGLEVEL_WARN, "ComskipManager hasAnEdlOrTxtFile: null File " + BaseName+Ext);
+                Log.getInstance().write(Log.LOGLEVEL_WARN, "ComskipManager.hasAnEdlOrTxtFile: null File " + BaseName+Ext);
             } else {
                 if (F.exists()) {
-                    Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "ComskipManager hasAnEdlOrTxtFile: File exists " + F.getAbsolutePath());
+                    Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "ComskipManager.hasAnEdlOrTxtFile: File exists " + F.getAbsolutePath());
                     return true;
                 }
             }
@@ -1207,16 +1025,16 @@ public class ComskipManager {
     public synchronized boolean isMediaFileRunning(Object MediaFile) {
 
         if (CurrentJobs==null || CurrentJobs.isEmpty()) {
-            Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "ComskipManager isMediaFileRunning: No jobs running");
+            Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "ComskipManager.isMediaFileRunning: No jobs running");
             return false;
         }
 
         int ID = MediaFileAPI.GetMediaFileID(MediaFile);
 
-        Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "ComskipManager isMediaFileRunning: Found running jobs " + CurrentJobs.size());
+        Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "ComskipManager.isMediaFileRunning: Found running jobs " + CurrentJobs.size());
 
         for (ComskipJob J : CurrentJobs) {
-            Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "ComskipManager getIDsForRunningJobs: Adding ID = " + J.getMediaFileID());
+            Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "ComskipManager.getIDsForRunningJobs: Adding ID = " + J.getMediaFileID());
             if (ID == J.getMediaFileID()) {
                 return true;
             }
@@ -1229,51 +1047,51 @@ public class ComskipManager {
     public boolean isEnoughTime(Object MediaFile) {
 
         if (!SageUtil.GetBoolProperty(plugin.PROPERTY_USE_INTELLIGENT_SCHEDULING, plugin.PROPERTY_USE_INTELLIGENT_SCHEDULING)) {
-            Log.getInstance().write(Log.LOGLEVEL_TRACE, "ComskipManager isEnoughTime: Intelligent scheduling is disabled.");
+            Log.getInstance().write(Log.LOGLEVEL_TRACE, "ComskipManager.isEnoughTime: Intelligent scheduling is disabled.");
             return true;
         }
 
         if (MediaFile==null) {
-            Log.getInstance().write(Log.LOGLEVEL_ERROR, "ComskipManager isEnoughTime: null MediaFile.");
+            Log.getInstance().write(Log.LOGLEVEL_ERROR, "ComskipManager.isEnoughTime: null MediaFile.");
             return true;
         }
 
         // If anything is recording we can't start a job.
         Object[] Recording = Global.GetCurrentlyRecordingMediaFiles();
         if (Recording!=null && Recording.length > 0) {
-            Log.getInstance().write(Log.LOGLEVEL_TRACE, "ComskipManager isEnoughTime: Recording is in progress.");
+            Log.getInstance().write(Log.LOGLEVEL_TRACE, "ComskipManager.isEnoughTime: Recording is in progress.");
             return false;
         }
 
         // Get the total length of the MediaFile.
         long MediaFileDuration = MediaFileAPI.GetFileDuration(MediaFile);
         if (MediaFileDuration==0 || MediaFileDuration<0) {
-            Log.getInstance().write(Log.LOGLEVEL_ERROR, "ComskipManager isEnoughTime: No duration.");
+            Log.getInstance().write(Log.LOGLEVEL_ERROR, "ComskipManager.isEnoughTime: No duration.");
             return true;
         }
         
-        Log.getInstance().write(Log.LOGLEVEL_TRACE, "ComskipManager isEnoughTime: Duration for MediaFile is " + MediaFileDuration + ":" + MediaFileDuration/1000/60 + " minutes.");
+        Log.getInstance().write(Log.LOGLEVEL_TRACE, "ComskipManager.isEnoughTime: Duration for MediaFile is " + MediaFileDuration + ":" + MediaFileDuration/1000/60 + " minutes.");
 
         // Get the time ratio for the channel.
         float Ratio = getRatioForMediaFile(MediaFile);
-        Log.getInstance().write(Log.LOGLEVEL_TRACE, "ComskipManager isEnoughTime: Ratio for this MediaFile is " + Ratio);
+        Log.getInstance().write(Log.LOGLEVEL_TRACE, "ComskipManager.isEnoughTime: Ratio for this MediaFile is " + Ratio);
 
         // See how many jobs are already running.
         int JobsRunning = ComskipManager.getInstance().getNumberRunning();
-        Log.getInstance().write(Log.LOGLEVEL_TRACE, "ComskipManager isEnoughTime: Jobs currently running " + JobsRunning);
+        Log.getInstance().write(Log.LOGLEVEL_TRACE, "ComskipManager.isEnoughTime: Jobs currently running " + JobsRunning);
 
         // Adjust the Ratio given the number of jobs that are running.
         if (JobsRunning>0) {
             float RatioIncreaser = 1.0F + (1.0F - ComskipJob.PROPERTY_DEFAULT_RUNNING_IMPACT_FLOAT);
             Ratio = Ratio * RatioIncreaser;
-            Log.getInstance().write(Log.LOGLEVEL_TRACE, "ComskipManager isEnoughTime: Increasing Ratio " + RatioIncreaser + ":" + Ratio);
+            Log.getInstance().write(Log.LOGLEVEL_TRACE, "ComskipManager.isEnoughTime: Increasing Ratio " + RatioIncreaser + ":" + Ratio);
         }
 
         // Estimate how long it will take to process the file.
         float timeToProcessFileFloat = MediaFileDuration * Ratio;
         long timeToProcessFile = (long)timeToProcessFileFloat;
 
-        Log.getInstance().write(Log.LOGLEVEL_TRACE, "ComskipManager isEnoughTime: Time to process estimate is " + timeToProcessFile + ":" + timeToProcessFile/1000/60 + " minutes.");
+        Log.getInstance().write(Log.LOGLEVEL_TRACE, "ComskipManager.isEnoughTime: Time to process estimate is " + timeToProcessFile + ":" + timeToProcessFile/1000/60 + " minutes.");
 
         // Get all of the recordings that will happen between now and the time we can expect the job to finish.
         long Now = Utility.Time();
@@ -1284,14 +1102,14 @@ public class ComskipManager {
         
         // If there is nothing scheduled we have the time to run this job.
         if (Scheduled==null || Scheduled.length==0) {
-            Log.getInstance().write(Log.LOGLEVEL_TRACE, "ComskipManager isEnoughTime: Nothing scheduled to record.");
+            Log.getInstance().write(Log.LOGLEVEL_TRACE, "ComskipManager.isEnoughTime: Nothing scheduled to record.");
             return true;
         }
 
-        Log.getInstance().write(Log.LOGLEVEL_TRACE, "ComskipManager isEnoughTime: Not enough time " + Scheduled.length);
+        Log.getInstance().write(Log.LOGLEVEL_TRACE, "ComskipManager.isEnoughTime: Not enough time " + Scheduled.length);
 
         for (Object Airing : Scheduled) {
-            Log.getInstance().write(Log.LOGLEVEL_TRACE, "ComskipManager isEnoughTime: Scheduled show " + ShowAPI.GetShowTitle(Airing) + " : " + ShowAPI.GetShowEpisode(Airing));
+            Log.getInstance().write(Log.LOGLEVEL_TRACE, "ComskipManager.isEnoughTime: Scheduled show " + ShowAPI.GetShowTitle(Airing) + " : " + ShowAPI.GetShowEpisode(Airing));
         }
 
         return false;
@@ -1303,20 +1121,20 @@ public class ComskipManager {
         String Channel = AiringAPI.GetAiringChannelName(MediaFile);
 
         if (Channel==null) {
-            Log.getInstance().write(Log.LOGLEVEL_ERROR, "ComskipManager getRatioForMediaFile: null Channel.");
+            Log.getInstance().write(Log.LOGLEVEL_ERROR, "ComskipManager.getRatioForMediaFile: null Channel.");
             return plugin.RATIO_DEFAULT;
         }
 
-        Log.getInstance().write(Log.LOGLEVEL_TRACE, "ComskipManager getRatioForMediaFile: Channel is " + Channel);
+        Log.getInstance().write(Log.LOGLEVEL_TRACE, "ComskipManager.getRatioForMediaFile: Channel is " + Channel);
 
         Float Ratio = plugin.ChannelTimeRatios.get(Channel);
 
         if (Ratio==null) {
-            Log.getInstance().write(Log.LOGLEVEL_WARN, "ComskipManager getRatioForMediaFile: No ratio found " + Ratio);
+            Log.getInstance().write(Log.LOGLEVEL_WARN, "ComskipManager.getRatioForMediaFile: No ratio found " + Ratio);
             Ratio = plugin.RATIO_DEFAULT;
         }
 
-        Log.getInstance().write(Log.LOGLEVEL_TRACE, "ComskipManager getRatioForMediaFile: Ratio is " + Ratio);
+        Log.getInstance().write(Log.LOGLEVEL_TRACE, "ComskipManager.getRatioForMediaFile: Ratio is " + Ratio);
 
         return Ratio;
     }

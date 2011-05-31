@@ -18,11 +18,6 @@ import java.util.*;
  */
 public class plugin implements sage.SageTVPlugin, SageTVEventListener {
 
-    // 9X changes:
-    //  Code cleanup.
-    //  Check if any jobs can be run in time allowed rather than giving up if first could not.
-    //  Expose ClearQueue.
-    //  Expose StopAll.
     private final String                VERSION = "0.9X";
     private sage.SageTVPluginRegistry   registry;
     private sage.SageTVEventListener    listener;
@@ -46,10 +41,12 @@ public class plugin implements sage.SageTVPlugin, SageTVEventListener {
     public static final String          SETTING_VIDEO_FILE_EXTENSIONS           = "VideoExt";
     public static final String          PROPERTY_VIDEO_FILE_EXTENSIONS          = "cd/video_ext";
     public static final String          PROPERTY_DEFAULT_VIDEO_FILE_EXTENSIONS  = "mpg,mp4,avi,ts,mkv,m4v";
+    public static final String[]        ARRAY_VIDEO_EXTENSIONS                  = new String[] {"mpg", "mp4", "avi", "ts", "mkv", "m4v"};
 
     public static final String          SETTING_CLEANUP_EXTENSIONS          = "CleanupExt";
     public static final String          PROPERTY_CLEANUP_EXTENSIONS         = "cd/cleanup_ext";
-    public static final String          PROPERTY_DEFAULT_CLEANUP_EXTENSIONS = "edl,log,txt,incommercial";     // 0.80
+    public static final String          PROPERTY_DEFAULT_CLEANUP_EXTENSIONS = "edl,log,txt,incommercial";
+    public static final String[]        ARRAY_CLEANUP_EXTENSIONS            = new String[] {"edl", "log", "txt", "incommercial"};
 
     public static final String          SETTING_DELETE_ORPHANS = "DeleteOrphans";
 
@@ -72,6 +69,12 @@ public class plugin implements sage.SageTVPlugin, SageTVEventListener {
     public static final String          SETTING_RESTRICTED_TIMES            = "RestrictTimes";
     public static final String          PROPERTY_RESTRICTED_TIMES           = "cd/restricted_times";
     public static final String          PROPERTY_DEFAULT_RESTRICTED_TIMES   = null;
+
+    public static final String          SETTING_SKIP_CHANNELS   = "SkipChannels";
+    public static final String          PROPERTY_SKIP_CHANNELS  = "cd/skip_channels";
+
+    public static final String          SETTING_SKIP_CATEGORIES     = "SkipCategories";
+    public static final String          PROPERTY_SKIP_CATEGORIES    = "cd/skip_categories";
 
     /**
      * Constructor.
@@ -96,7 +99,8 @@ public class plugin implements sage.SageTVPlugin, SageTVEventListener {
             resetConfig();
     }
 
-    // This method is called when the plugin should startup
+    // This method is called when the plugin should startup.
+    @Override
     public void start() {
         System.out.println("CD: PlugIn: Starting. Version = " + VERSION);
 
@@ -118,7 +122,7 @@ public class plugin implements sage.SageTVPlugin, SageTVEventListener {
 
         // If we're running on a client we are done.
         if (Global.IsClient()) {
-            Log.getInstance().write(Log.LOGLEVEL_WARN, "PlugIn: Running in Client mode.");
+            Log.getInstance().write(Log.LOGLEVEL_WARN, "start: Running in Client mode.");
             return;
         }
 
@@ -135,20 +139,20 @@ public class plugin implements sage.SageTVPlugin, SageTVEventListener {
         // will be used.
         Object[] Channels = ChannelAPI.GetAllChannels();
         if (Channels==null || Channels.length==0) {
-            Log.getInstance().write(Log.LOGLEVEL_WARN, "PlugIn: No Channels defined.");
+            Log.getInstance().write(Log.LOGLEVEL_WARN, "start: No Channels defined.");
         } else {
             for (Object Channel : Channels) {
                 String Name = ChannelAPI.GetChannelName(Channel);
                 String Number = ChannelAPI.GetChannelNumber(Channel);
                 if (Name==null || Number==null || Name.isEmpty() || Number.isEmpty()) {
-                    Log.getInstance().write(Log.LOGLEVEL_WARN, "PlugIn: null Name or Number ");
+                    Log.getInstance().write(Log.LOGLEVEL_WARN, "start: null Name or Number ");
                 } else {
-                    Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "PlugIn: Found channel " + Name + ":" + Number);
+                    Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "start: Found channel " + Name + ":" + Number);
                     ChannelNames.put(Name, Number);
                 }
             }
             Names = ChannelNames.keySet();
-            Log.getInstance().write(Log.LOGLEVEL_TRACE, "PlugIn: Channelnames created. Size = " + ChannelNames.size());
+            Log.getInstance().write(Log.LOGLEVEL_TRACE, "start: Channelnames created. Size = " + ChannelNames.size());
         }
 
         // Clear the properties that we use to communicate with SageClients.
@@ -161,14 +165,14 @@ public class plugin implements sage.SageTVPlugin, SageTVEventListener {
         ComskipManager.getInstance().makeResources();
 
         // Restart any jobs that were queued but not completed.
-        Log.getInstance().write(Log.LOGLEVEL_TRACE, "PlugIn: Restarting any pending jobs.");
+        Log.getInstance().write(Log.LOGLEVEL_TRACE, "start: Restarting any pending jobs.");
         ComskipManager.getInstance().startMaxJobs();
 
         // Print debug info if needed.
         if (Log.getInstance().GetLogLevel()==Log.LOGLEVEL_ALL) {
             List<Object> MediaFilesToQueue = ComskipManager.getInstance().getMediaFilesWithout("T");
             for (Object MediaFile : MediaFilesToQueue) {
-                Log.getInstance().write(Log.LOGLEVEL_ALL, "PlugIn: No edl for " + MediaFileAPI.GetMediaTitle(MediaFile));
+                Log.getInstance().write(Log.LOGLEVEL_ALL, "start: No edl for " + MediaFileAPI.GetMediaTitle(MediaFile));
             }
         }
 
@@ -176,7 +180,7 @@ public class plugin implements sage.SageTVPlugin, SageTVEventListener {
         loadTimeRatios();
 
         // Subscribe to what we need.
-        Log.getInstance().write(Log.LOGLEVEL_TRACE, "PlugIn: Subscribing to events.");
+        Log.getInstance().write(Log.LOGLEVEL_TRACE, "start: Subscribing to events.");
         registry.eventSubscribe(listener, "RecordingStopped");
         registry.eventSubscribe(listener, "RecordingStarted");
         registry.eventSubscribe(listener, "MediaFileRemoved");
@@ -184,7 +188,7 @@ public class plugin implements sage.SageTVPlugin, SageTVEventListener {
 
         // Start the task that will monitor the queue that SageClients use to request jobs.
         if (SageUtil.GetBoolProperty("cd/monitor_clients", "true")) {
-            Log.getInstance().write(Log.LOGLEVEL_TRACE, "PlugIn: Starting MonitorClient.");
+            Log.getInstance().write(Log.LOGLEVEL_TRACE, "start: Starting MonitorClient.");
             long MonitorClientPeriod = SageUtil.GetLongProperty("cd/monitor_client_period", 60*1000);
             TimerTask MonitorClient = new MonitorClient();
             Timer timer = new Timer();
@@ -193,7 +197,7 @@ public class plugin implements sage.SageTVPlugin, SageTVEventListener {
 
         // Start the task that wakes up every hour to see if jobs waiting because they were queued in
         // restricted times should be started.
-        Log.getInstance().write(Log.LOGLEVEL_TRACE, "PlugIn: Starting RestartRestricted.");
+        Log.getInstance().write(Log.LOGLEVEL_TRACE, "start: Starting RestartRestricted.");
 
         long Frequency = 60 * 60 * 1000;        // Once every hour.
 
@@ -209,18 +213,19 @@ public class plugin implements sage.SageTVPlugin, SageTVEventListener {
         TimerTask RestartRestricted = new RestartRestricted();
         Timer RRTimer = new Timer();
         RRTimer.scheduleAtFixedRate(RestartRestricted, MillisToNextHour, Frequency);
-        Log.getInstance().write(Log.LOGLEVEL_TRACE, "PlugIn: Minutes until first RestartRestricted " + MinutesToNextHour + ":" + MillisToNextHour);
+        Log.getInstance().write(Log.LOGLEVEL_TRACE, "start: Minutes until first RestartRestricted " + MinutesToNextHour + ":" + MillisToNextHour);
 
         // Print a bunch of debug information.
         SystemStatus.getInstance().printSystemStatus();
     }
 
-    // This method is called when the plugin should shutdown
+    // This method is called when the plugin should shutdown.
+    @Override
     public void stop() {
         Log.getInstance().write(Log.LOGLEVEL_TRACE, "PlugIn: Stop received from Plugin Manager.");
 
         if (Global.IsClient()) {
-            Log.getInstance().write(Log.LOGLEVEL_WARN, "PlugIn: Running in Client mode.");
+            Log.getInstance().write(Log.LOGLEVEL_WARN, "stop: Running in Client mode.");
             return;
         }
 
@@ -231,10 +236,11 @@ public class plugin implements sage.SageTVPlugin, SageTVEventListener {
     }
 
     // This method is called after plugin shutdown to free any resources
-    // used by the plugin
+    // used by the plugin.
+    @Override
     public void destroy() {
         if (Global.IsClient()) {
-            Log.getInstance().write(Log.LOGLEVEL_WARN, "PlugIn: Running in Client mode.");
+            Log.getInstance().write(Log.LOGLEVEL_WARN, "destroy: Running in Client mode.");
             CSC.getInstance().destroy();
             Log.getInstance().destroy();
             return;
@@ -257,7 +263,8 @@ public class plugin implements sage.SageTVPlugin, SageTVEventListener {
     // need configuration settings; you may simply return null or zero from
     // these methods.
 
-    // Returns the names of the settings for this plugin
+    // Returns the names of the settings for this plugin.
+    @Override
     public String[] getConfigSettings() {
         Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "PlugIn: getConfigSetting received from Plugin Manager.");
         boolean TestMode = SageUtil.GetBoolProperty("cd/test_mode", false);
@@ -272,7 +279,8 @@ public class plugin implements sage.SageTVPlugin, SageTVEventListener {
         CommandList.add(SETTING_RESTRICTED_TIMES);
         CommandList.add(SETTING_CLEANUP_EXTENSIONS);
         CommandList.add(SETTING_VIDEO_FILE_EXTENSIONS);
-        CommandList.add("SkipChannels");
+        CommandList.add(SETTING_SKIP_CHANNELS);
+        CommandList.add(SETTING_SKIP_CATEGORIES);
         CommandList.add("StartImmediately");
 
         String ServerOS = Configuration.GetServerProperty("cd/server_is", "unknown");
@@ -321,7 +329,7 @@ public class plugin implements sage.SageTVPlugin, SageTVEventListener {
             }
         }
 
-        // 5309
+        // Enter 5309 in "Max Concurrent Jobs" field.
         if (TestMode) {
             CommandList.add(SETTING_TIME_RATIOS);
             CommandList.add(ComskipJob.SETTING_RUNNING_IMPACT);
@@ -338,7 +346,8 @@ public class plugin implements sage.SageTVPlugin, SageTVEventListener {
         return (String[])CommandList.toArray(new String[CommandList.size()]);
     }
 
-    // Returns the current value of the specified setting for this plugin
+    // Returns the current value of the specified setting for this plugin.
+    @Override
     public String getConfigValue(String setting) {
         Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "PlugIn: setConfigValue received from Plugin Manager. Setting = " + setting);
         if (setting.startsWith("LogLevel")) {
@@ -393,8 +402,10 @@ public class plugin implements sage.SageTVPlugin, SageTVEventListener {
             return Configuration.GetServerProperty("cd/wine_user", getDefaultWineUser());
         } else if (setting.startsWith("RunSlow")) {
             return Configuration.GetServerProperty("cd/run_slow", "false");
-        } else if (setting.startsWith("SkipChannels")) {
-            return Configuration.GetServerProperty("cd/skip_channels", "");
+        } else if (setting.startsWith(SETTING_SKIP_CHANNELS)) {
+            return Configuration.GetServerProperty(PROPERTY_SKIP_CHANNELS, "");
+        } else if (setting.startsWith(SETTING_SKIP_CATEGORIES)) {
+            return Configuration.GetServerProperty(PROPERTY_SKIP_CATEGORIES, "");
         } else if (setting.startsWith("SetEnv")) {
             return Configuration.GetServerProperty("cd/set_env", "WINEPREFIX=/root/.wine,WINEPATH=/root/.wine");
         } else if (setting.startsWith("SetCommand")) {
@@ -430,7 +441,7 @@ public class plugin implements sage.SageTVPlugin, SageTVEventListener {
         } else if (setting.startsWith(SETTING_SHOW_INTELLIGENT_TUNING)) {
             return Configuration.GetServerProperty(PROPERTY_SHOW_INTELLIGENT_TUNING, PROPERTY_DEFAULT_SHOW_INTELLIGENT_TUNING);
         } else if (setting.startsWith("ScanAll")) {
-            if (NumberScanned==0) {
+            if (NumberScanned==null || NumberScanned==0) {
                 return "Queue Files";
             } else {
                 return NumberScanned.toString() + " Queued";
@@ -440,13 +451,14 @@ public class plugin implements sage.SageTVPlugin, SageTVEventListener {
         } else if (Names.contains(setting)) {
             return Configuration.GetServerProperty("cd/map_"+setting, "Default");
         } else {
-            Log.getInstance().write(Log.LOGLEVEL_WARN, "PlugIn: Unknown setting from getConfigValue = " + setting);
+            Log.getInstance().write(Log.LOGLEVEL_WARN, "getConfigValue: Unknown setting from getConfigValue = " + setting);
             return "UNKNOWN";
         }
     }
 
     // Returns the current value of the specified multichoice setting for
-    // this plugin
+    // this plugin.
+    @Override
     public String[] getConfigValues(String setting) {
         Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "PlugIn: getConfigValues received from Plugin Manager. Setting = " + setting);
 
@@ -454,7 +466,7 @@ public class plugin implements sage.SageTVPlugin, SageTVEventListener {
             String S = Configuration.GetServerProperty(PROPERTY_RESTRICTED_TIMES, PROPERTY_DEFAULT_RESTRICTED_TIMES);
 
             if (S==null) {
-                Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "PlugIn: No Restricted times.");
+                Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "getConfigValues: No Restricted times.");
                 String[] v = {};
                 return v;
             }
@@ -462,7 +474,7 @@ public class plugin implements sage.SageTVPlugin, SageTVEventListener {
             String[] Hours = S.split(",");
 
             if (Hours==null || Hours.length==0) {
-                Log.getInstance().write(Log.LOGLEVEL_ERROR, "PlugIn: Malformed restricted_times " + S);
+                Log.getInstance().write(Log.LOGLEVEL_ERROR, "getConfigValues: Malformed restricted_times " + S);
                 String[] v = {};
                 return v;
             }
@@ -498,7 +510,8 @@ public class plugin implements sage.SageTVPlugin, SageTVEventListener {
      */
 
     // Returns one of the constants above that indicates what type of value
-    // is used for a specific settings
+    // is used for a specific settings.
+    @Override
     public int getConfigType(String setting) {
         Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "PlugIn: getConfigType received from Plugin Manager. Setting = " + setting);
         if (setting.startsWith("LogLevel"))
@@ -527,7 +540,9 @@ public class plugin implements sage.SageTVPlugin, SageTVEventListener {
             return CONFIG_TEXT;
         else if (setting.startsWith(SETTING_VIDEO_FILE_EXTENSIONS))
             return CONFIG_TEXT;
-        else if (setting.startsWith("SkipChannels"))
+        else if (setting.startsWith(SETTING_SKIP_CHANNELS))
+            return CONFIG_TEXT;
+        else if (setting.startsWith(SETTING_SKIP_CATEGORIES))
             return CONFIG_TEXT;
         else if (setting.startsWith("WineHome"))
             return CONFIG_DIRECTORY;
@@ -572,12 +587,13 @@ public class plugin implements sage.SageTVPlugin, SageTVEventListener {
         else if (Names.contains(setting)) {
             return CONFIG_CHOICE;
         } else {
-            Log.getInstance().write(Log.LOGLEVEL_WARN, "PlugIn: Unknown setting from getConfigType = " + setting);
+            Log.getInstance().write(Log.LOGLEVEL_WARN, "getConfigType: Unknown setting = " + setting);
             return CONFIG_TEXT;
         }
     }
 
-    // Sets a configuration value for this plugin
+    // Sets a configuration value for this plugin.
+    @Override
     public void setConfigValue(String setting, String value) {
         Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "PlugIn: setConfigValue received from Plugin Manager. Setting = " + setting + ":" + value);
 
@@ -601,11 +617,11 @@ public class plugin implements sage.SageTVPlugin, SageTVEventListener {
                 v = Integer.parseInt(value);
             } catch (NumberFormatException e) {
                 v = 1;
-                Log.getInstance().write(Log.LOGLEVEL_ERROR, "PlugIn: Invalid MaxJobs entry " + value);
+                Log.getInstance().write(Log.LOGLEVEL_ERROR, "setConfigValue: Invalid MaxJobs entry " + value);
             }
             if (v<=0) value = "1";
             if (v==5309) {
-                Log.getInstance().write(Log.LOGLEVEL_TRACE, "PlugIn: Toggling TestMode.");
+                Log.getInstance().write(Log.LOGLEVEL_TRACE, "setConfigValue: Toggling TestMode.");
                 boolean TestMode = SageUtil.GetBoolProperty("cd/test_mode", false);
                 Configuration.SetServerProperty("cd/test_mode", (TestMode ? "false":"true"));
             } else {
@@ -628,8 +644,10 @@ public class plugin implements sage.SageTVPlugin, SageTVEventListener {
             Configuration.SetServerProperty(PROPERTY_VIDEO_FILE_EXTENSIONS, value);
         } else if (setting.startsWith("RunSlow")) {
             Configuration.SetServerProperty("cd/run_slow", value);
-        } else if (setting.startsWith("SkipChannels")) {
-            Configuration.SetServerProperty("cd/skip_channels", value);
+        } else if (setting.startsWith(SETTING_SKIP_CHANNELS)) {
+            Configuration.SetServerProperty(PROPERTY_SKIP_CHANNELS, value);
+        } else if (setting.startsWith(SETTING_SKIP_CATEGORIES)) {
+            Configuration.SetServerProperty(PROPERTY_SKIP_CATEGORIES, value);
         } else if (setting.startsWith("WineHome")) {
             Configuration.SetServerProperty("cd/wine_home", value);
         } else if (setting.startsWith("StartImm")) {
@@ -674,7 +692,7 @@ public class plugin implements sage.SageTVPlugin, SageTVEventListener {
             if (value.contains("ShowAnalyzer.exe")) {
                 String newValue = value.replace("ShowAnalyzer.exe", "ShowAnalyzerEngine.exe");
                 Configuration.SetServerProperty("cd/showanalyzer_location", newValue);
-                Log.getInstance().write(Log.LOGLEVEL_ERROR, "PlugIn: User choose ShowAnalyzer.exe, fixing " + newValue);
+                Log.getInstance().write(Log.LOGLEVEL_ERROR, "setConfigValue: User choose ShowAnalyzer.exe, fixing " + newValue);
             } else {
                 Configuration.SetServerProperty("cd/showanalyzer_location", value);
             }
@@ -689,7 +707,7 @@ public class plugin implements sage.SageTVPlugin, SageTVEventListener {
             for (Object MediaFile : MediaFilesToQueue) {
                 CommercialDetectorMediaFile CDMediaFile = new CommercialDetectorMediaFile(MediaFile);
                 if (!CDMediaFile.queue()) {
-                    Log.getInstance().write(Log.LOGLEVEL_ERROR, "PlugIn: Error queuing file " + MediaFileAPI.GetMediaTitle(MediaFile));
+                    Log.getInstance().write(Log.LOGLEVEL_ERROR, "setConfigValue: Error queuing file " + MediaFileAPI.GetMediaTitle(MediaFile));
                 }
             }
         } else if (setting.startsWith("WineUser")) {
@@ -700,12 +718,13 @@ public class plugin implements sage.SageTVPlugin, SageTVEventListener {
         } else if (Names.contains(setting)) {
             Configuration.SetServerProperty("cd/map_"+setting, value);
         } else {
-            Log.getInstance().write(Log.LOGLEVEL_WARN, "PlugIn: Unknown setting from setConfigValue = " + setting);
+            Log.getInstance().write(Log.LOGLEVEL_WARN, "setConfigValue: Unknown setting = " + setting);
         }
         
     }
 
-    // Sets a configuration values for this plugin for a multiselect choice
+    // Sets a configuration values for this plugin for a multiselect choice.
+    @Override
     public void setConfigValues(String setting, String[] values) {
         Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "PlugIn: setConfigValues received from Plugin Manager. Setting = " + setting);
 
@@ -713,12 +732,12 @@ public class plugin implements sage.SageTVPlugin, SageTVEventListener {
 
             // Put the values into the property string.
             if (values==null) {
-                Log.getInstance().write(Log.LOGLEVEL_ERROR, "PlugIn: null values from setConfigValues.");
+                Log.getInstance().write(Log.LOGLEVEL_ERROR, "setConfigValues: null values.");
                 return;
             }
 
             if (values.length==0) {
-                Log.getInstance().write(Log.LOGLEVEL_WARN, "PlugIn: setConfigValues resetting restricted_times.");
+                Log.getInstance().write(Log.LOGLEVEL_WARN, "setConfigValues: Resetting restricted_times.");
                 Configuration.SetServerProperty(PROPERTY_RESTRICTED_TIMES, PROPERTY_DEFAULT_RESTRICTED_TIMES);
                 return;
             }
@@ -733,7 +752,7 @@ public class plugin implements sage.SageTVPlugin, SageTVEventListener {
                 }
             }
 
-            Log.getInstance().write(Log.LOGLEVEL_TRACE, "Plugin: setConfigValues setting restricted_times to " + NewString);
+            Log.getInstance().write(Log.LOGLEVEL_TRACE, "setConfigValues: Setting restricted_times to " + NewString);
             Configuration.SetServerProperty(PROPERTY_RESTRICTED_TIMES, NewString);
             return;
         } else if (setting.startsWith(SETTING_SHOW_QUEUE)) {
@@ -744,12 +763,12 @@ public class plugin implements sage.SageTVPlugin, SageTVEventListener {
             }
 
             if (values==null || values.length==0) {
-                Log.getInstance().write(Log.LOGLEVEL_ERROR, "PlugIn: null values from setConfigValues.");
+                Log.getInstance().write(Log.LOGLEVEL_ERROR, "setConfigValues: null values.");
                 return;
             }
 
             if (IDMap==null) {
-                Log.getInstance().write(Log.LOGLEVEL_ERROR, "PlugIn: null IDMaps.");
+                Log.getInstance().write(Log.LOGLEVEL_ERROR, "setConfigValues: null IDMaps.");
                 return;
             }
             
@@ -769,13 +788,13 @@ public class plugin implements sage.SageTVPlugin, SageTVEventListener {
                 Integer ID = IDMap.get(Descr);
 
                 if (ID==null) {
-                    Log.getInstance().write(Log.LOGLEVEL_ERROR, "PlugIn: null ID for Descr " + Descr);
+                    Log.getInstance().write(Log.LOGLEVEL_ERROR, "setConfigValues: null ID for Descr " + Descr);
                 } else {
 
-                    Log.getInstance().write(Log.LOGLEVEL_TRACE, "PlugIn: ID for selected show " + ID);
+                    Log.getInstance().write(Log.LOGLEVEL_TRACE, "setConfigValues: ID for selected show " + ID);
 
                     if (!ComskipManager.getInstance().moveToFrontOfQueue(ID)) {
-                        Log.getInstance().write(Log.LOGLEVEL_ERROR, "PlugIn: Error moving to front of queue.");
+                        Log.getInstance().write(Log.LOGLEVEL_ERROR, "setConfigValues: Error moving to front of queue.");
                     }
                 }
             }
@@ -790,7 +809,8 @@ public class plugin implements sage.SageTVPlugin, SageTVEventListener {
         return;
     }
 
-    // For CONFIG_CHOICE settings; this returns the list of choices
+    // For CONFIG_CHOICE settings; this returns the list of choices.
+    @Override
     public String[] getConfigOptions(String setting) {
         Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "PlugIn: getConfigOptions received from Plugin Manager. Setting = " + setting);
         if (setting.startsWith("LogLevel")) {
@@ -856,7 +876,8 @@ public class plugin implements sage.SageTVPlugin, SageTVEventListener {
         }
     }
 
-    // Returns the help text for a configuration setting
+    // Returns the help text for a configuration setting.
+    @Override
     public String getConfigHelpText(String setting) {
         if (setting.startsWith("LogLevel")) {
             return "Set the Debug Logging Level.";
@@ -888,8 +909,10 @@ public class plugin implements sage.SageTVPlugin, SageTVEventListener {
             return "Override for non standard installs.";
         } else if (setting.startsWith("SetEnv")) {
             return "Delimit using a comma.";
-        } else if (setting.startsWith("SkipChannels")) {
-            return "Enter channel names or numbers delimited by a comma.";
+        } else if (setting.startsWith(SETTING_SKIP_CHANNELS)) {
+            return "Enter channel names, numbers or range of numbers delimited by a comma.";
+        } else if (setting.startsWith(SETTING_SKIP_CATEGORIES)) {
+            return "Enter Categories and Subcategories delimited by a comma,";
         } else if (setting.startsWith("SetCommand")) {
             return "Delimit using a comma.";
         } else if (setting.startsWith("RunningAsRoot")) {
@@ -933,12 +956,13 @@ public class plugin implements sage.SageTVPlugin, SageTVEventListener {
         } else if (Names.contains(setting)) {
             return "Current setting is " + Configuration.GetServerProperty("cd/map_"+setting, "Default");
         } else {
-            Log.getInstance().write(Log.LOGLEVEL_WARN, "PlugIn: Unknown setting from getConfigHelpText = " + setting);
+            Log.getInstance().write(Log.LOGLEVEL_WARN, "getConfigHelpText: Unknown setting = " + setting);
             return null;
         }
     }
 
-    // Returns the label used to present this setting to the user
+    // Returns the label used to present this setting to the user.
+    @Override
     public String getConfigLabel(String setting) {
 
         if (setting.startsWith("LogLevel")) {
@@ -971,8 +995,10 @@ public class plugin implements sage.SageTVPlugin, SageTVEventListener {
             return "Home directory for wine";
         } else if (setting.startsWith(SETTING_VIDEO_FILE_EXTENSIONS)) {
             return "File Extensions for Valid Video Files";
-        } else if (setting.startsWith("SkipChannels")) {
+        } else if (setting.startsWith(SETTING_SKIP_CHANNELS)) {
             return "Do Not Run comskip on These Channels";
+        } else if (setting.startsWith(SETTING_SKIP_CATEGORIES)) {
+            return "Do Not Run comskip on These Categories";
         } else if (setting.startsWith("SetEnv")) {
             return "Environment Variables for Test Command";
         } else if (setting.startsWith("SetCommand")) {
@@ -1016,14 +1042,15 @@ public class plugin implements sage.SageTVPlugin, SageTVEventListener {
         } else if (Names!=null || Names.contains(setting)) {
             return setting + ": Pick Commercial Detection Program";
         } else {
-            Log.getInstance().write(Log.LOGLEVEL_WARN, "PlugIn: Unknown setting from getConfigLabel = " + setting);
+            Log.getInstance().write(Log.LOGLEVEL_WARN, "getConfigLabel: Unknown setting = " + setting);
             return null;
         }
     }
 
-    // Resets the configuration of this plugin
-    public void resetConfig() {
-        Log.getInstance().write(Log.LOGLEVEL_TRACE, "PlugIn: resetConfig received from Plugin Manager.");
+    // Resets the configuration of this plugin.
+    @Override
+    public final void resetConfig() {
+        Log.getInstance().write(Log.LOGLEVEL_TRACE, "resetConfig: resetConfig received from Plugin Manager.");
         Log.getInstance().SetLogLevel(Log.LOGLEVEL_WARN);
 
         NumberScanned = 0;
@@ -1039,7 +1066,8 @@ public class plugin implements sage.SageTVPlugin, SageTVEventListener {
         Configuration.SetServerProperty("cd/wine_home", getDefaultWineHome());
         Configuration.SetServerProperty("cd/wine_user", getDefaultWineUser());
         Configuration.SetServerProperty("cd/run_slow", "false");
-        Configuration.SetServerProperty("cd/skip_channels", "");
+        Configuration.SetServerProperty(PROPERTY_SKIP_CHANNELS, "");
+        Configuration.SetServerProperty(PROPERTY_SKIP_CATEGORIES, "");
         Configuration.SetServerProperty("cd/start_imm", "false");
         Configuration.SetServerProperty("cd/running_as_root", "true");
         Configuration.SetServerProperty("cd/show_advanced", "false");
@@ -1058,24 +1086,24 @@ public class plugin implements sage.SageTVPlugin, SageTVEventListener {
 
         File PathFile = WidgetAPI.GetDefaultSTVFile();
         if (PathFile==null) {
-            Log.getInstance().write(Log.LOGLEVEL_ERROR, "plugin: null PathFile.");
+            Log.getInstance().write(Log.LOGLEVEL_ERROR, "getDefaultComskipLocation: null PathFile.");
             return null;
         }
 
         String STVPath = PathFile.getParent();
         if (STVPath==null || STVPath.isEmpty()) {
-            Log.getInstance().write(Log.LOGLEVEL_ERROR, "plugin: null STVPath.");
+            Log.getInstance().write(Log.LOGLEVEL_ERROR, "getDefaultComskipLocation: null STVPath.");
             return null;
         }
 
-        Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "plugin: STVPath = " + STVPath);
+        Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "getDefaultComskipLocation: STVPath = " + STVPath);
 
         // ../SageTV||server/STVs/SageTV7
         // ../SageTV||server/comskip
 
         int STVsIndex = STVPath.indexOf("STVs");
         if (STVsIndex<1) {
-            Log.getInstance().write(Log.LOGLEVEL_ERROR, "plugin: Malformed STVPath.");
+            Log.getInstance().write(Log.LOGLEVEL_ERROR, "getDefaultComskipLocation: Malformed STVPath.");
             return null;
         }
 
@@ -1095,20 +1123,20 @@ public class plugin implements sage.SageTVPlugin, SageTVEventListener {
     public static String getDefaultWineUser() {
 
         if (Global.IsWindowsOS()) {
-            Log.getInstance().write(Log.LOGLEVEL_TRACE, "plugin: No Home for Windows.");
+            Log.getInstance().write(Log.LOGLEVEL_TRACE, "getDefaultWineUser: No Home for Windows.");
             return null;
         }
 
         String Home = "/home";  // Hardcode the separator, if run in Windows it returns the wrong character.
         File HomeFile = new File(Home);
         if (HomeFile==null) {
-            Log.getInstance().write(Log.LOGLEVEL_ERROR, "plugin: null HomeFile.");
+            Log.getInstance().write(Log.LOGLEVEL_ERROR, "getDefaultWineUser: null HomeFile.");
             return null;
         }
 
         String[] Contents = HomeFile.list();
         if (Contents==null || Contents.length==0) {
-            Log.getInstance().write(Log.LOGLEVEL_WARN, "plugin: Nothing in " + HomeFile);
+            Log.getInstance().write(Log.LOGLEVEL_WARN, "getDefaultWineUser: Nothing in " + HomeFile);
             return null;
         }
 
@@ -1122,25 +1150,25 @@ public class plugin implements sage.SageTVPlugin, SageTVEventListener {
         return Contents[0];
     }
 
-    private Integer getAvailableProcessors() {
+    private static Integer getAvailableProcessors() {
         int processors;
         processors = Runtime.getRuntime().availableProcessors();
         return (processors>=1 ? processors : 1);
     }
 
-    private void manualRun(String FileName) {
+    private static void manualRun(String FileName) {
 
-        Log.getInstance().write(Log.LOGLEVEL_ERROR, "plugin: Manual rune for " + FileName);
+        Log.getInstance().write(Log.LOGLEVEL_ERROR, "manualRun: Manual rune for " + FileName);
         
         File F = new File(FileName);
         if (F==null) {
-            Log.getInstance().write(Log.LOGLEVEL_ERROR, "plugin: null File for " + FileName);
+            Log.getInstance().write(Log.LOGLEVEL_ERROR, "manualRun: null File for " + FileName);
             return;
         }
 
         Object MediaFile = MediaFileAPI.GetMediaFileForFilePath(F);
         if (MediaFile==null) {
-            Log.getInstance().write(Log.LOGLEVEL_ERROR, "plugin: null MediaFile.");
+            Log.getInstance().write(Log.LOGLEVEL_ERROR, "manualRun: null MediaFile.");
             return;
         }
 
@@ -1149,7 +1177,7 @@ public class plugin implements sage.SageTVPlugin, SageTVEventListener {
         CommercialDetectorMediaFile CDMediaFile = new CommercialDetectorMediaFile(MediaFile);
 
         if (!CDMediaFile.queue()) {
-            Log.getInstance().write(Log.LOGLEVEL_ERROR, "plugin: queue failed.");
+            Log.getInstance().write(Log.LOGLEVEL_ERROR, "manualRun: queue failed.");
         }
     }
 
@@ -1220,6 +1248,7 @@ public class plugin implements sage.SageTVPlugin, SageTVEventListener {
  * are not required to follow that rule.
  */
 
+    @Override
     public synchronized void sageEvent(String eventName, java.util.Map eventVars) {
 
         Log.getInstance().write(Log.LOGLEVEL_TRACE, "sageEvent: event received = " + eventName);
@@ -1273,7 +1302,7 @@ public class plugin implements sage.SageTVPlugin, SageTVEventListener {
                 Job.stop();
             }
 
-            CommercialDetectorMediaFile CDMediaFile = new CommercialDetectorMediaFile(MediaFile);
+            CommercialDetectorMediaFile CDMediaFile = new CommercialDetectorMediaFile(MediaFile, true);
 
             if (CDMediaFile.cleanup()) {
                 Log.getInstance().write(Log.LOGLEVEL_TRACE, "sageEvent: MediaFile cleanup successful " + MediaFileAPI.GetMediaTitle(MediaFile));
@@ -1286,8 +1315,8 @@ public class plugin implements sage.SageTVPlugin, SageTVEventListener {
 
             // Do nothing if it's on a channel that we are supposed to skip.
             // Issue restart() so any jobs waiting for a recording to complete will get restarted.
-            if (skipThisChannel(MediaFile)) {
-                Log.getInstance().write(Log.LOGLEVEL_TRACE, "sageEvent: Skipping because it's a skip_channel.");
+            if (skipThisChannel(MediaFile) || skipThisCategory(MediaFile)) {
+                Log.getInstance().write(Log.LOGLEVEL_TRACE, "sageEvent: Skipping because the channel or category is in the skip list.");
                 ComskipManager.getInstance().startMaxJobs();
                 return;
             }
@@ -1342,27 +1371,115 @@ public class plugin implements sage.SageTVPlugin, SageTVEventListener {
         return;
     }
 
-    private boolean skipThisChannel(Object MediaFile) {
+    private static boolean skipThisChannel(Object MediaFile) {
 
-        String SkipList = Configuration.GetServerProperty("cd/skip_channels", "");
+        String SkipList = Configuration.GetServerProperty(PROPERTY_SKIP_CHANNELS, "");
         if (SkipList==null || SkipList.isEmpty()) {
             return false;
         }
 
         String[] SkipArray = SkipList.split(",");
         if (SkipArray==null || SkipArray.length==0) {
-            Log.getInstance().write(Log.LOGLEVEL_ERROR, "sageEvent: Bad SkipList " + SkipList);
+            Log.getInstance().write(Log.LOGLEVEL_ERROR, "skipThisChannel: Bad SkipList " + SkipList);
             return false;
         }
 
         String ChannelName = AiringAPI.GetAiringChannelName(MediaFile);
         String ChannelNumber = AiringAPI.GetAiringChannelNumber(MediaFile);
-        Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "sageEvent: ChannelName and ChannelNumber " + ChannelName + ":" + ChannelNumber);
+        Log.getInstance().write(Log.LOGLEVEL_TRACE, "skipThisChannel: ChannelName and ChannelNumber " + ChannelName + ":" + ChannelNumber);
 
         for (String Skip : SkipArray) {
-            Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "sageEvent: Skip = " + Skip);
-            if (ChannelName.equalsIgnoreCase(Skip) || ChannelNumber.equalsIgnoreCase(Skip)) {
-                Log.getInstance().write(Log.LOGLEVEL_TRACE, "sageEvent: Skipping " + Skip);
+
+            Log.getInstance().write(Log.LOGLEVEL_TRACE, "skipThisChannel: Skip = " + Skip);
+
+            // See if this is a range.
+            String[] FirstLast = Skip.split("-");
+
+            if (FirstLast==null || FirstLast.length==1) {
+
+                // No range specified.  Check if the name or number matches.
+                if (ChannelName.equalsIgnoreCase(Skip) || ChannelNumber.equalsIgnoreCase(Skip)) {
+                    Log.getInstance().write(Log.LOGLEVEL_TRACE, "skipThisChannel: Skipping " + Skip);
+                    return true;
+                }
+            } else if (FirstLast.length==2) {
+
+                // Range specified.  See if the channel number falls withing the range.
+                int thisChannel = stringToInt(ChannelNumber);
+                int firstChannel = stringToInt(FirstLast[0]);
+                int lastChannel = stringToInt(FirstLast[1]);
+
+                if (lastChannel < firstChannel) {
+                    Log.getInstance().write(Log.LOGLEVEL_WARN, "skipThisChannel: Range is backwards. Flipping.");
+                    int t = firstChannel;
+                    firstChannel = lastChannel;
+                    lastChannel = t;
+                }
+
+                if (thisChannel >= firstChannel && thisChannel <= lastChannel) {
+                    Log.getInstance().write(Log.LOGLEVEL_TRACE, "skipThisChannel: Skipping because channel is in skip range.");
+                    return true;
+                }
+
+            } else {
+                Log.getInstance().write(Log.LOGLEVEL_WARN, "skipThisChannel: Malformed range " + Skip);
+            }
+
+        }
+
+        return false;
+    }
+
+    private static boolean skipThisCategory(Object MediaFile) {
+
+        String SkipList = Configuration.GetServerProperty(PROPERTY_SKIP_CATEGORIES, "");
+        if (SkipList==null || SkipList.isEmpty()) {
+            return false;
+        }
+
+        String[] SkipArray = SkipList.split(",");
+        
+        if (SkipArray==null || SkipArray.length==0) {
+            Log.getInstance().write(Log.LOGLEVEL_ERROR, "skipThisCategory: Bad SkipList " + SkipList);
+            return false;
+        }
+
+        // Create a list of user-supplied categories to skip.  Make them all lowercase.
+        List<String> skipList = new ArrayList<String>();
+
+        for (String skip : SkipArray) {
+            if (skip!=null && !skip.isEmpty()) {
+                String item = skip.toLowerCase().trim();
+                if (item!=null && !item.isEmpty())
+                    skipList.add(item);
+            }
+        }
+System.out.println("CD:: skipList = " + skipList);
+
+        // Create a List of Categories and Subcategories in this show.
+        List<String> showCategoriesList = new ArrayList<String>();
+
+        String[] showCategories = ShowAPI.GetShowCategoriesList(MediaFile);
+for (String S : showCategories) System.out.println("CD:: showCategories " + S);
+        if (showCategories!=null && showCategories.length>0) {
+
+            // Some categories actually have two categories separated by a "/", such as House / garden.
+            for (String category : showCategories) {
+                showCategoriesList.addAll(parseCategories(category));
+            }
+        }
+System.out.println("CD:: showCategoriesList 1 = " + showCategoriesList);
+
+        String showSubcategory = ShowAPI.GetShowSubCategory(MediaFile);
+System.out.println("CD:: showSubcategory " + showSubcategory);
+        if (showSubcategory!=null && !showSubcategory.isEmpty())
+            showCategoriesList.addAll(parseCategories(showSubcategory));
+System.out.println("CD:: showCategoriesList 2 = " + showCategoriesList);
+
+        // Check if any items in the skipList appear in the showCategoryList.
+        for (String item : skipList) {
+            if (showCategoriesList.contains(item)) {
+                Log.getInstance().write(Log.LOGLEVEL_TRACE, "skipThisCategory: Skipping the category " + item);
                 return true;
             }
         }
@@ -1370,7 +1487,37 @@ public class plugin implements sage.SageTVPlugin, SageTVEventListener {
         return false;
     }
 
-    private boolean isRunningOrQueued(Object MediaFile) {
+    private static List<String> parseCategories(String categories) {
+
+        String SEPARATOR = "/";
+
+        List<String> categoryList = new ArrayList<String>();
+
+        if (categories==null || categories.isEmpty())
+            return categoryList;
+
+        if (!categories.contains(SEPARATOR)) {
+            String item = categories.toLowerCase().trim();
+            if (item!=null && !item.isEmpty())
+                categoryList.add(item);
+            return categoryList;
+        }
+
+        String[] categoryArray = categories.split(SEPARATOR);
+
+        if (categoryArray==null || categoryArray.length==0)
+            return categoryList;
+
+        for (String category : categoryArray) {
+            String item = category.toLowerCase().trim();
+            if (item!=null && !item.isEmpty())
+                categoryList.add(item);
+        }
+
+        return categoryList;
+    }
+
+    private static boolean isRunningOrQueued(Object MediaFile) {
 
         if (MediaFile==null) {
             Log.getInstance().write(Log.LOGLEVEL_ERROR, "isRunningOrQueued: null MediaFile");
@@ -1408,20 +1555,18 @@ public class plugin implements sage.SageTVPlugin, SageTVEventListener {
         return false;
     }
 
-
-
-    private void loadTimeRatios() {
-        Log.getInstance().write(Log.LOGLEVEL_TRACE, "Plugin: Loading time ratio information.");
+    private static void loadTimeRatios() {
+        Log.getInstance().write(Log.LOGLEVEL_TRACE, "loadTimeRatios: Loading time ratio information.");
         String S = Configuration.GetServerProperty(PROPERTY_TIME_RATIOS, PROPERTY_DEFAULT_TIME_RATIOS);
 
         if (S==null || S.isEmpty()) {
-            Log.getInstance().write(Log.LOGLEVEL_TRACE, "Plugin: No ratio information to load.");
+            Log.getInstance().write(Log.LOGLEVEL_TRACE, "loadTimeRatios: No ratio information to load.");
             return;
         }
 
         String[] Pairs = S.split(",");
         if (Pairs==null || Pairs.length==0) {
-            Log.getInstance().write(Log.LOGLEVEL_TRACE, "Plugin: No time pairs.");
+            Log.getInstance().write(Log.LOGLEVEL_TRACE, "loadTimeRatios: No time pairs.");
             return;
         }
 
@@ -1429,21 +1574,35 @@ public class plugin implements sage.SageTVPlugin, SageTVEventListener {
             String[] ChannelRatio = Pair.split(":");
 
             if (ChannelRatio==null || ChannelRatio.length!=2) {
-                Log.getInstance().write(Log.LOGLEVEL_ERROR, "Plugin: Malformed Channel:Ratio " + Pair);
+                Log.getInstance().write(Log.LOGLEVEL_ERROR, "loadTimeRatios: Malformed Channel:Ratio " + Pair);
             } else {
-                Log.getInstance().write(Log.LOGLEVEL_TRACE, "Plugin: Found Channel:Ratio " + ChannelRatio[0] + ":" + ChannelRatio[1]);
+                Log.getInstance().write(Log.LOGLEVEL_TRACE, "loadTimeRatios: Found Channel:Ratio " + ChannelRatio[0] + ":" + ChannelRatio[1]);
 
                 Float Ratio = 0.0F;
                 
                 try {
                     Ratio = Float.parseFloat(ChannelRatio[1]);
                 } catch (NumberFormatException nfe) {
-                    Log.getInstance().write(Log.LOGLEVEL_ERROR, "Plugin: Malformed Ratio " + ChannelRatio[1]);
+                    Log.getInstance().write(Log.LOGLEVEL_ERROR, "loadTimeRatios: Malformed Ratio " + ChannelRatio[1]);
                     Ratio = RATIO_DEFAULT;
                 }
 
                 ChannelTimeRatios.put(ChannelRatio[0], Ratio);
             }
+        }
+    }
+
+    private static int stringToInt(String NumberString) {
+        if (NumberString==null || NumberString.isEmpty()) {
+            Log.getInstance().write(Log.LOGLEVEL_WARN, "stringToInt: null number.");
+            return 0;
+        }
+
+        try {
+            return Integer.parseInt(NumberString);
+        } catch (NumberFormatException e) {
+            Log.getInstance().write(Log.LOGLEVEL_WARN, "stringToInt: Malformed number " + NumberString);
+            return 0;
         }
     }
 

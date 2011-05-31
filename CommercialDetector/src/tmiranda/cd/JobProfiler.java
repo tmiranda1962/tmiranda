@@ -24,6 +24,7 @@ public class JobProfiler extends TimerTask {
      * When called this process counts how many comskip jobs are running, how many recordings are in
      * progress, and reports back to the calling ComskipJob.
      */
+    @Override
     public void run() {
         int NumberRunning = ComskipManager.getInstance().getNumberRunning();
 
@@ -40,4 +41,26 @@ public class JobProfiler extends TimerTask {
         Job.addSnapshot(Snapshot);
     }
 
+    @Override
+    public boolean equals(Object obj) {
+        if (obj == null) {
+            return false;
+        }
+        if (getClass() != obj.getClass()) {
+            return false;
+        }
+        final JobProfiler other = (JobProfiler) obj;
+        if (this.Job != other.Job && (this.Job == null || !this.Job.equals(other.Job))) {
+            return false;
+        }
+        return true;
+    }
+
+    @Override
+    public int hashCode() {
+        int hash = 5;
+        hash = 97 * hash + (this.Job != null ? this.Job.hashCode() : 0);
+        return hash;
+    }
+      
 }

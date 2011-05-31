@@ -12,6 +12,7 @@ package tmiranda.cd;
 import java.io.*;
 import java.util.*;
 import sagex.api.*;
+
 /**
  *
  * @author Default
@@ -108,7 +109,7 @@ public class SageUtil {
         try {
             p = Integer.parseInt(prop);
         } catch (NumberFormatException e) {
-            Log.getInstance().write(Log.LOGLEVEL_ERROR, "Invalid integer for GetIntProperty " + Property + " " + prop);
+            Log.getInstance().write(Log.LOGLEVEL_ERROR, "SageUtilGetIntProperty: Invalid integer for GetIntProperty " + Property + " " + prop);
             p = 0;
         }
 
@@ -149,14 +150,14 @@ public class SageUtil {
         // Delete the backup if it already exists.
         if (back.exists()) {
             if (!back.delete()) {
-                System.out.println("SageUtils: Failed to delete " + Backup);
+                System.out.println("SageUtil.RenameFile: Failed to delete " + Backup);
             }
             back = new File(Backup);
         }
 
         // Rename the original.
         if (!orig.renameTo(back)) {
-            System.out.println("SageUtils: Failed to rename " + Original + " to " + Backup);
+            System.out.println("SageUtil.RenameFile: Failed to rename " + Original + " to " + Backup);
             return false;
         }
 

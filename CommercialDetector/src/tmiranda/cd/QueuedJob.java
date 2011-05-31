@@ -19,14 +19,10 @@ import sagex.api.*;
 public class QueuedJob implements Serializable {
 
     private List<String> FileNames = null;
-    //private boolean JobHasFailed = false;
-    //private int FailingSegment = -1;
     private int MediaFileID = -1;
 
     public QueuedJob(List<String> nFileNames, int ID) {
         FileNames = nFileNames;
-        //JobHasFailed = false;
-        //FailingSegment = -1;
         MediaFileID = ID;
     }
 
@@ -34,25 +30,9 @@ public class QueuedJob implements Serializable {
         return FileNames;
     }
 
-    //public boolean getJobHasFailed() {
-        //return JobHasFailed;
-    //}
-
-    //public int getFailingSegment() {
-        //return FailingSegment;
-    //}
-
     public int getMediaFileID() {
         return MediaFileID;
     }
-
-    //public void setJobHasFailed(boolean status) {
-        //JobHasFailed = status;
-    //}
-
-    //public void setFailingSegment(int segment) {
-        //FailingSegment = segment;
-    //}
 
     public Object getMediaFile() {
         return MediaFileAPI.GetMediaFileForID(MediaFileID);
@@ -61,7 +41,7 @@ public class QueuedJob implements Serializable {
     private String getChannelName() {
         Object MediaFile = this.getMediaFile();
         if (MediaFile==null) {
-            Log.getInstance().write(Log.LOGLEVEL_ERROR, "QueuedJob: null MediaFile.");
+            Log.getInstance().write(Log.LOGLEVEL_ERROR, "QueuedJob.getChannelName: null MediaFile.");
             return null;
         }
 
@@ -71,13 +51,13 @@ public class QueuedJob implements Serializable {
     private String getShowName() {
         Object MediaFile = this.getMediaFile();
         if (MediaFile==null) {
-            Log.getInstance().write(Log.LOGLEVEL_ERROR, "QueuedJob: null MediaFile.");
+            Log.getInstance().write(Log.LOGLEVEL_ERROR, "QueuedJob.getShowName: null MediaFile.");
             return null;
         }
         
         String Name = MediaFileAPI.GetMediaTitle(MediaFile);
         if (Name==null) {
-            Log.getInstance().write(Log.LOGLEVEL_ERROR, "QueuedJob: null Name.");
+            Log.getInstance().write(Log.LOGLEVEL_ERROR, "QueuedJob.getShowName: null Name.");
             return null;
         }
 
@@ -95,20 +75,20 @@ public class QueuedJob implements Serializable {
     // - In default location.
     public String getComskipIni() {
 
-        Log.getInstance().write(Log.LOGLEVEL_TRACE, "QueuedJob: Looking for comskip ini.");
+        Log.getInstance().write(Log.LOGLEVEL_TRACE, "QueuedJob.getComskipIni: Looking for comskip ini.");
 
         String DirectoryName = ComskipManager.COMSKIP_INI_DIR;
 
         File Directory = new File(DirectoryName);
         if (Directory==null) {
-            Log.getInstance().write(Log.LOGLEVEL_ERROR, "QueuedJob: Error accessing comskip directory " + DirectoryName);
+            Log.getInstance().write(Log.LOGLEVEL_ERROR, "QueuedJob.getComskipIni: Error accessing comskip directory " + DirectoryName);
             return Configuration.GetServerProperty("cd/ini_location", plugin.getDefaultComskipLocation() + File.separator + "comskip" + File.separator + "comskip.ini");
         }
 
         if (!Directory.exists()) {
-            Log.getInstance().write(Log.LOGLEVEL_WARN, "QueuedJob: Comskip ini directory does not exist " + DirectoryName);
+            Log.getInstance().write(Log.LOGLEVEL_WARN, "QueuedJob.getComskipIni: Comskip ini directory does not exist " + DirectoryName);
             if (!Directory.mkdirs()) {
-                Log.getInstance().write(Log.LOGLEVEL_ERROR, "QueuedJob: Failed to create comskip directory.");
+                Log.getInstance().write(Log.LOGLEVEL_ERROR, "QueuedJob.getComskipIni: Failed to create comskip directory.");
                 return Configuration.GetServerProperty("cd/ini_location", plugin.getDefaultComskipLocation() + File.separator + "comskip" + File.separator + "comskip.ini");
             }
         }
@@ -118,14 +98,14 @@ public class QueuedJob implements Serializable {
         if (Name!=null) {
             File IniFile = new File(DirectoryName + File.separator + Name + ".ini");
             String IniFileName = (IniFile==null ? "null" : IniFile.getAbsolutePath());
-            Log.getInstance().write(Log.LOGLEVEL_TRACE, "QueuedJob: Looking for comskip ini file " + IniFileName);
+            Log.getInstance().write(Log.LOGLEVEL_TRACE, "QueuedJob.getComskipIni: Looking for comskip ini file " + IniFileName);
 
             if (IniFile!=null && IniFile.exists()) {
-                Log.getInstance().write(Log.LOGLEVEL_TRACE, "QueuedJob: Found ini for show " + IniFileName);
+                Log.getInstance().write(Log.LOGLEVEL_TRACE, "QueuedJob.getComskipIni: Found ini for show " + IniFileName);
                 return IniFileName;
             }
         } else {
-            Log.getInstance().write(Log.LOGLEVEL_WARN, "QueuedJob: null ShowName.");   
+            Log.getInstance().write(Log.LOGLEVEL_WARN, "QueuedJob.getComskipIni: null ShowName.");
         }
 
         // Look in comskip dir for matching ChannelName.ini.
@@ -133,40 +113,40 @@ public class QueuedJob implements Serializable {
         if (ChannelName!=null) {
             File IniFile = new File(DirectoryName + File.separator + ChannelName + ".ini");
             String IniFileName = (IniFile==null ? "null" : IniFile.getAbsolutePath());
-            Log.getInstance().write(Log.LOGLEVEL_TRACE, "QueuedJob: Looking for comskip ini file " + IniFileName);
+            Log.getInstance().write(Log.LOGLEVEL_TRACE, "QueuedJob.getComskipIni: Looking for comskip ini file " + IniFileName);
 
             if (IniFile!=null && IniFile.exists()) {
-                Log.getInstance().write(Log.LOGLEVEL_TRACE, "QueuedJob: Found ini for channel " + IniFileName);
+                Log.getInstance().write(Log.LOGLEVEL_TRACE, "QueuedJob.getComskipIni: Found ini for channel " + IniFileName);
                 return IniFileName;
             }
         } else {
-            Log.getInstance().write(Log.LOGLEVEL_WARN, "QueuedJob: null ChannelName.");
+            Log.getInstance().write(Log.LOGLEVEL_WARN, "QueuedJob.getComskipIni: null ChannelName.");
         }
 
         // If nothing else found use the default.
-        Log.getInstance().write(Log.LOGLEVEL_TRACE, "QueuedJob: No ini found, using default.");
+        Log.getInstance().write(Log.LOGLEVEL_TRACE, "QueuedJob.getComskipIni: No ini found, using default.");
         return Configuration.GetServerProperty("cd/ini_location", plugin.getDefaultComskipLocation() + File.separator + "comskip" + File.separator + "comskip.ini");
     }
 
     public String getShowAnalyzerProfile() {
 
-        Log.getInstance().write(Log.LOGLEVEL_TRACE, "QueuedJob: Looking for ShowAnalyzer profile.");
+        Log.getInstance().write(Log.LOGLEVEL_TRACE, "QueuedJob.getShowAnalyzerProfile: Looking for ShowAnalyzer profile.");
 
         String DirectoryName = Configuration.GetServerProperty("cd/profile_location", "Select");
 
         if (DirectoryName.equalsIgnoreCase("select")) {
-            Log.getInstance().write(Log.LOGLEVEL_TRACE, "QueuedJob: No ShowAnalyzer profile directory.");
+            Log.getInstance().write(Log.LOGLEVEL_TRACE, "QueuedJob.getShowAnalyzerProfile: No ShowAnalyzer profile directory.");
             return null;
         }
 
         File Directory = new File(DirectoryName);
         if (Directory==null) {
-            Log.getInstance().write(Log.LOGLEVEL_ERROR, "QueuedJob: Error accessing ShowAnalyzer directory " + DirectoryName);
+            Log.getInstance().write(Log.LOGLEVEL_ERROR, "QueuedJob.getShowAnalyzerProfile: Error accessing ShowAnalyzer directory " + DirectoryName);
             return null;
         }
 
         if (!Directory.exists() || !Directory.isDirectory()) {
-            Log.getInstance().write(Log.LOGLEVEL_ERROR, "QueuedJob: ShowAnalyzer directory does not exist " + DirectoryName);
+            Log.getInstance().write(Log.LOGLEVEL_ERROR, "QueuedJob.getShowAnalyzerProfile: ShowAnalyzer directory does not exist " + DirectoryName);
             return null;
         }
 
@@ -176,15 +156,15 @@ public class QueuedJob implements Serializable {
             File ProfileFile = new File(DirectoryName + File.separator + Name + ".saconfig");
 
             String ProfileName = (ProfileFile==null ? "null" : ProfileFile.getAbsolutePath());
-            Log.getInstance().write(Log.LOGLEVEL_TRACE, "QueuedJob: Looking for ShowAnalyzer profile " + ProfileName);
+            Log.getInstance().write(Log.LOGLEVEL_TRACE, "QueuedJob.getShowAnalyzerProfile: Looking for ShowAnalyzer profile " + ProfileName);
 
             if (ProfileFile!=null && ProfileFile.exists()) {
-                Log.getInstance().write(Log.LOGLEVEL_TRACE, "QueuedJob: Found profile for show " + ProfileName);
+                Log.getInstance().write(Log.LOGLEVEL_TRACE, "QueuedJob.getShowAnalyzerProfile: Found profile for show " + ProfileName);
                 return ProfileName;
             }
 
         } else {
-            Log.getInstance().write(Log.LOGLEVEL_WARN, "QueuedJob: null ShowName.");
+            Log.getInstance().write(Log.LOGLEVEL_WARN, "QueuedJob.getShowAnalyzerProfile: null ShowName.");
         }
 
         // Look in the directory for matching ChannelName.saconfig
@@ -193,19 +173,19 @@ public class QueuedJob implements Serializable {
             File ProfileFile = new File(DirectoryName + File.separator + ChannelName + ".saconfig");
 
             String ProfileName = (ProfileFile==null ? "null" : ProfileFile.getAbsolutePath());
-            Log.getInstance().write(Log.LOGLEVEL_TRACE, "QueuedJob: Looking for ShowAnalyzer profile " + ProfileName);
+            Log.getInstance().write(Log.LOGLEVEL_TRACE, "QueuedJob.getShowAnalyzerProfile: Looking for ShowAnalyzer profile " + ProfileName);
 
             if (ProfileFile!=null && ProfileFile.exists()) {
-                Log.getInstance().write(Log.LOGLEVEL_TRACE, "QueuedJob: Found profile for channel " + ProfileName);
+                Log.getInstance().write(Log.LOGLEVEL_TRACE, "QueuedJob.getShowAnalyzerProfile: Found profile for channel " + ProfileName);
                 return ProfileName;
             }
 
         } else {
-            Log.getInstance().write(Log.LOGLEVEL_WARN, "QueuedJob: null ChannelName.");
+            Log.getInstance().write(Log.LOGLEVEL_WARN, "QueuedJob.getShowAnalyzerProfile: null ChannelName.");
         }
 
         // If nothing else found use the default, or null.
-        Log.getInstance().write(Log.LOGLEVEL_TRACE, "QueuedJob: No profile found.");
+        Log.getInstance().write(Log.LOGLEVEL_TRACE, "QueuedJob.getShowAnalyzerProfile: No profile found.");
         return null;
     }
 

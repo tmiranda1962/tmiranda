@@ -7,10 +7,9 @@ package tmiranda.cd;
 
 /**
  *
- * @author Default
+ * @author Tom Miranda.
  */
 
-import java.util.*;
 import java.io.*;
 
 class StreamGetter extends Thread {
@@ -23,6 +22,7 @@ class StreamGetter extends Thread {
         this.type = type;
     }
 
+    @Override
     public void run() {
 
         InputStreamReader isr = null;
@@ -41,9 +41,9 @@ class StreamGetter extends Thread {
                 } else {
                     LastLine = line;
                     if (type.equalsIgnoreCase("error")) {
-                        Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "stderr: " + line);
+                        Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "StreamGetter: stderr: " + line);
                     } else {
-                        Log.getInstance().write(Log.LOGLEVEL_TRACE, "stdout: " + line);
+                        Log.getInstance().write(Log.LOGLEVEL_TRACE, "StreamGetter: stdout: " + line);
                     }
                 }
             }
