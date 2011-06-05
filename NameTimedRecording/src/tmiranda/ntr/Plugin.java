@@ -5,6 +5,7 @@
 
 package tmiranda.ntr;
 
+import java.util.*;
 import sage.*;
 import sagex.api.*;
 
@@ -14,10 +15,21 @@ import sagex.api.*;
  */
 public class Plugin implements sage.SageTVPlugin, SageTVEventListener {
 
-    final static String VERSION = "1.20 05.30.2011";
+    final static String VERSION = "1.30 06.05.2011";
+
+    private final String SETTING_LOGLEVEL = "LogLevel";
+
+    private final String PROPERTY_SHOW_ADVANCED = "ntr/show_advanced";
+
+    private final String SETTING_CLEAR_PROPERTY = "ClearProperty";
 
     private sage.SageTVPluginRegistry registry;
     private sage.SageTVEventListener listener;
+
+    private Timer timer;
+    private TimerTask deadManSwitch;
+
+    static long deadManResetTime = 5000;
 
     /**
      * Constructor.
@@ -40,30 +52,42 @@ public class Plugin implements sage.SageTVPlugin, SageTVEventListener {
         System.out.println("NameTimedRecording: Starting. Version = " + VERSION);
 
         if (Global.IsClient()) {
-            System.out.println("NameTimedRecording: Plugin running as a SageClient.");
+            Log.getInstance().write(Log.LOGLEVEL_TRACE, "NameTimedRecording: Plugin running as a SageClient.");
             return;
         }
 
-        System.out.println("NameTimedRecording: Subscribing to events.");
+        Log.getInstance().write(Log.LOGLEVEL_TRACE, "NameTimedRecording: Subscribing to events.");
 
         listener = this;
         registry.eventSubscribe(listener, "RecordingStopped");
         registry.eventSubscribe(listener, "RecordingCompleted");
+
+        Log.getInstance().write(Log.LOGLEVEL_TRACE, "NameTimedRecording: Starting DeadManSwitch.");
+
+        deadManSwitch = new DeadManSwitch();
+        timer = new Timer();
+        timer.scheduleAtFixedRate(deadManSwitch, 5000L, deadManResetTime);
+
+        // Cleanup old property.
+        Configuration.SetServerProperty(API.PROPERTY_RECURRING_RECORDINGS_OLD, null);
         return;
     }
     
     // This method is called when the plugin should shutdown
     @Override
     public void stop() {
-        System.out.println("NameTimedRecording: Stopping.");
+        Log.getInstance().write(Log.LOGLEVEL_TRACE, "NameTimedRecording: Stopping.");
         registry.eventUnsubscribe(listener, "RecordingStopped");
         registry.eventUnsubscribe(listener, "RecordingFinished");
+        timer.cancel();
     }
 
     // This method is called after plugin shutdown to free any resources
     // used by the plugin
     @Override
     public void destroy() {
+        timer = null;
+        deadManSwitch = null;
         return;
     }
 
@@ -71,13 +95,36 @@ public class Plugin implements sage.SageTVPlugin, SageTVEventListener {
     // Returns the names of the settings for this plugin
     @Override
     public String[] getConfigSettings() {
-        return null;
+        List<String> CommandList = new ArrayList<String>();
+
+        CommandList.add(SETTING_LOGLEVEL);
+
+        if (Configuration.GetProperty(PROPERTY_SHOW_ADVANCED, "false").equalsIgnoreCase("true")) {
+            CommandList.add(SETTING_CLEAR_PROPERTY);
+        }
+
+        return (String[])CommandList.toArray(new String[CommandList.size()]);
     }
 
     // Returns the current value of the specified setting for this plugin
     @Override
     public String getConfigValue(String setting) {
-        return null;
+        if (setting.startsWith(SETTING_LOGLEVEL)) {
+            switch (Log.GetLogLevel()) {
+                case Log.LOGLEVEL_MAX:      return "Maximum";
+                case Log.LOGLEVEL_ERROR:    return "Error";
+                case Log.LOGLEVEL_NONE:     return "None";
+                case Log.LOGLEVEL_TRACE:    return "Trace";
+                case Log.LOGLEVEL_VERBOSE:  return "Verbose";
+                case Log.LOGLEVEL_WARN:     return "Warn";
+                default:                    return "Unknown";
+            }
+        } else if (setting.startsWith(SETTING_CLEAR_PROPERTY)) {
+            return "Clear";
+        } else {
+            Log.getInstance().write(Log.LOGLEVEL_WARN, "NameTimedRecording: Unknown setting from getConfigValue " + setting);
+            return "Unknown";
+        }
     }
 
     // Returns the current value of the specified multichoice setting for
@@ -101,13 +148,36 @@ public class Plugin implements sage.SageTVPlugin, SageTVEventListener {
     // is used for a specific settings
     @Override
     public int getConfigType(String setting) {
-        return 0;
+        if (setting.startsWith(SETTING_LOGLEVEL))
+            return CONFIG_CHOICE;
+        if (setting.startsWith(SETTING_CLEAR_PROPERTY))
+            return CONFIG_BUTTON;
+        else
+            return 0;
     }
 
     // Sets a configuration value for this plugin
     @Override
     public void setConfigValue(String setting, String value) {
-        return;
+        if (setting.startsWith(SETTING_LOGLEVEL)) {
+            if (value.startsWith("None"))
+                Log.SetLogLevel(Log.LOGLEVEL_NONE);
+            else if (value.startsWith("Error"))
+                Log.SetLogLevel(Log.LOGLEVEL_ERROR);
+            else if (value.startsWith("Warn"))
+                Log.SetLogLevel(Log.LOGLEVEL_WARN);
+            else if (value.startsWith("Trace"))
+                Log.SetLogLevel(Log.LOGLEVEL_TRACE);
+            else if (value.startsWith("Verbose"))
+                Log.SetLogLevel(Log.LOGLEVEL_VERBOSE);
+            else if (value.startsWith("Maximum"))
+                Log.SetLogLevel(Log.LOGLEVEL_MAX);
+            else
+                Log.SetLogLevel(Log.LOGLEVEL_ERROR);
+        } else if (setting.startsWith(SETTING_CLEAR_PROPERTY)) {
+            Configuration.SetServerProperty(API.PROPERTY_RECURRING_RECORDINGS, null);
+            Log.getInstance().write(Log.LOGLEVEL_WARN, "setConfigValue: Cleared property.");
+        }
     }
 
     // Sets a configuration values for this plugin for a multiselect choice
@@ -119,24 +189,40 @@ public class Plugin implements sage.SageTVPlugin, SageTVEventListener {
     // For CONFIG_CHOICE settings; this returns the list of choices
     @Override
     public String[] getConfigOptions(String setting) {
-        return null;
+        if (setting.startsWith(SETTING_LOGLEVEL)) {
+            String[] values = {"None", "Error", "Warn", "Trace", "Verbose", "Maximum"};
+            return values;
+        } else
+            return null;
     }
 
     // Returns the help text for a configuration setting
     @Override
     public String getConfigHelpText(String setting) {
-        return null;
+        if (setting.startsWith(SETTING_LOGLEVEL))
+            return "Set the Debug Logging Level.";
+        if (setting.startsWith(SETTING_CLEAR_PROPERTY))
+            return "Change happens immediately with no warning.";
+        else
+            return null;
     }
 
     // Returns the label used to present this setting to the user
     @Override
     public String getConfigLabel(String setting) {
-        return null;
+        if (setting.startsWith(SETTING_LOGLEVEL))
+            return "Debug Logging Level";
+        if (setting.startsWith(SETTING_CLEAR_PROPERTY))
+            return "Clear the Property";
+        else
+            return null;
     }
 
     // Resets the configuration of this plugin
     @Override
     public final void resetConfig() {
+        Log.SetLogLevel(Log.LOGLEVEL_WARN);
+        Log.getInstance().write(Log.LOGLEVEL_WARN, "resetConfig: Reset.");
         return;
     }
 
@@ -211,21 +297,21 @@ public class Plugin implements sage.SageTVPlugin, SageTVEventListener {
     public void sageEvent(String eventName, java.util.Map eventVars) {
 
         if (!(eventName.startsWith("RecordingStopped") || eventName.startsWith("RecordingCompleted"))) {
-            System.out.println("NameTimedRecording: Received unsubscribed event " + eventName);
+            Log.getInstance().write(Log.LOGLEVEL_WARN, "NameTimedRecording: Received unsubscribed event " + eventName);
             return;
         }
 
         Object MediaFile = eventVars.get("MediaFile");
 
         if (MediaFile==null) {
-            System.out.println("NameTimedRecording: null MediaFile.");
+            Log.getInstance().write(Log.LOGLEVEL_WARN, "NameTimedRecording: null MediaFile.");
             return;
         }
 
         Object Airing = MediaFileAPI.GetMediaFileAiring(MediaFile);
 
         if (Airing==null) {
-            System.out.println("NameTimedRecording: null Airing for MediaFile " + MediaFileAPI.GetMediaTitle(MediaFile));
+            Log.getInstance().write(Log.LOGLEVEL_WARN, "NameTimedRecording: null Airing for MediaFile " + MediaFileAPI.GetMediaTitle(MediaFile));
             return;
         }
 
@@ -234,7 +320,7 @@ public class Plugin implements sage.SageTVPlugin, SageTVEventListener {
         // All timed recordings will start with the same thing.  If it's not a timed
         // recording there is nothing to do.
         if (title==null || !title.startsWith(API.TIMED_RECORDING)) {
-            System.out.println("NameTimedRecording: Not a timed recording " + MediaFileAPI.GetMediaTitle(MediaFile));
+            Log.getInstance().write(Log.LOGLEVEL_TRACE, "NameTimedRecording: Not a timed recording " + MediaFileAPI.GetMediaTitle(MediaFile));
             return;
         }
 
@@ -245,12 +331,12 @@ public class Plugin implements sage.SageTVPlugin, SageTVEventListener {
         if (airingName==null || airingName.isEmpty()) {
 
             // If there is no ManualRecordProperty it may be a recurring timed recording.
-            System.out.println("NameTimedRecording: No ManualRecordProperty for Airing " + AiringAPI.GetAiringTitle(Airing));
+            Log.getInstance().write(Log.LOGLEVEL_TRACE, "NameTimedRecording: No ManualRecordProperty for Airing " + AiringAPI.GetAiringTitle(Airing));
             
             airingName = API.getNameForRecurring(Airing);
             
             if (airingName==null || airingName.isEmpty()) {
-                System.out.println("NameTimedRecording: No NameForRecurring.");
+                Log.getInstance().write(Log.LOGLEVEL_TRACE, "NameTimedRecording: No NameForRecurring.");
                 return;
             }
         }
@@ -258,7 +344,7 @@ public class Plugin implements sage.SageTVPlugin, SageTVEventListener {
         // Store the name in the MediaFile metadata.
         MediaFileAPI.SetMediaFileMetadata(MediaFile, API.PROPERTY_NAME, airingName);
 
-        System.out.println("NameTimedRecording: Set name for MediaFile " + airingName);
+        Log.getInstance().write(Log.LOGLEVEL_TRACE, "NameTimedRecording: Set name for MediaFile " + airingName);
         return;
     }
 

@@ -14,33 +14,35 @@ import sagex.api.*;
  */
 public class PropertyElement {
 
+    static final String ELEMENT_DELIMITER = ";";
+
     static void removePropertyElement(String ChannelRecurrence, String Name) {
 
-        String element = ChannelRecurrence + API.DELIMITER + Name;
+        String element = ChannelRecurrence + API.KEY_NAME_DELIMITER + Name;
 
         String rawProperty = Configuration.GetServerProperty(API.PROPERTY_RECURRING_RECORDINGS, null);
-        System.out.println("NTR: removePropertyElement: rawProperty before " + rawProperty);
+        Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "removePropertyElement: rawProperty before " + rawProperty);
 
         if (rawProperty!=null && !rawProperty.isEmpty()) {
             rawProperty = rawProperty.replaceAll(";"+element+";", "");
             Configuration.SetServerProperty(API.PROPERTY_RECURRING_RECORDINGS, rawProperty);
         }
 
-        System.out.println("NTR: removePropertyElement: rawProperty after " + rawProperty);
+        Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "removePropertyElement: rawProperty after " + rawProperty);
     }
 
     static void addPropertyElement(String ChannelRecurrence, String Name) {
 
         String rawProperty = Configuration.GetServerProperty(API.PROPERTY_RECURRING_RECORDINGS, null);
-        System.out.println("NTR: addPropertyElement: rawProperty before " + rawProperty);
+        Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "addPropertyElement: rawProperty before " + rawProperty);
 
         if (rawProperty==null || rawProperty.isEmpty())
-            rawProperty = ";" + ChannelRecurrence + API.DELIMITER + Name + ";";
+            rawProperty = ";" + ChannelRecurrence + API.KEY_NAME_DELIMITER + Name + ";";
         else
-            rawProperty = rawProperty + ";" + ChannelRecurrence + API.DELIMITER + Name + ";";
+            rawProperty = rawProperty + ";" + ChannelRecurrence + API.KEY_NAME_DELIMITER + Name + ";";
 
         Configuration.SetServerProperty(API.PROPERTY_RECURRING_RECORDINGS, rawProperty);
-        System.out.println("NTR: addPropertyElement: rawProperty after " + rawProperty);
+        Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "addPropertyElement: rawProperty after " + rawProperty);
     }
 
     static Map<String, String> getNameMap() {
@@ -59,12 +61,17 @@ public class PropertyElement {
 
         for (String element : elements) {
 
-            String[] parts = element.split(API.DELIMITER);
+            // The first element is usually null.
+            if (element!=null && !element.isEmpty()) {
 
-            if (parts.length==2) {
-                nameMap.put(parts[0], parts[1]);
-            } else {
-                System.out.println("NTR: getNameMap: Malformed element " + element);
+                String[] parts = element.split(API.KEY_NAME_DELIMITER);
+
+                if (parts.length==2) {
+                    nameMap.put(parts[0], parts[1]);
+                    Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "getNameMap: Found " + parts[0] + "-" + parts[1]);
+                } else {
+                    Log.getInstance().write(Log.LOGLEVEL_WARN, "getNameMap: Malformed element " + element);
+                }
             }
         }
 
