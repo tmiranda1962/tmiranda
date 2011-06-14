@@ -1,7 +1,3 @@
-/*
- * To change this template, choose Tools | Templates
- * and open the template in the editor.
- */
 
 package tmiranda.cd;
 
@@ -54,7 +50,8 @@ public class api {
             return false;
         }
 
-        String BaseName = MediaFileName.substring(0, MediaFileName.lastIndexOf("."));
+        int lastIndex = MediaFileName.lastIndexOf(".");
+        String BaseName = lastIndex == -1 ? MediaFileName : MediaFileName.substring(0, lastIndex);
 
         String[] Extensions = {".edl",".txt"};
 

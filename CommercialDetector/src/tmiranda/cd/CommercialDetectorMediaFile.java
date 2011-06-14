@@ -158,11 +158,17 @@ public class CommercialDetectorMediaFile {
             // Get the extension.
             String MediaFileExt = null;
 
-            if (NameExt.length == 2) {
+            if (NameExt.length==1) {
+
+                // No extension.
+                MediaFileExt = "";
+            }  else if (NameExt.length == 2) {
+
                 // Most common case: "filename.ext"
                 MediaFileExt = NameExt[1];
             } else {
-                MediaFileExt = FullName.substring(FullName.lastIndexOf(".")+1);
+                int lastIndex = FullName.lastIndexOf(".");
+                MediaFileExt = lastIndex == -1 ? "" : FullName.substring(lastIndex+1);
             }
 
             String FileNameToDelete = null;
@@ -383,7 +389,8 @@ public class CommercialDetectorMediaFile {
         }
 
         // Get the name minus the "-xxx" where xxx is the segment number.
-        String StartOfName = Name.substring(0, Name.lastIndexOf("-"));
+        int lastIndex = Name.lastIndexOf("-");
+        String StartOfName = lastIndex == -1 ? Name : Name.substring(0, lastIndex);
         Log.getInstance().write(Log.LOGLEVEL_TRACE, "CommercialDetectorMediaFile.getVideoFiles: StartOfName " + StartOfName);
 
         // Now get a listing of all the files in the directory that start with the name we are interested in.

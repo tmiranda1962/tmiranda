@@ -18,7 +18,7 @@ import java.util.*;
  */
 public class plugin implements sage.SageTVPlugin, SageTVEventListener {
 
-    private final String                VERSION = "0.9X";
+    private final String                VERSION = "1.00";
     private sage.SageTVPluginRegistry   registry;
     private sage.SageTVEventListener    listener;
     private static Integer              NumberScanned;
@@ -1267,6 +1267,10 @@ public class plugin implements sage.SageTVPlugin, SageTVEventListener {
             SystemStatus.getInstance().printSystemStatus();
         }
 
+        /*
+         * RecordingScheduleChanged
+         */
+
         // If the Recording Schedule has changed we may need to start jobs that were waiting.
         if (eventName.startsWith("RecordingScheduleChanged")) {
 
@@ -1292,6 +1296,10 @@ public class plugin implements sage.SageTVPlugin, SageTVEventListener {
             Log.getInstance().write(Log.LOGLEVEL_TRACE, "sageEvent: Error-null MediaFile");
             return;
         }
+
+        /*
+         * MediaFileRemoved
+         */
 
         if (eventName.startsWith("MediaFileRemoved")) {
 

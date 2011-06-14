@@ -998,7 +998,13 @@ public class ComskipManager {
     }
 
     public boolean hasAnEdlOrTxtFile(String FileName) {
-        String BaseName = FileName.substring(0, FileName.lastIndexOf("."));
+
+        if (FileName==null || FileName.isEmpty())
+            return false;
+
+        int lastIndex = FileName.lastIndexOf(".");
+
+        String BaseName = lastIndex == -1 ? FileName : FileName.substring(0, lastIndex);
 
         String[] Extensions = {".edl",".txt"};
 

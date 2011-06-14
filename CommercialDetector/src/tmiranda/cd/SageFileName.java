@@ -21,11 +21,14 @@ public class SageFileName {
 
         String MediaFileExt = null;
 
-        if (NameExt.length == 2) {
+        if (NameExt.length == 1) {
+            MediaFileExt = "";
+        } else if(NameExt.length == 2) {
             // Most common case: "filename.ext"
             MediaFileExt = NameExt[1];
         } else {
-            MediaFileExt = FileName.substring(FileName.lastIndexOf(".")+1);
+            int lastPos = FileName.lastIndexOf(".");
+            MediaFileExt = lastPos == -1 ? "" : FileName.substring(lastPos+1);
         }
 
         return MediaFileExt;
