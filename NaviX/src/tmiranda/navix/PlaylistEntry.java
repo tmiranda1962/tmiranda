@@ -1,47 +1,266 @@
 
 package tmiranda.navix;
 
+import java.util.*;
+import java.io.File;
+
 /**
  *
  * @author Tom Miranda.
  */
 public class PlaylistEntry {
 
-    private String version      = null;
-    private String title        = null;     // Web page title NOT content title.
-    private String background   = null;
-    private String type         = null;
-    private String name         = null;
-    private String thumb        = null;
-    private String url          = null;
-    private String player       = null;
-    private String rating       = null;
-    private String description  = null;     // Ends with /description
-    private String processor    = null;
-    private String icon         = null;
-    private String date         = null;
+    String version      = null;
+    String title        = null;     // Web page title NOT content title.
+    String background   = null;
+    String type         = null;
+    String name         = null;
+    String thumb        = null;
+    String url          = null;
+    String player       = null;
+    String rating       = null;
+    String description  = null;     // Ends with /description
+    String processor    = null;
+    String icon         = null;
+    String date         = null;
+    String view         = null;
 
-    public enum PlaylistType {
-        HEAD,       // The page heading.
-        AUDIO,
-        VIDEO,
-        IMAGE,
-        SCRIPT,
-        TEXT,
-        DOWNLOAD,
-        PLUGIN,
-        PLAYLIST,
-        RSS,
-        ATOM,
-        HTML_YOUTUBE,
-        NAVIX,
-        XML_SHOUTCAST,
-        XML_APPLEMOVIE,
-        RSS_FLICKR_DAILY,
-        PLX,
-        HTML,
-        LIST_NOTE,
-        PLAYLIST_YOUTUBE
+    public static final String COMPONENT_VERSION        = "version";
+    public static final String COMPONENT_TITLE          = "title";
+    public static final String COMPONENT_BACKGROUND     = "background";
+    public static final String COMPONENT_TYPE           = "type";
+    public static final String COMPONENT_NAME           = "name";
+    public static final String COMPONENT_THUMB          = "thumb";
+    public static final String COMPONENT_URL            = "url";
+    public static final String COMPONENT_PLAYER         = "player";
+    public static final String COMPONENT_RATING         = "rating";
+    public static final String COMPONENT_DESCRIPTION    = "description";
+    public static final String COMPONENT_PROCESSOR      = "processor";
+    public static final String COMPONENT_ICON           = "icon";
+    public static final String COMPONENT_DATE           = "date";
+    public static final String COMPONENT_VIEW           = "view";
+
+    private static final String DEFAULT_SAGE_ICON       = "SageIcon62.png";
+
+    public List<String> invokeProcessor(String processorName, String command) {
+
+        Log.getInstance().write(Log.LOGLEVEL_TRACE, "invokeProcessor: Invoking " + processorName + ":" + command);
+        List<String> answer = new ArrayList<String>();
+
+        if (processorName==null || processorName.isEmpty()) {
+            Log.getInstance().write(Log.LOGLEVEL_ERROR, "invokeProcessor: null processor.");
+            return answer;
+        }
+
+        Processor p = new Processor(processorName);
+
+        answer = p.send(command);
+        Log.getInstance().write(Log.LOGLEVEL_TRACE, "invokeProcessor: Answer " + answer);
+        return answer;
+    }
+
+    public boolean isSupportedBySage() {
+        return false;
+    }
+
+    public boolean isAtom() {
+        return type==null ? false : PlaylistType.toEnum(type) == PlaylistType.ATOM;
+    }
+
+    public boolean isAudio() {
+        return type==null ? false : PlaylistType.toEnum(type) == PlaylistType.AUDIO;
+    }
+
+    public boolean isDownload() {
+        return type==null ? false : PlaylistType.toEnum(type) == PlaylistType.DOWNLOAD;
+    }
+
+    public boolean isHtml() {
+        return type==null ? false : PlaylistType.toEnum(type) == PlaylistType.HTML;
+    }
+
+    public boolean isHtmlYouTube() {
+        return type==null ? false : PlaylistType.toEnum(type) == PlaylistType.HTML_YOUTUBE;
+    }
+
+    public boolean isImage() {
+        return type==null ? false : PlaylistType.toEnum(type) == PlaylistType.IMAGE;
+    }
+
+    public boolean isListNote() {
+        return type==null ? false : PlaylistType.toEnum(type) == PlaylistType.LIST_NOTE;
+    }
+
+    public boolean isNaviX() {
+        return type==null ? false : PlaylistType.toEnum(type) == PlaylistType.NAVIX;
+    }
+
+    public boolean isPlaylist() {
+        return type==null ? false : PlaylistType.toEnum(type) == PlaylistType.PLAYLIST;
+    }
+
+    public boolean isPlaylistYouTube() {
+        return type==null ? false : PlaylistType.toEnum(type) == PlaylistType.PLAYLIST_YOUTUBE;
+    }
+
+    public boolean isPlugin() {
+        return type==null ? false : PlaylistType.toEnum(type) == PlaylistType.PLUGIN;
+    }
+
+    public boolean isPlx() {
+        return type==null ? false : PlaylistType.toEnum(type) == PlaylistType.PLX;
+    }
+
+    public boolean isRss() {
+        return type==null ? false : PlaylistType.toEnum(type) == PlaylistType.RSS;
+    }
+
+    public boolean isRssFlickrDaily() {
+        return type==null ? false : PlaylistType.toEnum(type) == PlaylistType.RSS_FLICKR_DAILY;
+    }
+
+    public boolean isScript() {
+        return type==null ? false : PlaylistType.toEnum(type) == PlaylistType.SCRIPT;
+    }
+
+    public boolean isSearch() {
+        return type==null ? false : PlaylistType.toEnum(type) == PlaylistType.SEARCH;
+    }
+
+    public boolean isText() {
+        return type==null ? false : PlaylistType.toEnum(type) == PlaylistType.TEXT;
+    }
+
+    public boolean isVideo() {
+        return type==null ? false : PlaylistType.toEnum(type) == PlaylistType.VIDEO;
+    }
+
+    public boolean isXmlAppleMovie() {
+        return type==null ? false : PlaylistType.toEnum(type) == PlaylistType.XML_APPLEMOVIE;
+    }
+
+    public boolean isXmlShoutcast() {
+        return type==null ? false : PlaylistType.toEnum(type) == PlaylistType.XML_SHOUTCAST;
+    }
+
+    /**
+     * Loads the data into the Object.  Stops when it finds the next "type" or loads the "number"
+     * of components.
+     *
+     * @param startLocation
+     * @param number
+     * @param allLines
+     * @return The number of lines consumed.
+     */
+    int loadData(int startLocation, int number, List<String> allLines) {
+
+        int numberConsumed = 0;
+
+        for (int i=startLocation; i<allLines.size() && i<=startLocation+number; i++) {
+
+            numberConsumed++;
+
+            // Get the line.
+            String line = allLines.get(i);
+
+            // Make sure it's not empty.
+            if (line==null || line.isEmpty()) {
+                Log.getInstance().write(Log.LOGLEVEL_ERROR, "loadData: null line.");
+                return numberConsumed;
+            }
+
+            List<String> parts = Playlist.parseParts(line);
+
+            if (parts.size() != 2) {
+                Log.getInstance().write(Log.LOGLEVEL_ERROR, "loadData: Malformed line " + line);
+                return numberConsumed;
+            }
+
+            String component = parts.get(0).toLowerCase();
+            String value = parts.get(1);
+            Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "loadData: component and value " + component + ":" + value);
+
+            if (component.startsWith(COMPONENT_VERSION))
+                setVersion(value);
+            else if (component.startsWith(COMPONENT_TITLE))
+                setTitle(value);
+            else if (component.startsWith(COMPONENT_BACKGROUND))
+                setBackground(value);
+            else if (component.startsWith(COMPONENT_NAME))
+                setName(value);
+            else if (component.startsWith(COMPONENT_THUMB))
+                setThumb(value);
+            else if (component.startsWith(COMPONENT_URL))
+                setUrl(value);
+            else if (component.startsWith(COMPONENT_PLAYER))
+                setPlayer(value);
+            else if (component.startsWith(COMPONENT_RATING))
+                setRating(value);
+            else if (component.startsWith(COMPONENT_DESCRIPTION))
+                i += loadDescription(i+1, value, allLines);
+            else if (component.startsWith(COMPONENT_PROCESSOR))
+                setProcessor(value);
+            else if (component.startsWith(COMPONENT_ICON))
+                setIcon(value);
+            else if (component.startsWith(COMPONENT_DATE))
+                setDate(value);
+            else if (component.startsWith(COMPONENT_VIEW))
+                setView(value);
+            else if (component.startsWith(COMPONENT_TYPE)) {
+                Log.getInstance().write(Log.LOGLEVEL_WARN, "loadData: Found type component, finished.");
+                return numberConsumed-1;
+            } else {
+                Log.getInstance().write(Log.LOGLEVEL_ERROR, "loadData: Found unknown component " + component);
+            }
+        }
+
+        return numberConsumed;
+    }
+
+    int loadDescription(int startLocation, String beginning, List<String> allLines) {
+
+        int numberConsumed = 0;
+
+        String delimiter = "/" + COMPONENT_DESCRIPTION;
+
+        // Check for special case of a single line description.
+        if (beginning.lastIndexOf(delimiter)!=-1) {
+            setDescription(beginning.substring(0, beginning.lastIndexOf(delimiter)));
+            Log.getInstance().write(Log.LOGLEVEL_TRACE, "loadDescription: " + numberConsumed + ": <" + description + ">");
+            return numberConsumed;
+        }
+
+        String desc = beginning;
+        boolean found = false;
+
+        for (int i=startLocation; i<allLines.size() && !found; i++) {
+            String nextLine = allLines.get(i);
+
+            numberConsumed++;
+
+            if (nextLine==null || nextLine.isEmpty()) {
+                Log.getInstance().write(Log.LOGLEVEL_WARN, "loadDescription: null line.");
+                continue;
+            }
+
+            nextLine = nextLine.trim();
+
+            if (nextLine.lastIndexOf(delimiter)!=-1) {
+                desc = desc + "" + nextLine.substring(0, nextLine.lastIndexOf(delimiter));
+                found = true;
+            } else {
+                desc = desc + " " + nextLine;
+            }
+        }
+
+        setDescription(desc);
+
+        if (!found)
+            Log.getInstance().write(Log.LOGLEVEL_WARN, "loadDescription: Did not find delimiter.");
+
+        Log.getInstance().write(Log.LOGLEVEL_TRACE, "loadDescription: " + numberConsumed + ": <" + description + ">");
+
+        return numberConsumed;
     }
 
     /*
@@ -73,6 +292,10 @@ public class PlaylistEntry {
 
     public String getIcon() {
         return icon;
+    }
+
+    public String getSageIcon() {
+        return icon == null ? DEFAULT_SAGE_ICON : icon;
     }
 
     public void setIcon(String icon) {
@@ -151,6 +374,32 @@ public class PlaylistEntry {
         this.version = version;
     }
 
+    public String getView() {
+        return view;
+    }
+
+    public void setView(String view) {
+        this.view = view;
+    }
+
+    @Override
+    public String toString() {
+        return "Type=" + type + ", " +
+               "Title=" + title + ", " +
+               "Name=" + name + ", " +
+               "Version=" + version + ", " +
+               "Background=" + background + ", " +
+               "Thumb=" + thumb + ", " +
+               "URL=" + url + ", " +
+               "Player=" + player + ", " +
+               "Rating=" + rating + ", " +
+               "Date=" + date + ", " +
+               "Processor=" + processor + ", " +
+               "Icon=" + icon + ", " +
+               "View=" + view + ", " +
+               "Description=" + description;
+    }
+
     @Override
     public boolean equals(Object obj) {
         if (obj == null) {
@@ -167,6 +416,9 @@ public class PlaylistEntry {
             return false;
         }
         if ((this.background == null) ? (other.background != null) : !this.background.equals(other.background)) {
+            return false;
+        }
+        if ((this.type == null) ? (other.type != null) : !this.type.equals(other.type)) {
             return false;
         }
         if ((this.thumb == null) ? (other.thumb != null) : !this.thumb.equals(other.thumb)) {
@@ -190,25 +442,31 @@ public class PlaylistEntry {
         if ((this.icon == null) ? (other.icon != null) : !this.icon.equals(other.icon)) {
             return false;
         }
+        if ((this.date == null) ? (other.date != null) : !this.date.equals(other.date)) {
+            return false;
+        }
+        if ((this.view == null) ? (other.view != null) : !this.view.equals(other.view)) {
+            return false;
+        }
         return true;
     }
 
     @Override
     public int hashCode() {
-        int hash = 5;
-        hash = 59 * hash + (this.version != null ? this.version.hashCode() : 0);
-        hash = 59 * hash + (this.title != null ? this.title.hashCode() : 0);
-        hash = 59 * hash + (this.background != null ? this.background.hashCode() : 0);
-        hash = 59 * hash + (this.type != null ? this.type.hashCode() : 0);
-        hash = 59 * hash + (this.name != null ? this.name.hashCode() : 0);
-        hash = 59 * hash + (this.thumb != null ? this.thumb.hashCode() : 0);
-        hash = 59 * hash + (this.url != null ? this.url.hashCode() : 0);
-        hash = 59 * hash + (this.player != null ? this.player.hashCode() : 0);
-        hash = 59 * hash + (this.rating != null ? this.rating.hashCode() : 0);
-        hash = 59 * hash + (this.description != null ? this.description.hashCode() : 0);
-        hash = 59 * hash + (this.processor != null ? this.processor.hashCode() : 0);
-        hash = 59 * hash + (this.icon != null ? this.icon.hashCode() : 0);
-        hash = 59 * hash + (this.date != null ? this.date.hashCode() : 0);
+        int hash = 3;
+        hash = 79 * hash + (this.version != null ? this.version.hashCode() : 0);
+        hash = 79 * hash + (this.title != null ? this.title.hashCode() : 0);
+        hash = 79 * hash + (this.background != null ? this.background.hashCode() : 0);
+        hash = 79 * hash + (this.type != null ? this.type.hashCode() : 0);
+        hash = 79 * hash + (this.name != null ? this.name.hashCode() : 0);
+        hash = 79 * hash + (this.thumb != null ? this.thumb.hashCode() : 0);
+        hash = 79 * hash + (this.url != null ? this.url.hashCode() : 0);
+        hash = 79 * hash + (this.player != null ? this.player.hashCode() : 0);
+        hash = 79 * hash + (this.rating != null ? this.rating.hashCode() : 0);
+        hash = 79 * hash + (this.description != null ? this.description.hashCode() : 0);
+        hash = 79 * hash + (this.processor != null ? this.processor.hashCode() : 0);
+        hash = 79 * hash + (this.date != null ? this.date.hashCode() : 0);
+        hash = 79 * hash + (this.view != null ? this.view.hashCode() : 0);
         return hash;
     }
 

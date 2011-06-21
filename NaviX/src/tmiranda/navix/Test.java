@@ -5,8 +5,6 @@
 
 package tmiranda.navix;
 
-import java.io.*;
-import java.net.*;
 
 /**
  *
@@ -16,49 +14,21 @@ public class Test {
     public Test(String HomeURL) {
 
         if (HomeURL==null || HomeURL.isEmpty()) {
-            System.out.println("Empty HomeURL");
+            System.out.println("TEST: Empty HomeURL");
             return;
         }
 
-        BufferedReader br = read(HomeURL);
+        Log.getInstance().SetLogLevel(Log.LOGLEVEL_VERBOSE);
 
-        String line = null;
+        Playlist playlist = new Playlist(HomeURL);
 
-        try {
-            while ((line=br.readLine()) != null) {
-                System.out.println("line = " + line);
+        for (PlaylistEntry entry : playlist.getElements()) {
+            if (entry.isPlaylist()) {
+                PlaylistElement playlistElement = (PlaylistElement)entry;
+                System.out.println("TEST: Found a playlist, url = " + playlistElement.getNextPlaylist());
+                //Playlist newPlaylist = new Playlist(((PlaylistElement)entry).getNextPlaylist());
+                Test t = new Test(playlistElement.getNextPlaylist());
             }
-        } catch (IOException e) {
-            System.out.println("IO Exception");
         }
-
     }
-
-    public static BufferedReader read(String urlString) {
-
-        URL url = null;
-
-        try {
-            url = new URL(urlString);
-        } catch (MalformedURLException e) {
-            System.out.println("Malformed URL " + urlString);
-            return null;
-        }
-
-        InputStream is = null;
-
-        try {
-            is = url.openStream();
-        } catch (IOException e) {
-            System.out.println("IO Exception");
-            return null;
-        }
-
-        InputStreamReader isr = new InputStreamReader(is);
-
-        BufferedReader br = new BufferedReader(isr);
-
-        return br;
-    }
-
 }
