@@ -2,7 +2,8 @@
 package tmiranda.navix;
 
 import java.util.*;
-import java.io.File;
+import java.io.*;
+import org.python.util.*;
 
 /**
  *
@@ -20,6 +21,7 @@ public class PlaylistEntry {
     String player       = null;
     String rating       = null;
     String description  = null;     // Ends with /description
+    String[] descriptionParts = null;
     String processor    = null;
     String icon         = null;
     String date         = null;
@@ -42,19 +44,84 @@ public class PlaylistEntry {
 
     private static final String DEFAULT_SAGE_ICON       = "SageIcon62.png";
 
-    public List<String> invokeProcessor(String processorName, String command) {
+    // FIXME
+    public static final String PYTHON_PATH = "";
+    public static final String SAGE_PROCESSOR = "";
+    public static final String SCRIPT_DONE = "script done";
+    public static final String SCRIPT_ANSWER = "answer=";
 
-        Log.getInstance().write(Log.LOGLEVEL_TRACE, "invokeProcessor: Invoking " + processorName + ":" + command);
+    public List<String> invokeProcessor(String rawURL, String rawProcessor) {
+
+        Log.getInstance().write(Log.LOGLEVEL_TRACE, "invokeProcessor: Invoking processor for " + rawURL);
         List<String> answer = new ArrayList<String>();
 
-        if (processorName==null || processorName.isEmpty()) {
+        if (rawURL==null || rawURL.isEmpty()) {
             Log.getInstance().write(Log.LOGLEVEL_ERROR, "invokeProcessor: null processor.");
             return answer;
         }
 
-        Processor p = new Processor(processorName);
+        // Create the pipe that will be used to connect the python script to this method.
+        PipedOutputStream output = new PipedOutputStream();
+        InputStream input = null;
 
-        answer = p.send(command);
+        try {
+            input = new PipedInputStream(output);
+        } catch (IOException e) {
+            Log.getInstance().write(Log.LOGLEVEL_ERROR, "invokeProcessor: Exception opening PipedInputStream " + e.getMessage());
+            try {output.close();} catch (IOException e1) {}
+            return answer;
+        }
+
+        // Create the pipe reader.
+        InputStreamReader isr = new InputStreamReader(input);
+        BufferedReader br = new BufferedReader(isr);
+
+        // Create the properties that will be needed to setup the python path.
+        Properties prop = new Properties();
+        prop.setProperty("python.path",".;.\\NaviX\\scripts;.\\NaviX\\python\\jython2.5.2\\lib");
+
+        // This is the data we will pass to the python script.
+        String[] argv = {"SageProcessor.py", rawURL, rawProcessor==null ? "" : rawProcessor};
+
+        // Initialize the python runtime environment.
+        PythonInterpreter.initialize(System.getProperties(), prop, argv);
+
+        // Start the python script.
+        PythonInterpreter interp = new PythonInterpreter();
+        interp.setOut(output);
+        interp.setErr(output);
+        interp.execfile(".\\NaviX\\scripts\\SageProcessor.py");
+
+        // Read the results.
+        String line = null;
+        boolean done = false;
+
+        try {
+            while (!done && (line = br.readLine()) != null) {
+                Log.getInstance().write(Log.LOGLEVEL_TRACE, "invokeProcessor: Read line " + line);
+                if (line.equalsIgnoreCase(SCRIPT_DONE)) {
+                    done = true;
+                    Log.getInstance().write(Log.LOGLEVEL_TRACE, "invokeProcessor: Script has completed.");
+                } else if (line.startsWith(SCRIPT_ANSWER)) {
+                    answer.add(line);
+                    Log.getInstance().write(Log.LOGLEVEL_TRACE, "invokeProcessor: Script answer received " + line);
+                }
+            }
+        } catch (IOException e ) {
+            Log.getInstance().write(Log.LOGLEVEL_ERROR, "invokeProcessor: Exception reading " + e.getMessage());
+        }
+
+        interp.cleanup();
+
+        try {
+            br.close();
+            isr.close();
+            input.close();
+            output.close();
+        } catch (IOException e) {
+            Log.getInstance().write(Log.LOGLEVEL_WARN, "invokeProcessor: Exception cleaning up " + e.getMessage());
+        }
+
         Log.getInstance().write(Log.LOGLEVEL_TRACE, "invokeProcessor: Answer " + answer);
         return answer;
     }
@@ -115,6 +182,10 @@ public class PlaylistEntry {
         return type==null ? false : PlaylistType.toEnum(type) == PlaylistType.RSS;
     }
 
+    public boolean isRssItem() {
+        return type==null ? false : PlaylistType.toEnum(type) == PlaylistType.RSS_ITEM;
+    }
+
     public boolean isRssFlickrDaily() {
         return type==null ? false : PlaylistType.toEnum(type) == PlaylistType.RSS_FLICKR_DAILY;
     }
@@ -169,16 +240,19 @@ public class PlaylistEntry {
                 return numberConsumed;
             }
 
+            // Remove leading and trailing spaces.
+            line = line.trim();
+
             List<String> parts = Playlist.parseParts(line);
 
             if (parts.size() != 2) {
-                Log.getInstance().write(Log.LOGLEVEL_ERROR, "loadData: Malformed line " + line);
+                Log.getInstance().write(Log.LOGLEVEL_ERROR, "loadData: Malformed line, skipping " + line);
                 return numberConsumed;
             }
 
             String component = parts.get(0).toLowerCase();
             String value = parts.get(1);
-            Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "loadData: component and value " + component + ":" + value);
+            Log.getInstance().write(Log.LOGLEVEL_MAX, "loadData: component and value " + component + ":" + value);
 
             if (component.startsWith(COMPONENT_VERSION))
                 setVersion(value);
@@ -244,6 +318,7 @@ public class PlaylistEntry {
             }
 
             nextLine = nextLine.trim();
+            nextLine = nextLine.replace("\n", "");
 
             if (nextLine.lastIndexOf(delimiter)!=-1) {
                 desc = desc + "" + nextLine.substring(0, nextLine.lastIndexOf(delimiter));
@@ -255,12 +330,30 @@ public class PlaylistEntry {
 
         setDescription(desc);
 
+        parseDescription();
+
         if (!found)
             Log.getInstance().write(Log.LOGLEVEL_WARN, "loadDescription: Did not find delimiter.");
 
         Log.getInstance().write(Log.LOGLEVEL_TRACE, "loadDescription: " + numberConsumed + ": <" + description + ">");
 
         return numberConsumed;
+    }
+
+    private void parseDescription() {
+        if (description==null)
+            return;
+
+        descriptionParts = description.split("-=");
+
+        if (descriptionParts==null || descriptionParts.length==0)
+            return;
+
+        for (int i=0; i<descriptionParts.length; i++) {
+            descriptionParts[i] = descriptionParts[i].replace("-=", "");
+            descriptionParts[i] = descriptionParts[i].replace("=-", "");
+            descriptionParts[i] = descriptionParts[i].trim();
+        }
     }
 
     /*
@@ -288,6 +381,10 @@ public class PlaylistEntry {
 
     public void setDescription(String description) {
         this.description = description;
+    }
+
+    public String[] getDescriptionParts() {
+        return descriptionParts;
     }
 
     public String getIcon() {
@@ -322,6 +419,14 @@ public class PlaylistEntry {
         return processor;
     }
 
+    public boolean hasProcessor() {
+
+        if (url!=null && url.contains("youtube.com"))
+            return true;
+        else
+            return processor != null && !processor.isEmpty();
+    }
+
     public void setProcessor(String processor) {
         this.processor = processor;
     }
@@ -335,7 +440,9 @@ public class PlaylistEntry {
     }
 
     public String getThumb() {
-        return thumb;
+// FIXME - Need to handle having "?...." after .jpg
+// FIXME - Some playlists have "default" for this value.
+        return thumb==null || thumb.equalsIgnoreCase("default") ? null : thumb;
     }
 
     public void setThumb(String thumb) {

@@ -10,21 +10,21 @@ import java.io.*;
  */
 public class Cacher {
 
-    private static final String CACHE_FILE      = "NaviX-Cache.txt";
-    private static final String CACHE_FILE_OLD  = "NaviX-Cache.old";
+    static List<String> playlistsProcessed = new ArrayList<String>();
 
-    private boolean         isValid     = false;
-    private String          urlString   = null;
-    private String          fileString  = null;
-    private List<String>    allLines    = null;
-    private boolean         isLoading   = false;
-    private boolean         hasLines    = false;
-    private boolean         wroteLines  = false;
-    private Date            loadStart   = null;
-    private Date            loadEnd     = null;
-    private long            totalPlaylists;
-    private long            totalElements;
-    private long            totalLines;
+    private boolean         isValid         = false;
+    private String          urlString       = null;
+    private String          fileString      = null;
+    private List<String>    allLines        = null;
+    private boolean         isLoading       = false;
+    private boolean         hasLines        = false;
+    private boolean         wroteLines      = false;
+    private Date            loadStart       = null;
+    private Date            loadEnd         = null;
+    private long            totalPlaylists  = 0;
+    private long            totalElements   = 0;
+    private long            totalLines      = 0;
+    private CacherReader    cacherReader    = null;
 
     public Cacher(String URLString, String FileString) {
 
@@ -49,40 +49,54 @@ public class Cacher {
         wroteLines = false;
     }
 
-    public boolean loadAll() {
+    public void startLoad() {
 
         if (!isValid) {
             Log.getInstance().write(Log.LOGLEVEL_WARN, "Cacher.loadAll: Invalid instance.");
-            return false;
+            return;
         }
+
+        Log.getInstance().write(Log.LOGLEVEL_TRACE, "Cacher.loadAll: Starting reader thread.");
+        cacherReader = new CacherReader(this);
+        cacherReader.start();
 
         isLoading = true;
         loadStart = new Date();
         loadEnd = new Date(0);
 
-        allLines = recursivelyReadLines(urlString);
+        return;
 
-        if (allLines.isEmpty()) {
-            Log.getInstance().write(Log.LOGLEVEL_WARN, "Cacher.loadAll: No lines read.");
-            return false;
-        }
+        //allLines = recursivelyReadLines(urlString);
 
-        hasLines = true;
-        wroteLines = false;
+        //if (allLines.isEmpty()) {
+            //Log.getInstance().write(Log.LOGLEVEL_WARN, "Cacher.loadAll: No lines read.");
+            //return false;
+        //}
 
-        File targetFile = getTargetFile(fileString);
+        //hasLines = true;
+        //wroteLines = false;
 
-        if (targetFile==null) {
-            Log.getInstance().write(Log.LOGLEVEL_WARN, "Cacher.loadAll: Error creating target file.");
-            return false;
-        }
+        //File targetFile = getTargetFile(fileString);
+
+        //if (targetFile==null) {
+            //Log.getInstance().write(Log.LOGLEVEL_WARN, "Cacher.loadAll: Error creating target file.");
+            //return false;
+        //}
         
-        wroteLines = writeTextFile(allLines, targetFile);
+        //wroteLines = writeTextFile(allLines, targetFile);
 
-        loadEnd = new Date();
-        isLoading = false;
+        //loadEnd = new Date();
+        //isLoading = false;
 
-        return wroteLines;
+        //return wroteLines;
+    }
+
+    public void stopReader() {
+        cacherReader.setStop();
+    }
+
+    void setAllLines(List<String> lines) {
+        allLines = lines;
     }
 
     public boolean isDirty() {
@@ -107,14 +121,14 @@ public class Cacher {
             return false;
         }
 
-        File targetFile = getTargetFile(fileString);
+        File targetFile = CacherReader.getTargetFile(fileString);
 
         if (targetFile==null) {
             Log.getInstance().write(Log.LOGLEVEL_WARN, "Cacher.writeLines: Error creating target file.");
             return false;
         }
 
-        wroteLines = writeTextFile(allLines, targetFile);
+        wroteLines = CacherReader.writeTextFile(allLines, targetFile);
 
         return wroteLines;
     }
@@ -139,92 +153,88 @@ public class Cacher {
         return totalLines;
     }
 
+    public boolean isHasLines() {
+        return hasLines;
+    }
+
+    public void setHasLines(boolean hasLines) {
+        this.hasLines = hasLines;
+    }
+
+    public void setIsLoading(boolean isLoading) {
+        this.isLoading = isLoading;
+    }
+
+    public boolean isValid() {
+        return isValid;
+    }
+
+    public long getTotalPlaylists() {
+        return totalPlaylists;
+    }
+
+    public void setTotalPlaylists(long totalPlaylists) {
+        this.totalPlaylists = totalPlaylists;
+    }
+
+    public boolean isWroteLines() {
+        return wroteLines;
+    }
+
+    public void setWroteLines(boolean wroteLines) {
+        this.wroteLines = wroteLines;
+    }
+
+    public void setLoadEnd(Date loadEnd) {
+        this.loadEnd = loadEnd;
+    }
+
+    public void setLoadStart(Date loadStart) {
+        this.loadStart = loadStart;
+    }
+
+    public void setTotalElements(long totalElements) {
+        this.totalElements = totalElements;
+    }
+
+    public void setUrlString(String urlString) {
+        this.urlString = urlString;
+    }
+
+    public List<String> getAllLines() {
+        return allLines;
+    }
+
+    public CacherReader getCacherReader() {
+        return cacherReader;
+    }
+
+    public String getFileString() {
+        return fileString;
+    }
+
+    public String getUrlString() {
+        return urlString;
+    }
+
     public long getHasBeenLoadingTime() {
-        if (!isValid || !isLoading || loadEnd.before(loadStart))
+        if (!isValid || !isLoading)
             return 0;
 
         Date now = new Date();
         return now.getTime() - loadStart.getTime();
     }
 
-    private List<String> recursivelyReadLines(String RootURL) {
-
-        List<String> lines = new ArrayList<String>();
-
-        if (RootURL==null || RootURL.isEmpty()) {
-            Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "recursivelyReadLines: null RootURL.");
-            return lines;
-        }
-
-        totalPlaylists++;
-
-        Playlist playlist = new Playlist(RootURL);
-
-        lines.addAll(playlist.getAllLines());
-
-        for (PlaylistEntry entry : playlist.getElements()) {
-
-            totalElements++;
-
-            // Recurse if this is a playlist.
-            if (entry.isPlaylist() || entry.isPlx()) {
-                Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "recursivelyReadLines: Recursing. Totals " + totalPlaylists + ":" + totalElements);
-                lines.addAll(recursivelyReadLines(entry.getUrl()));
-            }
-        }
-
-        return lines;
+    public static List<String> getPlaylistsProcessed() {
+        return playlistsProcessed;
     }
 
-    private boolean writeTextFile(List<String> lines, File targetFile) {
-
-        FileWriter outFile = null;
-
-        try {
-            outFile = new FileWriter(targetFile);
-        } catch (IOException e) {
-            Log.getInstance().write(Log.LOGLEVEL_ERROR, "Cacher.writeTextFile: Exception creating FileWriter " + e.getMessage());
-            return false;
-        }
-
-        PrintWriter out = new PrintWriter(outFile);
-
-        for (String line : lines) {
-            out.println(line);
-            Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "Cacher.writeTextFile: Wrote " + line);
-        }
-
-        Log.getInstance().write(Log.LOGLEVEL_TRACE, "Cacher.writeTextFile: Wrote lines " + allLines.size());
-        out.close();
-        return false;
+    public static void setPlaylistsProcessed(List<String> playlistsProcessed) {
+        Cacher.playlistsProcessed = playlistsProcessed;
     }
 
-    private File getTargetFile(String fileName) {
-
-        // First backup the existing file if it exists.
-        File target = new File(fileName);
-
-        if (target.exists()) {
-            Log.getInstance().write(Log.LOGLEVEL_TRACE, "Cacher.getTargetFile: Backing up existing file");
-
-            File backupTarget = new File(fileName + ".old");
-
-            // If the backup file exists, delete it.
-            if (backupTarget.exists()) {
-                if (!backupTarget.delete()) {
-                    Log.getInstance().write(Log.LOGLEVEL_ERROR, "Cacher.getTargetFile: Failed to delete old backup file " + fileName + ".old");
-                    return null;
-                }
-            }
-
-            // Rename the file.
-            if (!target.renameTo(backupTarget)) {
-                Log.getInstance().write(Log.LOGLEVEL_ERROR, "Cacher.getTargetFile: Failed to rename.");
-                return null;
-            }
-
-        }
-
-        return new File(fileName);
+    public static void clearPlaylistsProcessed() {
+        Cacher.playlistsProcessed = new ArrayList<String>();
     }
+
 }

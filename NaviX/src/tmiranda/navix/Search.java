@@ -3,6 +3,8 @@ package tmiranda.navix;
 
 import java.util.*;
 
+// FIXME - Will not work properly because circular references are allowed in the playlists.
+
 /**
  *
  * @author Tom Miranda.
@@ -13,6 +15,7 @@ public class Search {
 
     private static int totalPlaylists= 0;
     private static int totalElements = 0;
+    private static List<String> processedPlaylists = new ArrayList<String>();
 
     public Search(String RootURL) {
         allElements = new ArrayList<PlaylistEntry>();
@@ -27,10 +30,16 @@ public class Search {
         List<PlaylistEntry> tree = new ArrayList<PlaylistEntry>();
 
         if (RootURL==null || RootURL.isEmpty() || Type==null || Type.isEmpty()) {
-            Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "searchForType: null RootURL.");
+            Log.getInstance().write(Log.LOGLEVEL_WARN, "searchForType: null RootURL.");
             return tree;
         }
 
+        if (processedPlaylists.contains(RootURL)) {
+            Log.getInstance().write(Log.LOGLEVEL_TRACE, "searchForType: Pkaylist already loaded " + RootURL);
+            return tree;
+        }
+
+        processedPlaylists.add(RootURL);
         totalPlaylists++;
 
         Playlist playlist = new Playlist(RootURL);

@@ -24,7 +24,7 @@ public class VideoElement extends PlaylistEntry {
 
     public String getVideoLink() {
 //FIXME
-        if (true || processor==null || processor.isEmpty()) {
+        if (!hasProcessor()) {
             Log.getInstance().write(Log.LOGLEVEL_TRACE, "getVideoLink: No processor needed, returning " + url);
             return url;
         }
@@ -32,7 +32,7 @@ public class VideoElement extends PlaylistEntry {
 
         Log.getInstance().write(Log.LOGLEVEL_TRACE, "getVideoLink: Processor needed, will use " + processor);
         
-        List<String> answer = invokeProcessor(processor, url);
+        List<String> answer = invokeProcessor(url, processor);
 
         if (answer==null || answer.isEmpty()) {
             Log.getInstance().write(Log.LOGLEVEL_WARN, "getVideoLink: No response from processor.");
@@ -52,6 +52,6 @@ public class VideoElement extends PlaylistEntry {
             return a;
         }
 
-        return answer.get(0);
+        return answer.get(0).replace(PlaylistEntry.SCRIPT_ANSWER, "");
     }
 }

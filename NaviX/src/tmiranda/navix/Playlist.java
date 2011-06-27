@@ -4,15 +4,18 @@ package tmiranda.navix;
 import java.io.*;
 import java.net.*;
 import java.util.*;
+import sage.media.rss.*;
 
 /**
  *
  * @author Tom Miranda.
  */
-public class Playlist {
+public final class Playlist {
 
-    public static String COMMENT_CHARACTER = "#";
-    
+    public static final String COMMENT_CHARACTER = "#";
+    public static final String SPAN_DELIMITER = "</span>";
+
+    private String              url;
     private PlaylistHeader      playlistHeader;
     private List<PlaylistEntry> playlistEntries;
 
@@ -24,11 +27,14 @@ public class Playlist {
     /**
      * Constructor.
      *
+     *
+     *
      * @param HomeURL The root URL of the playlist.
      */
     public Playlist(String HomeURL) {
 
         // Create the Header and the empty List.
+        url = HomeURL;
         playlistHeader = new PlaylistHeader();
         playlistEntries = new ArrayList<PlaylistEntry>();
         parentPlaylist = null;
@@ -64,15 +70,63 @@ public class Playlist {
             Log.getInstance().write(Log.LOGLEVEL_ERROR, "Playlist: IO Exception " + e.getMessage());
         }
 
+        int numberOfLines = allLines.size();
+        allLines = combineSpannedLines(allLines);
+        if (numberOfLines != allLines.size()) {
+            Log.getInstance().write(Log.LOGLEVEL_TRACE, "Playlist: Total combined lines " + numberOfLines + ":" + allLines.size());
+        }
+
         // Set the header information.
         scanForHeader(allLines);
 
         // Set the entries.
         scanForEntries(allLines);
 
-        // Free up the memory.
-        //allLines.clear();
-        //allLines = null;
+        return;
+    }
+
+    /**
+     * Creates a Playlist with the same url, header, entries and allLines.
+     * Clears parent, child.
+     * 
+     * @param playlist
+     */
+    public Playlist(Playlist playlist) {
+        url = playlist.url;
+        playlistHeader = playlist.playlistHeader;
+        playlistEntries = playlist.playlistEntries;
+        parentPlaylist = null;
+        childPlaylists = new ArrayList<Playlist>();
+        allLines = playlist.allLines;
+    }
+
+    private List<String> combineSpannedLines(List<String> allLines) {
+
+        if (allLines==null || allLines.isEmpty())
+            return allLines;
+
+        List<String> newLines = new ArrayList<String>();
+
+        for (int lineNumber=0; lineNumber<allLines.size(); lineNumber++) {
+
+            String line = allLines.get(lineNumber);
+
+            line = line.replaceAll("\n", "");
+
+            while (line.endsWith(SPAN_DELIMITER) && lineNumber<allLines.size()) {
+                Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "combineSpannedLines: Found delimiter in line " + line);
+                line = line.replace(SPAN_DELIMITER, "");
+                lineNumber++;
+                if (lineNumber<allLines.size()) {
+                    line = line + " " + allLines.get(lineNumber);
+                    Log.getInstance().write(Log.LOGLEVEL_TRACE, "combineSpannedLines: Combined line " + line);
+                }
+            }
+
+            newLines.add(line);
+        }
+
+        return newLines;
     }
 
     private void scanForHeader(List<String> allLines) {
@@ -148,6 +202,8 @@ public class Playlist {
             // Get the position of the next Entry.
             startLocation = findNextToken("type", startLocation+numberConsumed, allLines);
         }
+
+        Log.getInstance().write(Log.LOGLEVEL_TRACE, "scanForEntries: Found entries " + playlistEntries.size());
     }
 
     private int findNextToken(String token, int start, List<String> allLines) {
@@ -194,7 +250,7 @@ public class Playlist {
                 //break;
 
             case AUDIO:
-                Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "addEntryStartingAt: Found AUDIO element.");
+                Log.getInstance().write(Log.LOGLEVEL_MAX, "addEntryStartingAt: Found AUDIO element.");
 
                 // Create the new element.
                 entry = new AudioElement();
@@ -208,7 +264,7 @@ public class Playlist {
                 break;
 
             case VIDEO:
-                Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "addEntryStartingAt: Found VIDEO element.");
+                Log.getInstance().write(Log.LOGLEVEL_MAX, "addEntryStartingAt: Found VIDEO element.");
                 
                 // Create the new element.
                 entry = new VideoElement();
@@ -222,7 +278,7 @@ public class Playlist {
                 break;
 
             case IMAGE:
-                Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "addEntryStartingAt: Found IMAGE element.");
+                Log.getInstance().write(Log.LOGLEVEL_MAX, "addEntryStartingAt: Found IMAGE element.");
 
                 // Create the new element.
                 entry = new ImageElement();
@@ -236,7 +292,7 @@ public class Playlist {
                 break;
 
             case SCRIPT:
-                Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "addEntryStartingAt: Found SCRIPT element.");
+                Log.getInstance().write(Log.LOGLEVEL_MAX, "addEntryStartingAt: Found SCRIPT element.");
 
                 // Create the new element.
                 entry = new ScriptElement();
@@ -250,7 +306,7 @@ public class Playlist {
                 break;
 
             case TEXT:
-                Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "addEntryStartingAt: Found TEXT element.");
+                Log.getInstance().write(Log.LOGLEVEL_MAX, "addEntryStartingAt: Found TEXT element.");
 
                 // Create the new element.
                 entry = new TextElement();
@@ -264,7 +320,7 @@ public class Playlist {
                 break;
 
             case DOWNLOAD:
-                Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "addEntryStartingAt: Found DOWNLOAD element.");
+                Log.getInstance().write(Log.LOGLEVEL_MAX, "addEntryStartingAt: Found DOWNLOAD element.");
 
                 // Create the new element.
                 entry = new DownloadElement();
@@ -278,7 +334,7 @@ public class Playlist {
                 break;
 
             case PLUGIN:
-                Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "addEntryStartingAt: Found PLUGIN element.");
+                Log.getInstance().write(Log.LOGLEVEL_MAX, "addEntryStartingAt: Found PLUGIN element.");
 
                 // Create the new element.
                 entry = new PluginElement();
@@ -292,7 +348,7 @@ public class Playlist {
                 break;
 
             case PLAYLIST:
-                Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "addEntryStartingAt: Found PLAYLIST element.");
+                Log.getInstance().write(Log.LOGLEVEL_MAX, "addEntryStartingAt: Found PLAYLIST element.");
 
                 // Create the new element.
                 entry = new PlaylistElement();
@@ -308,7 +364,7 @@ public class Playlist {
                 break;
 
             case RSS:
-                Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "addEntryStartingAt: Found RSS element.");
+                Log.getInstance().write(Log.LOGLEVEL_MAX, "addEntryStartingAt: Found RSS element.");
 
                 // Create the new element.
                 entry = new RssElement();
@@ -323,7 +379,7 @@ public class Playlist {
                 break;
 
             case RSS_RSS:
-                Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "addEntryStartingAt: Found RSS:RSS element.");
+                Log.getInstance().write(Log.LOGLEVEL_MAX, "addEntryStartingAt: Found RSS:RSS element.");
 
                 // Create the new element.
                 entry = new RssRssElement();
@@ -338,7 +394,7 @@ public class Playlist {
                 break;
 
             case RSS_HTML:
-                Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "addEntryStartingAt: Found RSS:HTML element.");
+                Log.getInstance().write(Log.LOGLEVEL_MAX, "addEntryStartingAt: Found RSS:HTML element.");
 
                 // Create the new element.
                 entry = new RssHtmlElement();
@@ -353,7 +409,7 @@ public class Playlist {
                 break;
 
             case RSS_IMAGE:
-                Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "addEntryStartingAt: Found RSS:IMAGE element.");
+                Log.getInstance().write(Log.LOGLEVEL_MAX, "addEntryStartingAt: Found RSS:IMAGE element.");
 
                 // Create the new element.
                 entry = new RssImageElement();
@@ -368,7 +424,7 @@ public class Playlist {
                 break;
 
             case ATOM:
-                Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "addEntryStartingAt: Found ATOM element.");
+                Log.getInstance().write(Log.LOGLEVEL_MAX, "addEntryStartingAt: Found ATOM element.");
 
                 // Create the new element.
                 entry = new AtomElement();
@@ -383,7 +439,7 @@ public class Playlist {
                 break;
 
             case HTML_YOUTUBE:
-                Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "addEntryStartingAt: Found HTML_YOUTUBE element.");
+                Log.getInstance().write(Log.LOGLEVEL_MAX, "addEntryStartingAt: Found HTML_YOUTUBE element.");
 
                 // Create the new element.
                 entry = new HtmlYouTubeElement();
@@ -398,7 +454,7 @@ public class Playlist {
                 break;
 
             case NAVIX:
-                Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "addEntryStartingAt: Found NAVIX element.");
+                Log.getInstance().write(Log.LOGLEVEL_MAX, "addEntryStartingAt: Found NAVIX element.");
 
                 // Create the new element.
                 entry = new NavixElement();
@@ -413,7 +469,7 @@ public class Playlist {
                 break;
 
             case XML_SHOUTCAST:
-                Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "addEntryStartingAt: Found XML_SHOUTCAST element.");
+                Log.getInstance().write(Log.LOGLEVEL_MAX, "addEntryStartingAt: Found XML_SHOUTCAST element.");
 
                 // Create the new element.
                 entry = new XmlShoutcastElement();
@@ -428,7 +484,7 @@ public class Playlist {
                 break;
 
             case XML_APPLEMOVIE:
-                Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "addEntryStartingAt: Found XML_APPLEMOVIE element.");
+                Log.getInstance().write(Log.LOGLEVEL_MAX, "addEntryStartingAt: Found XML_APPLEMOVIE element.");
 
                 // Create the new element.
                 entry = new XmlAppleMovieElement();
@@ -443,7 +499,7 @@ public class Playlist {
                 break;
 
             case RSS_FLICKR_DAILY:
-                Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "addEntryStartingAt: Found RSS_FLICKR_DAILY element.");
+                Log.getInstance().write(Log.LOGLEVEL_MAX, "addEntryStartingAt: Found RSS_FLICKR_DAILY element.");
                 
                 // Create the new element.
                 entry = new RssFlickrDailyElement();
@@ -458,7 +514,7 @@ public class Playlist {
                 break;
 
             case PLX:
-                Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "addEntryStartingAt: Found PLX element.");
+                Log.getInstance().write(Log.LOGLEVEL_MAX, "addEntryStartingAt: Found PLX element.");
 
                 // Create the new element.
                 entry = new PlxElement();
@@ -473,7 +529,7 @@ public class Playlist {
                 break;
 
             case HTML:
-                Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "addEntryStartingAt: Found HTML element.");
+                Log.getInstance().write(Log.LOGLEVEL_MAX, "addEntryStartingAt: Found HTML element.");
 
                 // Create the new element.
                 entry = new HtmlElement();
@@ -488,7 +544,7 @@ public class Playlist {
                 break;
 
             case LIST_NOTE:
-                Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "addEntryStartingAt: Found LIST_NOTE element.");
+                Log.getInstance().write(Log.LOGLEVEL_MAX, "addEntryStartingAt: Found LIST_NOTE element.");
 
                 // Create the new element.
                 entry = new ListNoteElement();
@@ -503,7 +559,7 @@ public class Playlist {
                 break;
 
             case OPML:
-                Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "addEntryStartingAt: Found OPML element.");
+                Log.getInstance().write(Log.LOGLEVEL_MAX, "addEntryStartingAt: Found OPML element.");
 
                 // Create the new element.
                 entry = new OpmlElement();
@@ -518,7 +574,7 @@ public class Playlist {
                 break;
 
             case PLAYLIST_YOUTUBE:
-                Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "addEntryStartingAt: Found PLAYLIST_YOUTUBE element.");
+                Log.getInstance().write(Log.LOGLEVEL_MAX, "addEntryStartingAt: Found PLAYLIST_YOUTUBE element.");
 
                 // Create the new element.
                 entry = new PlaylistYouTubeElement();
@@ -533,7 +589,7 @@ public class Playlist {
                 break;
 
             case SEARCH:
-                Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "addEntryStartingAt: Found SEARCH element.");
+                Log.getInstance().write(Log.LOGLEVEL_MAX, "addEntryStartingAt: Found SEARCH element.");
 
 
                 // Create the new element.
@@ -612,11 +668,22 @@ public class Playlist {
         return allLines;
     }
 
+    /**
+     * Create a grouping depending on the Type of the PlaylistEntry.
+     *
+     * - For Type==Playlist (class PlaylistElement) the values will be children Playlists (class Playlist).
+     * - For Type==RSS (class RssElement) the values will be RSSItems (class RssItemElement).
+     * - For all other types the key and the value will be the same.
+     *
+     * @return
+     */
     public Map<PlaylistEntry, List<Object>> group() {
 
         if (playlistEntries==null || playlistEntries.isEmpty()) {
             return null;
         }
+
+        Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "group: Starting.");
 
         Map<PlaylistEntry, List<Object>> groups = new HashMap<PlaylistEntry, List<Object>>();
 
@@ -705,15 +772,39 @@ public class Playlist {
 
                     //Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "group: Found names " + groupItems);
                     groups.put(entry, groupItems);
-
                     break;
 
                 case RSS:
-                    Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "group: Found RSS element.");
+                    Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "group: Found RSS element " + entry.getName());
 
-                    groupItems.add(entry);
+                    RssElement rssElement = (RssElement)entry;
+                    
+                    // If the RssElement channel has already been downloaded and validated
+                    // the the group will contain RssItemElement, otherwise it will
+                    // just contain a placeholder.
+                    if (rssElement.hasBeenChecked() && rssElement.isValidPodcast()) {
+
+                        List<RssItemElement> rssItemElements = rssElement.getRssItemElements();
+
+                        if (rssItemElements==null || rssItemElements.isEmpty()) {
+                            Log.getInstance().write(Log.LOGLEVEL_TRACE, "group: Podcast has no RSSItems.");
+                            groupItems.add(new RssItemElement(entry, null, null));
+                        } else {
+                            Log.getInstance().write(Log.LOGLEVEL_TRACE, "group: Found RSS elements " + groupItems.size());
+                            groupItems.addAll(rssItemElements);
+                        }
+
+                    } else {
+
+                        // Create a placeholder RSSItemElement.
+                        if (!rssElement.hasBeenChecked())
+                            Log.getInstance().write(Log.LOGLEVEL_TRACE, "group: Unchecked Podcast.");
+                        if (!rssElement.isValidPodcast())
+                            Log.getInstance().write(Log.LOGLEVEL_TRACE, "group: Invalid Podcast.");
+                        groupItems.add(new RssItemElement(entry, null, null));                      
+                    }
+
                     groups.put(entry, groupItems);
-
                     break;
 
                 case RSS_RSS:
@@ -842,9 +933,12 @@ public class Playlist {
         return groups;
     }
 
-
     public List<PlaylistEntry> getElements() {
         return playlistEntries;
+    }
+
+    public void setElements(List<PlaylistEntry> playlistEntries) {
+        this.playlistEntries = playlistEntries;
     }
 
     /*
@@ -925,6 +1019,14 @@ public class Playlist {
         return playlistHeader.getView();
     }
 
+    public String getUrl() {
+        return url;
+    }
+
+    public void setUrl(String url) {
+        this.url = url;
+    }
+
     @Override
     public boolean equals(Object obj) {
         if (obj == null) {
@@ -934,10 +1036,16 @@ public class Playlist {
             return false;
         }
         final Playlist other = (Playlist) obj;
+        if ((this.url == null) ? (other.url != null) : !this.url.equals(other.url)) {
+            return false;
+        }
         if (this.playlistHeader != other.playlistHeader && (this.playlistHeader == null || !this.playlistHeader.equals(other.playlistHeader))) {
             return false;
         }
         if (this.playlistEntries != other.playlistEntries && (this.playlistEntries == null || !this.playlistEntries.equals(other.playlistEntries))) {
+            return false;
+        }
+        if (this.allLines != other.allLines && (this.allLines == null || !this.allLines.equals(other.allLines))) {
             return false;
         }
         return true;
@@ -945,10 +1053,9 @@ public class Playlist {
 
     @Override
     public int hashCode() {
-        int hash = 7;
-        hash = 13 * hash + (this.playlistHeader != null ? this.playlistHeader.hashCode() : 0);
-        hash = 13 * hash + (this.playlistEntries != null ? this.playlistEntries.hashCode() : 0);
+        int hash = 3;
+        hash = 71 * hash + (this.url != null ? this.url.hashCode() : 0);
+        hash = 71 * hash + (this.playlistHeader != null ? this.playlistHeader.hashCode() : 0);
         return hash;
     }
-
 }

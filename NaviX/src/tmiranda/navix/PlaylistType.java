@@ -16,9 +16,11 @@ public enum PlaylistType {
     PLUGIN ("plugin"),
     PLAYLIST ("playlist"),
     RSS ("rss"),
+    RSS_ITEM ("rss_item"),
     RSS_RSS ("rss:rss"),
     RSS_HTML ("rss:html"),
     RSS_IMAGE ("rss:image"),
+    // FIXME add rss:video
     ATOM ("atom"),
     HTML_YOUTUBE ("html_youtube"),
     NAVIX ("navi-x"),
