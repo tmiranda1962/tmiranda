@@ -31,7 +31,6 @@ public class NaviX {
     public static String stripCOLOR(String str) {
         if (str==null)
             return str;
-// FIXME
 
         str = str.replace("[/COLOR]", "");
 

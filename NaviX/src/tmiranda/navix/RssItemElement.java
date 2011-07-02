@@ -1,6 +1,7 @@
 
 package tmiranda.navix;
 
+import java.util.*;
 import sage.media.rss.*;
 
 /**
@@ -61,6 +62,40 @@ public final class RssItemElement extends PlaylistEntry {
 
     public RSSItem getRssItem() {
         return rssItem;
+    }
+
+    public String getVideoLink() {
+
+        if (rssItem==null) {
+            Log.getInstance().write(Log.LOGLEVEL_TRACE, "getVideoLink: Processor needed, will use " + processor);
+            return null;
+        }
+
+        String rssVideoLink = rssItem.getLink();
+
+        Log.getInstance().write(Log.LOGLEVEL_TRACE, "getVideoLink: Processor will use " + processor + " for " + rssVideoLink);
+
+        List<String> answer = invokeProcessor(rssVideoLink, processor);
+
+        if (answer==null || answer.isEmpty()) {
+            Log.getInstance().write(Log.LOGLEVEL_WARN, "getVideoLink: No tarnslation from processor, returning original " + url);
+            return url;
+        }
+
+        Log.getInstance().write(Log.LOGLEVEL_TRACE, "getVideoLink: Answer " + answer);
+
+        if (answer.size() > 1) {
+            Log.getInstance().write(Log.LOGLEVEL_TRACE, "getVideoLink: Concatenating.");
+
+            String a = null;
+
+            for (String s : answer)
+                a = (a==null ? s : a + s);
+
+            return a;
+        }
+
+        return answer.get(0).replace(PlaylistEntry.SCRIPT_ANSWER, "");
     }
 
     public RSSChannel getChannel() {

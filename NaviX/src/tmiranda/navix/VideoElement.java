@@ -12,6 +12,8 @@ public class VideoElement extends PlaylistEntry {
 
     public static final String DEFAULT_SAGE_ICON = "Themes" + File.separator + "Standard" + File.separator + "VideoArt.png";
 
+    private Map<String, String> args = new HashMap<String, String>();
+
     @Override
     public boolean isSupportedBySage() {
         return true;
@@ -24,34 +26,38 @@ public class VideoElement extends PlaylistEntry {
 
     public String getVideoLink() {
 //FIXME
-        if (!hasProcessor()) {
+        if (false && !hasProcessor()) {
             Log.getInstance().write(Log.LOGLEVEL_TRACE, "getVideoLink: No processor needed, returning " + url);
             return url;
         }
 
 
-        Log.getInstance().write(Log.LOGLEVEL_TRACE, "getVideoLink: Processor needed, will use " + processor);
+        Log.getInstance().write(Log.LOGLEVEL_TRACE, "getVideoLink: Processor will use " + processor + " for " + url);
         
         List<String> answer = invokeProcessor(url, processor);
 
         if (answer==null || answer.isEmpty()) {
-            Log.getInstance().write(Log.LOGLEVEL_WARN, "getVideoLink: No response from processor.");
-            return null;
+            Log.getInstance().write(Log.LOGLEVEL_WARN, "getVideoLink: No tarnslation from processor, returning original " + url);
+            return url;
         }
 
         Log.getInstance().write(Log.LOGLEVEL_TRACE, "getVideoLink: Answer " + answer);
 
-        if (answer.size() > 1) {
-            Log.getInstance().write(Log.LOGLEVEL_TRACE, "getVideoLink: Concatenating.");
+        for (String element : answer) {
+            String[] parts = element.split("=", 2);
 
-            String a = null;
-
-            for (String s : answer)
-                a = (a==null ? s : a + s);
-
-            return a;
+            if (parts.length==2) {
+                args.put(parts[0], parts[1]);
+                Log.getInstance().write(Log.LOGLEVEL_WARN, "getVideoLink: Found arg " + parts[0] + ":" + parts[1]);
+            } else {
+                Log.getInstance().write(Log.LOGLEVEL_WARN, "getVideoLink: Unexpected response from processor " + element);
+            }
         }
 
-        return answer.get(0).replace(PlaylistEntry.SCRIPT_ANSWER, "");
+        return args.get("answer");
+    }
+
+    public Map<String, String> getArgs() {
+        return args;
     }
 }

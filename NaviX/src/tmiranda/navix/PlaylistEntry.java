@@ -4,6 +4,7 @@ package tmiranda.navix;
 import java.util.*;
 import java.io.*;
 import org.python.util.*;
+import org.python.core.*;
 
 /**
  *
@@ -52,12 +53,29 @@ public class PlaylistEntry {
 
     public List<String> invokeProcessor(String rawURL, String rawProcessor) {
 
-        Log.getInstance().write(Log.LOGLEVEL_TRACE, "invokeProcessor: Invoking processor for " + rawURL);
+        Log.getInstance().write(Log.LOGLEVEL_TRACE, "invokeProcessor: Invoking processor " + rawProcessor + " for " + rawURL);
         List<String> answer = new ArrayList<String>();
 
         if (rawURL==null || rawURL.isEmpty()) {
             Log.getInstance().write(Log.LOGLEVEL_ERROR, "invokeProcessor: null processor.");
             return answer;
+        }
+
+        // Make sure the directory exists that the python script will use to cache processors
+        File cacheDir = new File("cache");
+        if (!cacheDir.exists() || !cacheDir.isDirectory()) {
+            Log.getInstance().write(Log.LOGLEVEL_WARN, "invokeProcessor: Cache directory does not exist, creatintg it.");
+            if (!cacheDir.mkdir()) {
+                Log.getInstance().write(Log.LOGLEVEL_ERROR, "invokeProcessor: Failed to make cache directory.");
+            }
+        }
+
+        File procDir = new File ("cache" + File.separator + "proc");
+        if (!procDir.exists() || !procDir.isDirectory()) {
+            Log.getInstance().write(Log.LOGLEVEL_WARN, "invokeProcessor: Proc directory does not exist, creatintg it.");
+            if (!procDir.mkdirs()) {
+                Log.getInstance().write(Log.LOGLEVEL_ERROR, "invokeProcessor: Failed to make proc directory.");
+            }
         }
 
         // Create the pipe that will be used to connect the python script to this method.
@@ -85,11 +103,21 @@ public class PlaylistEntry {
 
         // Initialize the python runtime environment.
         PythonInterpreter.initialize(System.getProperties(), prop, argv);
+        
+        // Create the interpreter.
+        PythonInterpreter interp = new PythonInterpreter();
+
+        // Start the watcher thread.  It will monitor progress and kill off the interpreter
+        // if needed.
+        //PythonWatcher watcher = new PythonWatcher(interp, output);
+        //watcher.setName("PythonWatcher");
+        //watcher.start();
 
         // Start the python script.
-        PythonInterpreter interp = new PythonInterpreter();
         interp.setOut(output);
         interp.setErr(output);
+        interp.set("rawURL", rawURL);
+        interp.set("rawProcessor", rawProcessor==null ? "" : rawProcessor);
         interp.execfile(".\\NaviX\\scripts\\SageProcessor.py");
 
         // Read the results.
@@ -102,7 +130,7 @@ public class PlaylistEntry {
                 if (line.equalsIgnoreCase(SCRIPT_DONE)) {
                     done = true;
                     Log.getInstance().write(Log.LOGLEVEL_TRACE, "invokeProcessor: Script has completed.");
-                } else if (line.startsWith(SCRIPT_ANSWER)) {
+                } else if (line.startsWith(SCRIPT_ANSWER) || line.startsWith("swfplayer") || line.startsWith("playpath") || line.startsWith("url")) {
                     answer.add(line);
                     Log.getInstance().write(Log.LOGLEVEL_TRACE, "invokeProcessor: Script answer received " + line);
                 }
@@ -111,7 +139,10 @@ public class PlaylistEntry {
             Log.getInstance().write(Log.LOGLEVEL_ERROR, "invokeProcessor: Exception reading " + e.getMessage());
         }
 
-        interp.cleanup();
+        //if (watcher.isAlive())
+            //watcher.interrupt();    // Stop the watcher thread.
+        interp.cleanup();           // Cleanup the interpreter?
+        //PySystemState.exit();     // Make sure the script is stopped?
 
         try {
             br.close();
