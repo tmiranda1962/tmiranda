@@ -8,7 +8,9 @@ import java.util.*;
  *
  * @author Tom Miranda.
  */
-public class TextElement extends PlaylistEntry {
+public class TextElement extends PlaylistEntry implements Serializable {
+
+// FIXME - The dialog used to display text is a mess.
 
     public static final String DEFAULT_SAGE_ICON = "Themes" + File.separator + "Standard" + File.separator + "NTE_Upper.png";
 

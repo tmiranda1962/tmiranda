@@ -2,7 +2,7 @@
 package tmiranda.navix;
 
 /**
- *
+ * Class used to consume the stdout and stderr streams from spawned processes.
  * @author Tom Miranda.
  */
 
@@ -11,9 +11,17 @@ import java.io.*;
 
 class StreamGetter extends Thread {
 
-    InputStream is;
-    String type;
+    private InputStream is;
+    private String type;
 
+    /**
+     * Constructor.
+     *
+     * @param is The InputStream to consume. If the loglevel is set to Trace (or higher) all
+     *  output collected from the stream will be written to the Sage logfile. Output collected
+     * from stderr will be written to the Sage logfile if the loglevel is set to Warn (or higher).
+     * @param type "Error" for stderr, anything else for stdout.
+     */
     StreamGetter(InputStream is, String type) {
         this.is = is;
         this.type = type;
@@ -38,7 +46,7 @@ class StreamGetter extends Thread {
                 } else {
                     LastLine = line;
                     if (type.equalsIgnoreCase("error")) {
-                        Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "StreamGetter: stderr: " + line);
+                        Log.getInstance().write(Log.LOGLEVEL_WARN, "StreamGetter: stderr: " + line);
                     } else {
                         Log.getInstance().write(Log.LOGLEVEL_TRACE, "StreamGetter: stdout: " + line);
                     }

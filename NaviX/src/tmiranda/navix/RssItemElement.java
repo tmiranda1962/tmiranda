@@ -1,19 +1,22 @@
 
 package tmiranda.navix;
 
+import java.io.*;
 import java.util.*;
 import sage.media.rss.*;
 
 /**
+ * This class represent an individual Podcast episode.
  *
  * @author Tom Miranda.
  */
-public final class RssItemElement extends PlaylistEntry {
+public final class RssItemElement extends PlaylistEntry implements Serializable {
 
     public static final String DEFAULT_SAGE_ICON = "WiFiSignal4.png";
 
     private RSSItem rssItem     = null;
     private RSSChannel channel  = null;
+    private Map<String, String> args = new HashMap<String, String>();
 
     public RssItemElement(PlaylistEntry entry, RSSItem RSSItem, RSSChannel Channel) {
         rssItem      = RSSItem;
@@ -67,35 +70,35 @@ public final class RssItemElement extends PlaylistEntry {
     public String getVideoLink() {
 
         if (rssItem==null) {
-            Log.getInstance().write(Log.LOGLEVEL_TRACE, "getVideoLink: Processor needed, will use " + processor);
+            Log.getInstance().write(Log.LOGLEVEL_TRACE, "RssItemElement.getVideoLink: Processor needed, will use " + processor);
             return null;
         }
 
         String rssVideoLink = rssItem.getLink();
 
-        Log.getInstance().write(Log.LOGLEVEL_TRACE, "getVideoLink: Processor will use " + processor + " for " + rssVideoLink);
+        Log.getInstance().write(Log.LOGLEVEL_TRACE, "RssItemElement.getVideoLink: Processor will use " + processor + " for " + rssVideoLink);
 
         List<String> answer = invokeProcessor(rssVideoLink, processor);
 
         if (answer==null || answer.isEmpty()) {
-            Log.getInstance().write(Log.LOGLEVEL_WARN, "getVideoLink: No tarnslation from processor, returning original " + url);
+            Log.getInstance().write(Log.LOGLEVEL_WARN, "RssItemElement.getVideoLink: No translation from processor, returning original " + url);
             return url;
         }
 
-        Log.getInstance().write(Log.LOGLEVEL_TRACE, "getVideoLink: Answer " + answer);
+        Log.getInstance().write(Log.LOGLEVEL_TRACE, "RssItemElement.getVideoLink: Answer " + answer);
 
-        if (answer.size() > 1) {
-            Log.getInstance().write(Log.LOGLEVEL_TRACE, "getVideoLink: Concatenating.");
+        for (String element : answer) {
+            String[] parts = element.split("=", 2);
 
-            String a = null;
-
-            for (String s : answer)
-                a = (a==null ? s : a + s);
-
-            return a;
+            if (parts.length==2) {
+                args.put(parts[0], parts[1]);
+                Log.getInstance().write(Log.LOGLEVEL_WARN, "RssItemElement.getVideoLink: Found arg " + parts[0] + ":" + parts[1]);
+            } else {
+                Log.getInstance().write(Log.LOGLEVEL_WARN, "RssItemElement.getVideoLink: Unexpected response from processor " + element);
+            }
         }
 
-        return answer.get(0).replace(PlaylistEntry.SCRIPT_ANSWER, "");
+        return args.get("answer");
     }
 
     public RSSChannel getChannel() {
@@ -155,5 +158,4 @@ public final class RssItemElement extends PlaylistEntry {
         hash = 67 * hash + (this.channel != null ? this.channel.hashCode() : 0);
         return hash;
     }
-
 }

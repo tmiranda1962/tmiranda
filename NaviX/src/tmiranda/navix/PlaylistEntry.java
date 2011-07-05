@@ -4,13 +4,12 @@ package tmiranda.navix;
 import java.util.*;
 import java.io.*;
 import org.python.util.*;
-import org.python.core.*;
 
 /**
  *
  * @author Tom Miranda.
  */
-public class PlaylistEntry {
+public class PlaylistEntry implements Serializable {
 
     String version      = null;
     String title        = null;     // Web page title NOT content title.
@@ -51,30 +50,37 @@ public class PlaylistEntry {
     public static final String SCRIPT_DONE = "script done";
     public static final String SCRIPT_ANSWER = "answer=";
 
+    /**
+     * Invoke the processor to convert a raw URL into something that can be played.
+     *
+     * @param rawURL
+     * @param rawProcessor
+     * @return
+     */
     public List<String> invokeProcessor(String rawURL, String rawProcessor) {
 
-        Log.getInstance().write(Log.LOGLEVEL_TRACE, "invokeProcessor: Invoking processor " + rawProcessor + " for " + rawURL);
+        Log.getInstance().write(Log.LOGLEVEL_TRACE, "PlaylistEntry.invokeProcessor: Invoking processor " + rawProcessor + " for " + rawURL);
         List<String> answer = new ArrayList<String>();
 
         if (rawURL==null || rawURL.isEmpty()) {
-            Log.getInstance().write(Log.LOGLEVEL_ERROR, "invokeProcessor: null processor.");
+            Log.getInstance().write(Log.LOGLEVEL_ERROR, "PlaylistEntry.invokeProcessor: null processor.");
             return answer;
         }
 
         // Make sure the directory exists that the python script will use to cache processors
         File cacheDir = new File("cache");
         if (!cacheDir.exists() || !cacheDir.isDirectory()) {
-            Log.getInstance().write(Log.LOGLEVEL_WARN, "invokeProcessor: Cache directory does not exist, creatintg it.");
+            Log.getInstance().write(Log.LOGLEVEL_WARN, "PlaylistEntry.invokeProcessor: Cache directory does not exist, creatintg it.");
             if (!cacheDir.mkdir()) {
-                Log.getInstance().write(Log.LOGLEVEL_ERROR, "invokeProcessor: Failed to make cache directory.");
+                Log.getInstance().write(Log.LOGLEVEL_ERROR, "PlaylistEntry.invokeProcessor: Failed to make cache directory.");
             }
         }
 
         File procDir = new File ("cache" + File.separator + "proc");
         if (!procDir.exists() || !procDir.isDirectory()) {
-            Log.getInstance().write(Log.LOGLEVEL_WARN, "invokeProcessor: Proc directory does not exist, creatintg it.");
+            Log.getInstance().write(Log.LOGLEVEL_WARN, "PlaylistEntry.invokeProcessor: Proc directory does not exist, creatintg it.");
             if (!procDir.mkdirs()) {
-                Log.getInstance().write(Log.LOGLEVEL_ERROR, "invokeProcessor: Failed to make proc directory.");
+                Log.getInstance().write(Log.LOGLEVEL_ERROR, "PlaylistEntry.invokeProcessor: Failed to make proc directory.");
             }
         }
 
@@ -85,7 +91,7 @@ public class PlaylistEntry {
         try {
             input = new PipedInputStream(output);
         } catch (IOException e) {
-            Log.getInstance().write(Log.LOGLEVEL_ERROR, "invokeProcessor: Exception opening PipedInputStream " + e.getMessage());
+            Log.getInstance().write(Log.LOGLEVEL_ERROR, "PlaylistEntry.invokeProcessor: Exception opening PipedInputStream " + e.getMessage());
             try {output.close();} catch (IOException e1) {}
             return answer;
         }
@@ -107,11 +113,7 @@ public class PlaylistEntry {
         // Create the interpreter.
         PythonInterpreter interp = new PythonInterpreter();
 
-        // Start the watcher thread.  It will monitor progress and kill off the interpreter
-        // if needed.
-        //PythonWatcher watcher = new PythonWatcher(interp, output);
-        //watcher.setName("PythonWatcher");
-        //watcher.start();
+        Log.getInstance().write(Log.LOGLEVEL_TRACE, "PlaylistEntry.invokeProcessor: Starting python script.");
 
         // Start the python script.
         interp.setOut(output);
@@ -120,29 +122,29 @@ public class PlaylistEntry {
         interp.set("rawProcessor", rawProcessor==null ? "" : rawProcessor);
         interp.execfile(".\\NaviX\\scripts\\SageProcessor.py");
 
+        Log.getInstance().write(Log.LOGLEVEL_TRACE, "PlaylistEntry.invokeProcessor: Python started.");
+
         // Read the results.
         String line = null;
         boolean done = false;
 
         try {
             while (!done && (line = br.readLine()) != null) {
-                Log.getInstance().write(Log.LOGLEVEL_TRACE, "invokeProcessor: Read line " + line);
+                Log.getInstance().write(Log.LOGLEVEL_TRACE, "PlaylistEntry.invokeProcessor: Read line " + line);
                 if (line.equalsIgnoreCase(SCRIPT_DONE)) {
                     done = true;
-                    Log.getInstance().write(Log.LOGLEVEL_TRACE, "invokeProcessor: Script has completed.");
-                } else if (line.startsWith(SCRIPT_ANSWER) || line.startsWith("swfplayer") || line.startsWith("playpath") || line.startsWith("url")) {
+                    Log.getInstance().write(Log.LOGLEVEL_TRACE, "PlaylistEntry.invokeProcessor: Script has completed.");
+                } else {
+//                    if (line.startsWith(SCRIPT_ANSWER) || line.startsWith("swfplayer") || line.startsWith("playpath") || line.startsWith("url")) {
                     answer.add(line);
-                    Log.getInstance().write(Log.LOGLEVEL_TRACE, "invokeProcessor: Script answer received " + line);
+                    Log.getInstance().write(Log.LOGLEVEL_TRACE, "PlaylistEntry.invokeProcessor: Script answer received " + line);
                 }
             }
         } catch (IOException e ) {
-            Log.getInstance().write(Log.LOGLEVEL_ERROR, "invokeProcessor: Exception reading " + e.getMessage());
+            Log.getInstance().write(Log.LOGLEVEL_ERROR, "PlaylistEntry.invokeProcessor: Exception reading " + e.getMessage());
         }
 
-        //if (watcher.isAlive())
-            //watcher.interrupt();    // Stop the watcher thread.
         interp.cleanup();           // Cleanup the interpreter?
-        //PySystemState.exit();     // Make sure the script is stopped?
 
         try {
             br.close();
@@ -150,13 +152,41 @@ public class PlaylistEntry {
             input.close();
             output.close();
         } catch (IOException e) {
-            Log.getInstance().write(Log.LOGLEVEL_WARN, "invokeProcessor: Exception cleaning up " + e.getMessage());
+            Log.getInstance().write(Log.LOGLEVEL_WARN, "PlaylistEntry.invokeProcessor: Exception cleaning up " + e.getMessage());
         }
 
-        Log.getInstance().write(Log.LOGLEVEL_TRACE, "invokeProcessor: Answer " + answer);
-        return answer;
+        Log.getInstance().write(Log.LOGLEVEL_TRACE, "PlaylistEntry.invokeProcessor: Interim answer " + answer);
+        
+        // Now further parse the responses from the processor.
+        
+        List<String> parsedAnswer = new ArrayList<String>();
+        
+        for (String s : answer) {
+            if (s.contains(" ")) {
+                String[] parts = s.split(" ");
+                
+                for (String s1 : parts) {
+                    Log.getInstance().write(Log.LOGLEVEL_TRACE, "PlaylistEntry.invokeProcessor: Parsed answer " + s1);
+                    parsedAnswer.add(s1);
+                }
+                
+            } else {
+                Log.getInstance().write(Log.LOGLEVEL_TRACE, "PlaylistEntry.invokeProcessor: Parsed answer " + s);
+                parsedAnswer.add(s);
+            }
+        }
+        
+        Log.getInstance().write(Log.LOGLEVEL_TRACE, "PlaylistEntry.invokeProcessor: Final answer " + parsedAnswer);
+        return parsedAnswer;
     }
 
+
+    /**
+     * By default a PlaylistEntry is reported as not supported.  It is up to each XXXElement
+     * class to override this method.
+     * @return
+     */
+// FIXME - Should be an interface.
     public boolean isSupportedBySage() {
         return false;
     }
@@ -267,7 +297,7 @@ public class PlaylistEntry {
 
             // Make sure it's not empty.
             if (line==null || line.isEmpty()) {
-                Log.getInstance().write(Log.LOGLEVEL_ERROR, "loadData: null line.");
+                Log.getInstance().write(Log.LOGLEVEL_WARN, "PlaylistEntry.loadData: null line.");
                 return numberConsumed;
             }
 
@@ -277,13 +307,13 @@ public class PlaylistEntry {
             List<String> parts = Playlist.parseParts(line);
 
             if (parts.size() != 2) {
-                Log.getInstance().write(Log.LOGLEVEL_ERROR, "loadData: Malformed line, skipping " + line);
+                Log.getInstance().write(Log.LOGLEVEL_WARN, "PlaylistEntry.loadData: Malformed line, skipping " + line);
                 return numberConsumed;
             }
 
             String component = parts.get(0).toLowerCase();
             String value = parts.get(1);
-            Log.getInstance().write(Log.LOGLEVEL_MAX, "loadData: component and value " + component + ":" + value);
+            Log.getInstance().write(Log.LOGLEVEL_MAX, "PlaylistEntry.loadData: component and value " + component + ":" + value);
 
             if (component.startsWith(COMPONENT_VERSION))
                 setVersion(value);
@@ -312,10 +342,10 @@ public class PlaylistEntry {
             else if (component.startsWith(COMPONENT_VIEW))
                 setView(value);
             else if (component.startsWith(COMPONENT_TYPE)) {
-                Log.getInstance().write(Log.LOGLEVEL_WARN, "loadData: Found type component, finished.");
+                Log.getInstance().write(Log.LOGLEVEL_TRACE, "PlaylistEntry.loadData: Found type component, finished.");
                 return numberConsumed-1;
             } else {
-                Log.getInstance().write(Log.LOGLEVEL_ERROR, "loadData: Found unknown component " + component);
+                Log.getInstance().write(Log.LOGLEVEL_WARN, "PlaylistEntry.loadData: Found unknown component " + component);
             }
         }
 
@@ -331,7 +361,7 @@ public class PlaylistEntry {
         // Check for special case of a single line description.
         if (beginning.lastIndexOf(delimiter)!=-1) {
             setDescription(beginning.substring(0, beginning.lastIndexOf(delimiter)));
-            Log.getInstance().write(Log.LOGLEVEL_TRACE, "loadDescription: " + numberConsumed + ": <" + description + ">");
+            Log.getInstance().write(Log.LOGLEVEL_TRACE, "PlaylistEntry.loadDescription: " + numberConsumed + ": <" + description + ">");
             return numberConsumed;
         }
 
@@ -344,7 +374,7 @@ public class PlaylistEntry {
             numberConsumed++;
 
             if (nextLine==null || nextLine.isEmpty()) {
-                Log.getInstance().write(Log.LOGLEVEL_WARN, "loadDescription: null line.");
+                Log.getInstance().write(Log.LOGLEVEL_WARN, "PlaylistEntry.loadDescription: null line.");
                 continue;
             }
 
@@ -364,9 +394,9 @@ public class PlaylistEntry {
         parseDescription();
 
         if (!found)
-            Log.getInstance().write(Log.LOGLEVEL_WARN, "loadDescription: Did not find delimiter.");
+            Log.getInstance().write(Log.LOGLEVEL_WARN, "PlaylistEntry.loadDescription: Did not find delimiter.");
 
-        Log.getInstance().write(Log.LOGLEVEL_TRACE, "loadDescription: " + numberConsumed + ": <" + description + ">");
+        Log.getInstance().write(Log.LOGLEVEL_TRACE, "PlaylistEntry.loadDescription: " + numberConsumed + ": <" + description + ">");
 
         return numberConsumed;
     }

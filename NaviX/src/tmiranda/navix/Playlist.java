@@ -4,42 +4,54 @@ package tmiranda.navix;
 import java.io.*;
 import java.net.*;
 import java.util.*;
-import sage.media.rss.*;
+import sagex.api.*;
 
 /**
  *
  * @author Tom Miranda.
  */
-public final class Playlist {
+public final class Playlist implements Serializable {
+
+    static final long serialVersionUID = 0;
 
     public static final String COMMENT_CHARACTER = "#";
     public static final String SPAN_DELIMITER = "</span>";
 
-    private String              url;
-    private PlaylistHeader      playlistHeader;
-    private List<PlaylistEntry> playlistEntries;
+    private static final String PROPERTY_STACK = "navix/url_stack";
+    private static final String STACK_DELIMITER = ",";
+    public static String        STACK_DEFAULT = "http://navix.turner3d.net/playlist/50242/navi-xtreme_nxportal_home.plx";
 
-    private Playlist            parentPlaylist;
-    private List<Playlist>      childPlaylists;
-
-    private List<String>        allLines;
+    private String                url;
+    private PlaylistHeader        playlistHeader;
+    private List<PlaylistEntry>   playlistEntries;
+    private List<String>          allLines;
+    private long                  cachedTime;
+    private boolean               hasLoaded;
+    private long                  diskTime;
 
     /**
      * Constructor.
      *
-     *
+     * Creates a new Playlist and adds it to the cache.  If the Playlist is already in the
+     * cache it will be removed and the newly created Playlist will replace it.
      *
      * @param HomeURL The root URL of the playlist.
+     * @param putInCache true if the newly created Playlist should be placed in the PLaylist
+     * cache, false if it should not.
      */
-    public Playlist(String HomeURL) {
+    public Playlist(String HomeURL, boolean putInCache) {
+
+        Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "Playlist: Creating new Playlist for " + HomeURL);
 
         // Create the Header and the empty List.
         url = HomeURL;
         playlistHeader = new PlaylistHeader();
         playlistEntries = new ArrayList<PlaylistEntry>();
-        parentPlaylist = null;
-        childPlaylists = new ArrayList<Playlist>();
+        //parentPlaylist = null;
+        //childPlaylists = new ArrayList<Playlist>();
         allLines = new ArrayList<String>();
+        hasLoaded = false;
+        diskTime = 0;
 
         // Make sure the HomeURL is valid.
         if (HomeURL==null || HomeURL.isEmpty()) {
@@ -47,11 +59,17 @@ public final class Playlist {
             return;
         }
 
+        // Remove the Playlist from the Cache.
+        PlaylistCache.getInstance().remove(url);
+
         // Create the file reader.
         BufferedReader br = read(HomeURL);
 
         if (br==null) {
-            Log.getInstance().write(Log.LOGLEVEL_WARN, "Playlist: Failed to open URL.");
+            Log.getInstance().write(Log.LOGLEVEL_WARN, "Playlist: Failed to open URL. Adding to cache in unloaded state " + url);
+            cachedTime = new Date().getTime();
+            if (putInCache)
+                PlaylistCache.getInstance().add(this);
             return;
         }
 
@@ -82,7 +100,20 @@ public final class Playlist {
         // Set the entries.
         scanForEntries(allLines);
 
+        hasLoaded = true;
+
+        // Add the new Playlist to the cache.
+        cachedTime = new Date().getTime();
+        if (putInCache) {
+            PlaylistCache.getInstance().add(this);
+            Log.getInstance().write(Log.LOGLEVEL_TRACE, "Playlist: Added to cache " + url);
+        }
+
         return;
+    }
+
+    public Playlist(String HomeURL) {
+        this(HomeURL, true);
     }
 
     /**
@@ -95,9 +126,15 @@ public final class Playlist {
         url = playlist.url;
         playlistHeader = playlist.playlistHeader;
         playlistEntries = playlist.playlistEntries;
-        parentPlaylist = null;
-        childPlaylists = new ArrayList<Playlist>();
+        //parentPlaylist = null;
+        //childPlaylists = new ArrayList<Playlist>();
         allLines = playlist.allLines;
+        hasLoaded = playlist.hasLoaded;
+        diskTime = playlist.diskTime;
+    }
+
+    public Playlist() {
+
     }
 
     private List<String> combineSpannedLines(List<String> allLines) {
@@ -423,6 +460,19 @@ public final class Playlist {
 
                 break;
 
+            case RSS_VIDEO:
+                Log.getInstance().write(Log.LOGLEVEL_MAX, "addEntryStartingAt: Found RSS:VIDEO element.");
+
+                // Create the new element.
+                entry = new RssVideoElement();
+
+                // Set the type.
+                entry.setType(parts.get(1));
+
+                numberConsumed += entry.loadData(startLocation+1, 10, allLines);
+
+                playlistEntries.add(entry);
+
             case ATOM:
                 Log.getInstance().write(Log.LOGLEVEL_MAX, "addEntryStartingAt: Found ATOM element.");
 
@@ -664,6 +714,11 @@ public final class Playlist {
         return partsList;
     }
 
+    /**
+     * Get all of the raw data used to construct the Playlist.  This is included for debugging
+     * purposes only.
+     * @return
+     */
     public List<String> getAllLines() {
         return allLines;
     }
@@ -762,7 +817,13 @@ public final class Playlist {
                     String nextPlaylistAddress = playlistElement.getNextPlaylist();
                     Log.getInstance().write(Log.LOGLEVEL_TRACE, "group: Next playlist " + nextPlaylistAddress);
 
-                    Playlist nextPlaylist = new Playlist(nextPlaylistAddress);
+                    Playlist nextPlaylist;
+
+                    if (isInCache(nextPlaylistAddress)) {
+                        nextPlaylist = retrieveFromCache(nextPlaylistAddress);
+                    } else {
+                        nextPlaylist = new Playlist(nextPlaylistAddress);
+                    }
 
                     for (PlaylistEntry nextPlaylistEntry : nextPlaylist.getElements()) {
                         String name = nextPlaylistEntry.getName();
@@ -933,6 +994,11 @@ public final class Playlist {
         return groups;
     }
 
+    /**
+     * Get all of the PlaylistEntry elements for this Playlist.  Each PlaylistEntry will
+     * actually be one of the various XXXElement classes.
+     * @return
+     */
     public List<PlaylistEntry> getElements() {
         return playlistEntries;
     }
@@ -944,6 +1010,7 @@ public final class Playlist {
     /*
      * Parent - Child methods.
      */
+    /**
     public Playlist getParent() {
         return parentPlaylist;
     }
@@ -990,6 +1057,8 @@ public final class Playlist {
     public boolean isRoot() {
         return parentPlaylist == null;
     }
+     *
+     */
 
     /*
      * Retrieve header information.
@@ -1023,8 +1092,247 @@ public final class Playlist {
         return url;
     }
 
+    public long getDiskTime() {
+        return diskTime;
+    }
+
     public void setUrl(String url) {
         this.url = url;
+    }
+
+    public void setUrl() {
+        url = UUID.randomUUID().toString();
+    }
+
+    public long getCachedTime() {
+        return cachedTime;
+    }
+
+    public void setCachedTime(long time) {
+        cachedTime = time;
+    }
+
+    public void setDiskTime(long time) {
+        diskTime = time;
+        return;
+    }
+
+    public boolean hasLoaded() {
+        return hasLoaded;
+    }
+
+    /*
+     * Cache methods.
+     */
+
+    /**
+     * Returns true of the Playlist is in the cache, false otherwise.
+     * @param URL
+     * @return
+     */
+    public static boolean isInCache(String URL) {
+        return PlaylistCache.getInstance().contains(URL);
+    }
+
+    public static boolean shouldRetryNew(String URL) {
+        return PlaylistCache.getInstance().shouldRetryNew(URL);
+    }
+
+    /**
+     * Retrieve the specified Playlist from cache.  Returns null if the Playlist is not found.
+     * @param URL
+     * @return
+     */
+    public static Playlist retrieveFromCache(String URL) {
+        return PlaylistCache.getInstance().get(URL);
+    }
+
+    /**
+     * Add the Playlist to the cache.
+     * @param playlist
+     * @return
+     */
+    public static boolean addToCache(Playlist playlist) {
+        return PlaylistCache.getInstance().add(playlist);
+    }
+
+    /**
+     * Loads into cache all of the Playlists that are children and grandchildren
+     * of the speficied Playlist. For each PlaylistElement or PlxElement that is found
+     * a new thread will be spawned to do the actual retrieval.
+     *
+     * Enabling and disabling of caching of the grandchildren can be changed
+     * by using PlaylistCache.setCacheSecondLevel()
+     *
+     * @param playlist
+     */
+    public static void cachePlaylistElements(Playlist playlist) {
+        if (playlist==null) {
+            Log.getInstance().write(Log.LOGLEVEL_WARN, "Playlist.cachePlaylistElements: null Playlist.");
+            return;
+        }
+
+        Log.getInstance().write(Log.LOGLEVEL_TRACE, "Playlist.cachePlaylistElements: Playlist elements " + playlist.getElements().size());
+        
+        for (PlaylistEntry p : playlist.getElements()) {
+            if (p.isPlx() || p.isPlaylist()) {
+                PlaylistCache.getInstance().fetch(p.getUrl());
+            }
+        }
+    }
+
+    /**
+     * Add the Playlist URL onto the top of the virtual stack.  The stack is persistent between
+     * menu loads and Sage sessions.
+     * @param s
+     */
+    public static void pushUrl(String s){
+
+        if (s==null || s.isEmpty()) {
+            Log.getInstance().write(Log.LOGLEVEL_WARN, "Playlist.pushUrl: null url.");
+            return;
+        }
+
+        if (s.contains(STACK_DELIMITER)) {
+            Log.getInstance().write(Log.LOGLEVEL_ERROR, "Playlist.pushUrl: Delimiter found in url.");
+            s = s.replaceAll(STACK_DELIMITER, "");
+        }
+
+        String stack = Configuration.GetProperty(PROPERTY_STACK, STACK_DEFAULT);
+        Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "Playlist.pushUrl: Raw stack " + stack);
+
+        // This should not be needed but was getting null stacks during testing....
+        if (stack==null || stack.isEmpty()) {
+            Log.getInstance().write(Log.LOGLEVEL_WARN, "Playlist.pushUrl: null stack!");
+            stack = STACK_DEFAULT;
+            Configuration.SetProperty(PROPERTY_STACK, STACK_DEFAULT);
+        }
+
+        stack = s + STACK_DELIMITER + stack;
+        Configuration.SetProperty(PROPERTY_STACK, stack);
+        Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "Playlist.pushUrl: Updated stack " + stack);
+        return;
+    }
+
+    /**
+     * Remove the first Playlist URL from the top of the virtual stack.  The top of the
+     * stack will always contain the URL of the Playlist currently being displayed.
+     * @return
+     */
+    public static String popUrl() {
+
+        String stack = Configuration.GetProperty(PROPERTY_STACK, STACK_DEFAULT);
+        Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "Playlist.popUrl: Raw stack " + stack);
+
+        // This should not be needed but was getting null stacks during testing....
+        if (stack==null || stack.isEmpty()) {
+            Log.getInstance().write(Log.LOGLEVEL_WARN, "Playlist.popUrl: null stack!");
+            stack = STACK_DEFAULT;
+            Configuration.SetProperty(PROPERTY_STACK, STACK_DEFAULT);
+        }
+
+        String[] elements = stack.split(STACK_DELIMITER);
+        
+        // If there is only 1 element leave it on the stack.
+        if (elements.length==1) {
+            Log.getInstance().write(Log.LOGLEVEL_TRACE, "Playlist.popUrl: Popped item " + elements[0]);
+            return elements[0];
+        }
+
+        String newStack = null;
+
+        for (int i=1; i<elements.length; i++) {
+            String thisElement = elements[i];
+            newStack = newStack==null ? thisElement : newStack + STACK_DELIMITER + thisElement;
+        }
+
+        Configuration.SetProperty(PROPERTY_STACK, newStack);
+        Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "Playlist.popUrl: Updated stack and popped item " + stack + "  " + elements[0]);
+
+        return elements[0];
+    }
+
+    /**
+     * Gets the first Playlist URL from the top of the virtual stack without removing it.
+     * The top of the stack will always contain the URL of the Playlist currently being displayed.
+     * @return
+     */
+    public static String peekUrl() {
+        String stack = Configuration.GetProperty(PROPERTY_STACK, STACK_DEFAULT);
+
+        // This should not be needed but was getting null stacks during testing....
+        if (stack==null || stack.isEmpty()) {
+            Log.getInstance().write(Log.LOGLEVEL_WARN, "Playlist.peekUrl: null stack!");
+            stack = STACK_DEFAULT;
+            Configuration.SetProperty(PROPERTY_STACK, STACK_DEFAULT);
+        }
+
+        String[] elements = stack.split(STACK_DELIMITER, 2);
+        Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "Playlist.peekUrl: Raw stack and peeked item " + stack + " " + elements[0]);
+        return elements[0];
+     }
+
+    /**
+     * Returns a List representing the URL stack.  The first element of he list is the top
+     * of the stack and the last element is the bottom.  The top of the stack should always
+     * be the current Playlist.
+     *
+     * @return
+     */
+    public static List<String> getUrlStack() {
+        String stack = Configuration.GetProperty(PROPERTY_STACK, STACK_DEFAULT);
+        Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "Playlist.getUrlStack: Raw stack " + stack);
+        String[] elements = stack.split(STACK_DELIMITER);
+        return Arrays.asList(elements);
+    }
+
+    /**
+     * Return a formatted String showing the contents of the URL stack.  If the Playlist
+     * for the URL is not in the cache then the URL will appear in the formatted String.
+     * If the Playlist is in the cache then the Playlist name will appear.
+     * @return
+     */
+    public static String getUrlStackString() {
+        List<String> urls = getUrlStack();
+        String s = null;
+
+        for (String url : urls) {
+            Playlist p = PlaylistCache.getInstance().get(url);
+            String name = p==null ? url : p.getTitle();
+            s = s==null ? name : s + "->" + name;
+        }
+
+        return s;
+    }
+
+    /**
+     * Same as getUrlStackString() except if "fetch" is set to true it will fetch Playlists
+     * from the web (to get the name) if they are not in the cache.  If "fetch" is set to
+     * false this method will return exactly the same as getUrlStackString().
+     * 
+     * @param fetch
+     * @return
+     */
+    public static String getUrlStackString(boolean fetch) {
+
+        if (!fetch)
+            return getUrlStackString();
+
+        List<String> urls = getUrlStack();
+        String s = null;
+
+        for (String url : urls) {
+            Playlist p = PlaylistCache.getInstance().get(url);
+
+            if (p==null) {
+                p = new Playlist(url);
+            }
+
+            String name = p==null ? url : p.getTitle();
+            s = s==null ? name : s + "->" + name;
+        }
+
+        return s;
     }
 
     @Override

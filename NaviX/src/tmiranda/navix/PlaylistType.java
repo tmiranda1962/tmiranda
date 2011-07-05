@@ -1,12 +1,14 @@
 
 package tmiranda.navix;
 
+import java.io.*;
+
 /**
- *
+ * Header information for each Playlist.
+ * 
  * @author Tom Miranda.
  */
-public enum PlaylistType {
-    //HEAD ("head"),       // The page heading.
+public enum PlaylistType implements Serializable {
     AUDIO ("audio"),
     VIDEO ("video"),
     IMAGE ("image"),
@@ -20,7 +22,7 @@ public enum PlaylistType {
     RSS_RSS ("rss:rss"),
     RSS_HTML ("rss:html"),
     RSS_IMAGE ("rss:image"),
-    // FIXME add rss:video
+    RSS_VIDEO ("rss:video"),
     ATOM ("atom"),
     HTML_YOUTUBE ("html_youtube"),
     NAVIX ("navi-x"),

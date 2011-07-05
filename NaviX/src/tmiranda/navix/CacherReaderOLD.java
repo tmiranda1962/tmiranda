@@ -8,12 +8,12 @@ import java.io.*;
  *
  * @author Tom Miranda.
  */
-public class CacherReader extends Thread {
+public class CacherReaderOLD extends Thread {
 
-    private Cacher cacher   = null;
+    private CacherOLD cacher   = null;
     private boolean stop    = false;
 
-    public CacherReader(Cacher cacher) {
+    public CacherReaderOLD(CacherOLD cacher) {
         this.cacher = cacher;
         stop = false;
     }

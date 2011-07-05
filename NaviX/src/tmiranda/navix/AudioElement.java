@@ -1,13 +1,13 @@
 
 package tmiranda.navix;
 
-import java.io.File;
+import java.io.*;
 
 /**
  *
  * @author Tom Miranda.
  */
-public class AudioElement extends PlaylistEntry {
+public class AudioElement extends PlaylistEntry implements Serializable {
 
     public static final String DEFAULT_SAGE_ICON = "Themes" + File.separator + "Standard" + File.separator + "MusicArt.png";
 

@@ -4,14 +4,13 @@ package tmiranda.navix;
 import java.io.*;
 import java.net.*;
 import java.util.*;
-import java.util.regex.*;
 
 /**
  *
  * @author Tom Miranda.
  *
  */
-public class Processor {
+public class Processor implements Serializable {
 
     private String UrlString;
     private URL url;

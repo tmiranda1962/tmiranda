@@ -1,6 +1,7 @@
 
 package tmiranda.navix;
 
+import java.io.*;
 import java.net.*;
 import java.util.*;
 import sage.media.rss.*;
@@ -9,7 +10,7 @@ import sage.media.rss.*;
  *
  * @author Tom Miranda.
  */
-public class RssElement extends PlaylistEntry {
+public class RssElement extends PlaylistEntry implements Serializable {
     public static final String DEFAULT_SAGE_ICON = "WiFiSignal4.png";
 
     private boolean checkedChannel = false;

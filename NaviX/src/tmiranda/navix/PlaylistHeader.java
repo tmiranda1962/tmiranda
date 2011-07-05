@@ -2,19 +2,22 @@
 package tmiranda.navix;
 
 import java.util.*;
+import java.io.*;
 
 /**
  *
  * @author Tom Miranda
  */
-public class PlaylistHeader {
+public class PlaylistHeader implements Serializable {
 
-    private String version      = null;
-    private String title        = null;
+    static final long serialVersionUID = 0;
+
+    private String version      = "Unknown";
+    private String title        = "Playlist could not be loaded.";
     private String background   = null;
-    private String description  = null;
+    private String description  = "The server holding this Playlist could not be reached.";
     private String logo         = null;
-    private String view         = null;
+    private String view         = "Unknown";
 
     int loadDescription(int startLocation, String beginning, List<String> allLines) {
 

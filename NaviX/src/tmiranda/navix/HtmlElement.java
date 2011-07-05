@@ -1,14 +1,16 @@
-/*
- * To change this template, choose Tools | Templates
- * and open the template in the editor.
- */
 
 package tmiranda.navix;
 
+import java.io.*;
+
 /**
  *
- * @author Default
+ * @author Tom Miranda.
  */
-public class HtmlElement extends PlaylistEntry {
+public class HtmlElement extends PlaylistEntry implements Serializable {
 
+    @Override
+    public boolean isSupportedBySage() {
+        return false;
+    }
 }
