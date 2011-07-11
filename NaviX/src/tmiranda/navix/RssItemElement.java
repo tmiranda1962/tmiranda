@@ -6,11 +6,13 @@ import java.util.*;
 import sage.media.rss.*;
 
 /**
- * This class represent an individual Podcast episode.
+ * This class represents an individual Podcast episode.
  *
  * @author Tom Miranda.
  */
 public final class RssItemElement extends PlaylistEntry implements Serializable {
+
+    static final long serialVersionUID = NaviX.SERIAL_UID;
 
     public static final String DEFAULT_SAGE_ICON = "WiFiSignal4.png";
 
@@ -75,6 +77,11 @@ public final class RssItemElement extends PlaylistEntry implements Serializable 
         }
 
         String rssVideoLink = rssItem.getLink();
+
+        if (!hasProcessor() && !rssVideoLink.contains("http://wwww.youtube.com")) {
+            Log.getInstance().write(Log.LOGLEVEL_TRACE, "RssItemElement.getVideoLink: No processor needed for " + rssVideoLink);
+            return rssVideoLink;
+        }
 
         Log.getInstance().write(Log.LOGLEVEL_TRACE, "RssItemElement.getVideoLink: Processor will use " + processor + " for " + rssVideoLink);
 

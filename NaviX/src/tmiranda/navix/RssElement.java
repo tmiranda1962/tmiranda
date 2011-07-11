@@ -7,10 +7,14 @@ import java.util.*;
 import sage.media.rss.*;
 
 /**
+ * RSS Feed.
  *
  * @author Tom Miranda.
  */
 public class RssElement extends PlaylistEntry implements Serializable {
+
+    static final long serialVersionUID = NaviX.SERIAL_UID;
+
     public static final String DEFAULT_SAGE_ICON = "WiFiSignal4.png";
 
     private boolean checkedChannel = false;
@@ -26,17 +30,33 @@ public class RssElement extends PlaylistEntry implements Serializable {
         return icon==null ? DEFAULT_SAGE_ICON : icon;
     }
 
+    /**
+     * See if this feed has already been checked. When an RSS feed is checked we see
+     * if it points to a valid RSS feed (some items on NaviX do not).
+     *
+     * @return
+     */
     public boolean hasBeenChecked() {
         return checkedChannel;
     }
 
+    /**
+     * Check if this is a valid Podcast.  Valid means the url points to a valid RSS Channel (Podcast).
+     * @return
+     */
     public boolean isValidPodcast() {
-        if (processor != null)
-            return false;
-        else
+        //if (processor != null)
+            //return false;
+        //else
             return channel != null;
     }
 
+    /**
+     * Read the RSS Channel and return the RSS Items in a class that can be easily handled
+     * by the STV.  This method can take a long time to complete depending on the podcast.
+     *
+     * @return
+     */
     public List<RssItemElement> getRssItemElements() {
 
         List<RssItemElement> rssItemElements = new LinkedList<RssItemElement>();
@@ -99,6 +119,11 @@ public class RssElement extends PlaylistEntry implements Serializable {
         return channel;
     }
 
+    /**
+     * Read the RSS Channel and return the RSS Items.
+     *
+     * @return
+     */
     public LinkedList<RSSItem> getRssItems() {
 
         if (checkedChannel)

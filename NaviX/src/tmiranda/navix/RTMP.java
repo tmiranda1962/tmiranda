@@ -6,10 +6,13 @@ import java.net.*;
 import java.io.*;
 
 /**
+ * Start an RTMP transfer.
  *
  * @author Tom Miranda.
  */
 public class RTMP implements Serializable {
+
+    static final long serialVersionUID = NaviX.SERIAL_UID;
 
     static List<RTMP>   activeList = new ArrayList<RTMP>();
 
@@ -19,6 +22,11 @@ public class RTMP implements Serializable {
     File                tempFile    = null;
     long                lastLength  = 0;
 
+    /**
+     * Constructor.  The vars are usually provided by the Processor.
+     * 
+     * @param vars
+     */
     public RTMP(HashMap<String, String>vars) {
         this.vars = vars==null || vars.isEmpty() ? new HashMap<String, String>() : vars;
         id = UUID.randomUUID();

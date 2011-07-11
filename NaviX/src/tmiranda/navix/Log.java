@@ -5,9 +5,12 @@ import sagex.api.*;
 
 /**
  * Logging methods. Singleton class.
+ *
  * @author Tom Miranda
  */
 public class Log {
+
+    static final long serialVersionUID = NaviX.SERIAL_UID;
 
     /**
      * Possible values for the LogLevel.
@@ -91,7 +94,7 @@ public class Log {
      * <p>
      * @param NewLevel  The new Loglevel.
      */
-    public void SetLogLevel(Integer NewLevel) {
+    public static void setLogLevel(Integer NewLevel) {
         CurrentLogLevel = NewLevel;
 
         if (NewLevel<LOGLEVEL_MAX || NewLevel>LOGLEVEL_NONE) {
@@ -117,7 +120,34 @@ public class Log {
      * <p>
      * @return  The current LogLevel.
      */
-    public int GetLogLevel() {
+    public static int getLogLevel() {
         return CurrentLogLevel;
+    }
+
+    public static boolean isLevel(String level) {
+        level = level.toLowerCase();
+        int currentLevel = getLogLevel();
+        switch (currentLevel) {
+            case 0:
+                return level.startsWith("max");
+
+            case 10:
+                return level.startsWith("verbose");
+
+            case 25:
+                return level.startsWith("trace");
+
+            case 50:
+                return level.startsWith("warn");
+
+            case 75:
+                return level.startsWith("error");
+
+            case 100:
+                return level.startsWith("none");
+
+            default:
+                return false;
+        }
     }
 }

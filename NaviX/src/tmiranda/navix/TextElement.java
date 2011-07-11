@@ -5,10 +5,13 @@ import java.io.*;
 import java.util.*;
 
 /**
+ * A TextElement points to a text file stored on the web.
  *
  * @author Tom Miranda.
  */
 public class TextElement extends PlaylistEntry implements Serializable {
+
+    static final long serialVersionUID = NaviX.SERIAL_UID;
 
 // FIXME - The dialog used to display text is a mess.
 

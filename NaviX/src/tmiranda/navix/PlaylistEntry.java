@@ -6,11 +6,15 @@ import java.io.*;
 import org.python.util.*;
 
 /**
+ * Every XxxElement class is a superclass of PlaylistEntry.
  *
  * @author Tom Miranda.
  */
 public class PlaylistEntry implements Serializable {
 
+    static final long serialVersionUID = NaviX.SERIAL_UID;
+
+    String playlistUrl  = null;     // The URL of the owning Playlist. Only valid for cached.
     String version      = null;
     String title        = null;     // Web page title NOT content title.
     String background   = null;
@@ -247,6 +251,22 @@ public class PlaylistEntry implements Serializable {
         return type==null ? false : PlaylistType.toEnum(type) == PlaylistType.RSS_ITEM;
     }
 
+    public boolean isRssHtml() {
+        return type==null ? false : PlaylistType.toEnum(type) == PlaylistType.RSS_HTML;
+    }
+
+    public boolean isRssImage() {
+        return type==null ? false : PlaylistType.toEnum(type) == PlaylistType.RSS_IMAGE;
+    }
+
+    public boolean isRssRss() {
+        return type==null ? false : PlaylistType.toEnum(type) == PlaylistType.RSS_RSS;
+    }
+
+    public boolean isRssVideo() {
+        return type==null ? false : PlaylistType.toEnum(type) == PlaylistType.RSS_VIDEO;
+    }
+
     public boolean isRssFlickrDaily() {
         return type==null ? false : PlaylistType.toEnum(type) == PlaylistType.RSS_FLICKR_DAILY;
     }
@@ -481,11 +501,7 @@ public class PlaylistEntry implements Serializable {
     }
 
     public boolean hasProcessor() {
-
-        if (url!=null && url.contains("youtube.com"))
-            return true;
-        else
-            return processor != null && !processor.isEmpty();
+        return processor != null && !processor.isEmpty();
     }
 
     public void setProcessor(String processor) {
@@ -548,6 +564,14 @@ public class PlaylistEntry implements Serializable {
 
     public void setView(String view) {
         this.view = view;
+    }
+
+    public String getPlaylistUrl() {
+        return playlistUrl;
+    }
+
+    public void setPlaylistUrl(String playlistUrl) {
+        this.playlistUrl = playlistUrl;
     }
 
     @Override

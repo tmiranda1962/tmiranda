@@ -3,8 +3,7 @@ package tmiranda.navix;
 
 import java.util.*;
 import java.io.*;
-
-// FIXME - Will not work properly because circular references are allowed in the playlists.
+import sagex.api.*;
 
 /**
  * Search for elements and keywords.
@@ -13,6 +12,14 @@ import java.io.*;
  */
 public class Search {
 
+    static final long serialVersionUID = NaviX.SERIAL_UID;
+
+    public static final String  CACHE_ENDING            = ".navix.cache";
+    public static final String  PLAYLIST_ENDING         = ".navix.playlist";
+    public static final String  SAVED_URL_PREFIX        = "disk:";
+    public static final String  PROPERTY_CACHE_MAX_AGE  = "navix/disk_cache_max_age";
+
+    private boolean             stop                = false;
     private boolean             cacheToMemory       = false;
     private String[]            cacheFiles          = null;
     private long                maxAge              = -1;
@@ -27,15 +34,26 @@ public class Search {
      * @param cacheToMemory If set to true the Playlists processed will be added to the memory
      * cache.  This should only be used if the search is relatively limited.
      * @param cacheFiles The Playlists that are processed during the search will be saved in
-     * the first file in the array. All cacheFiles will be consididered when looking for
+     * the first file in the array. All cacheFiles will be considered when looking for
      * results.
      * @param maxAge The maximum age (in milliseconds) of cached Playlists cached in
      * the cacheFile to consider. If set to 0 all Playlists will be considered.
      */
     public Search(boolean cacheToMemory, String[] cacheFiles, long maxAge) {
         this.cacheToMemory = cacheToMemory;
+        if (cacheFiles==null) {
+            this.cacheFiles = new String[0];
+        } else {
+            this.cacheFiles = new String[cacheFiles.length];
+            for (int i=0; i<cacheFiles.length; i++)
+                this.cacheFiles[i] = convertToNavixCacheName(cacheFiles[i]);
+        }
         this.cacheFiles = cacheFiles==null ? new String[0] : cacheFiles;
         this.maxAge = maxAge < 0 ? 0 : maxAge;
+    }
+
+    public Search(boolean cacheToMemory, List<String> cacheFiles, long maxAge) {
+        this(cacheToMemory, cacheFiles.toArray(new String[cacheFiles.size()]), maxAge);
     }
 
     /**
@@ -57,7 +75,7 @@ public class Search {
             cacheFiles = new String[0];
         else {
             cacheFiles = new String[1];
-            cacheFiles[0] = cacheFile;
+            cacheFiles[0] = convertToNavixCacheName(cacheFile);
         }
     }
 
@@ -82,22 +100,50 @@ public class Search {
         this.maxAge = 0;
     }
 
-    public List<PlaylistEntry> getType(String url, PlaylistType type, int limit, int depth, int maxPlaylists) {
-        return getType(url, type.toString(), limit, depth, maxPlaylists);
+    /**
+     * Adds the proper extension to files that will be used as cache files.  This is done
+     * as a convenience so the STV does not have to worry about it.
+     * @param fileName
+     * @return
+     */
+    private static String convertToNavixCacheName(String fileName) {
+        if (fileName==null || fileName.isEmpty())
+            return "NavixDefault" + CACHE_ENDING;
+        else
+            return fileName.endsWith(CACHE_ENDING) ? fileName : fileName + CACHE_ENDING;
+    }
+
+    /**
+     * Adds the proper extension to files that will be used as stored files.  This is done
+     * as a convenience so the STV does not have to worry about it.
+     * @param fileName
+     * @return
+     */
+    public static String convertToNavixPlaylistName(String fileName) {
+        if (fileName==null || fileName.isEmpty())
+            return "NavixDefault" + PLAYLIST_ENDING;
+        else
+            return fileName.endsWith(PLAYLIST_ENDING) ? fileName : fileName + PLAYLIST_ENDING;
+    }
+
+    public List<PlaylistEntry> getType(String url, String type, int limit, int depth, int maxPlaylists) {
+        List<String> theList = new ArrayList<String>();
+        theList.add(type);
+        return getType(url, theList, limit, depth, maxPlaylists);
     }
 
     /**
      * Search for Playlists of the specified type.
      *
      * @param url The URL of the root Playlist.
-     * @param type The type of Playlist to search for.
-     * @param limit The maximum number of PlaylistEntry to return.
-     * @param depth The maximum depth to travel down any one branch of the Playlist tree.
+     * @param type A List containing the types of Playlist to search for.
+     * @param limit The maximum number of PlaylistEntry to return. -1 for unlimited.
+     * @param depth The maximum depth to travel down any one branch of the Playlist tree. -1 for unlimited.
      * @param maxPlaylists The maximum number of Playlists to inspect. Playlists that fail
-     * to load (because their host is unreachable) are counted.
+     * to load (because their host is unreachable) are counted. -1 for unlimited.
      * @return
      */
-    public List<PlaylistEntry> getType(String url, String type, int limit, int depth, int maxPlaylists) {
+    public List<PlaylistEntry> getType(String url, List<String> type, int limit, int depth, int maxPlaylists) {
 
         Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "Search.getType: url = " + url);
         Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "Search.getType: type = " + type);
@@ -107,6 +153,11 @@ public class Search {
         Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "Search.getType: Elements found = " + resultsSoFar.size());
 
         List<PlaylistEntry> results = new ArrayList<PlaylistEntry>();
+
+        if (stop) {
+            Log.getInstance().write(Log.LOGLEVEL_WARN, "Search.getType: Manually cancelled.");
+            return results;
+        }
 
         if (url==null || url.isEmpty()) {
             Log.getInstance().write(Log.LOGLEVEL_WARN, "Search.getType: null URL.");
@@ -118,17 +169,17 @@ public class Search {
             return results;
         }
 
-        if (resultsSoFar.size() >= limit) {
+        if (limit!=-1 && resultsSoFar.size() >= limit) {
             Log.getInstance().write(Log.LOGLEVEL_WARN, "Search.getType: Results limit reached.");
             return results;
         }
 
-        if (depth<=0) {
+        if (depth==0) {
             Log.getInstance().write(Log.LOGLEVEL_WARN, "Search.getType: Depth reached.");
             return results;
         }
 
-        if (totalPlaylists >= maxPlaylists) {
+        if (maxPlaylists != -1 && totalPlaylists >= maxPlaylists) {
             Log.getInstance().write(Log.LOGLEVEL_WARN, "Search.getType: Playlist limit reached.");
             return results;
         }
@@ -140,39 +191,11 @@ public class Search {
 
         processedPlaylists.add(url);
         totalPlaylists++;
-        boolean retrievedFromDisk = false;
 
-        Playlist playlist = null;
-
-        // Try to retrieve from memory cache or one of the specified disk cache files.
-        if (Playlist.isInCache(url) && !Playlist.shouldRetryNew(url)) {
-            playlist = Playlist.retrieveFromCache(url);
-        } else for (String cacheFile : cacheFiles) {
-            if (getUrlsInDiskCache(cacheFile).contains(url)) {
-                Playlist p = getFromDiskCache(url, cacheFile);
-                if (p!=null && (maxAge==0 || ((new Date().getTime()-p.getDiskTime())<maxAge))) {
-                    playlist = p;
-                    retrievedFromDisk = true;
-                    break;
-                }
-            }
-        }
-
-        // Handle the case of having the cache deleted after checking.
-        if (playlist == null)
-            playlist = new Playlist(url, cacheToMemory);
-
-        // Save it to disk cache if we didn't get it from there in the first place.
-        if (!retrievedFromDisk && cacheFiles.length >0 && !addToDiskCache(playlist, cacheFiles[0])) {
-            Log.getInstance().write(Log.LOGLEVEL_WARN, "Search.getType: Failed to save to disk cache.");
-        }
-
-        // FIXME - Sanity check
-        //if (!getUrlsInDiskCache("NavixSearchCache.db").contains(playlist.getUrl()))
-            //Log.getInstance().write(Log.LOGLEVEL_ERROR, "Search.getType: Failed to retrieve URL " + playlist.getUrl());
+        Playlist playlist = getFromMemoryFileOrWeb(url);
 
         // Make sure the url was reachable.
-        if (!playlist.hasLoaded()) {
+        if (playlist==null) {
             Log.getInstance().write(Log.LOGLEVEL_TRACE, "Search.getType: Playlist failed to load, skipping " + url);
             return results;
         }
@@ -181,15 +204,17 @@ public class Search {
 
             totalElements++;
 
+            String thisType = entry.getType();
+
             // Add to the List if this is the correct type and we are below the limit.
-            if (entry.getType().equalsIgnoreCase(type) && resultsSoFar.size() < limit) {
+            if (type.contains(thisType) && (limit==-1 || resultsSoFar.size() < limit)) {
                 Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "Search.getType: Adding " + entry.getName());
                 results.add(entry);
                 resultsSoFar.add(entry);
             }
 
             // Recurse if this is a playlist and we're not over the limit.
-            if ((entry.isPlaylist() || entry.isPlx()) && resultsSoFar.size() < limit) {
+            if ((entry.isPlaylist() || entry.isPlx()) && (limit==-1 || resultsSoFar.size() < limit)) {
                 Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "Search.getType: Recursing. Totals " + totalPlaylists + ":" + totalElements);
                 results.addAll(getType(entry.getUrl(), type, limit, depth-1, maxPlaylists));
             }
@@ -209,6 +234,11 @@ public class Search {
 
         List<PlaylistEntry> results = new ArrayList<PlaylistEntry>();
 
+        if (stop) {
+            Log.getInstance().write(Log.LOGLEVEL_WARN, "Search.getWords: Manually cancelled.");
+            return results;
+        }
+
         if (url==null || url.isEmpty()) {
             Log.getInstance().write(Log.LOGLEVEL_WARN, "Search.getWords: null URL.");
             return results;
@@ -219,17 +249,17 @@ public class Search {
             return results;
         }
 
-        if (resultsSoFar.size() >= limit) {
+        if (limit!=-1 && resultsSoFar.size() >= limit) {
             Log.getInstance().write(Log.LOGLEVEL_WARN, "Search.getWords: Results limit reached.");
             return results;
         }
 
-        if (depth<=0) {
+        if (depth==0) {
             Log.getInstance().write(Log.LOGLEVEL_WARN, "Search.getWords: Depth reached.");
             return results;
         }
 
-        if (totalPlaylists >= maxPlaylists) {
+        if (maxPlaylists != -1 && totalPlaylists >= maxPlaylists) {
             Log.getInstance().write(Log.LOGLEVEL_WARN, "Search.getWords: Playlist limit reached.");
             return results;
         }
@@ -241,35 +271,11 @@ public class Search {
 
         processedPlaylists.add(url);
         totalPlaylists++;
-        boolean retrievedFromDisk = false;
 
-        Playlist playlist = null;
-
-        // Try to retrieve from memory cache or one of the specified disk cache files.
-        if (Playlist.isInCache(url) && !Playlist.shouldRetryNew(url)) {
-            playlist = Playlist.retrieveFromCache(url);
-        } else for (String cacheFile : cacheFiles) {
-            if (getUrlsInDiskCache(cacheFile).contains(url)) {
-                Playlist p = getFromDiskCache(url, cacheFile);
-                if (p!=null && (maxAge==0 || ((new Date().getTime()-p.getDiskTime())<maxAge))) {
-                    playlist = p;
-                    retrievedFromDisk = true;
-                    break;
-                }
-            }
-        }
-
-        // Handle the case of having the cache deleted after checking.
-        if (playlist == null)
-            playlist = new Playlist(url, cacheToMemory);
-
-        // Save it to disk cache if we didn't get it from there in the first place.
-        if (!retrievedFromDisk && cacheFiles.length >0 && !addToDiskCache(playlist, cacheFiles[0])) {
-            Log.getInstance().write(Log.LOGLEVEL_WARN, "Search.getWords: Failed to save to disk cache.");
-        }
+        Playlist playlist = getFromMemoryFileOrWeb(url);
 
         // Make sure the url was reachable.
-        if (!playlist.hasLoaded()) {
+        if (playlist==null) {
             Log.getInstance().write(Log.LOGLEVEL_TRACE, "Search.getWords: Playlist failed to load, skipping " + url);
             return results;
         }
@@ -279,13 +285,14 @@ public class Search {
             totalElements++;
 
             // Create a list of all the words found in the various fields.
-            List<String> foundWords = phraseToWords(entry.getName());
-            foundWords.addAll(phraseToWords(entry.getTitle()));
-            foundWords.addAll(phraseToWords(entry.getDescription()));
+            List<String> foundWords = new ArrayList<String>();
+            if (entry.getName() != null) foundWords.addAll(phraseToWords(entry.getName().toLowerCase()));
+            if (entry.getTitle() != null) foundWords.addAll(phraseToWords(entry.getTitle().toLowerCase(Locale.FRENCH)));
+            if (entry.getDescription() != null) foundWords.addAll(phraseToWords(entry.getDescription().toLowerCase()));
 
             // See if any match the words we are looking for.
             for (String word : words) {
-                if (foundWords.contains(word) && resultsSoFar.size() < limit) {
+                if (foundWords.contains(word.toLowerCase()) && resultsSoFar.size() < limit) {
                     if (!results.contains(entry)) {
                         results.add(entry);
                         resultsSoFar.add(entry);
@@ -304,6 +311,87 @@ public class Search {
         return results;
     }
 
+    /**
+     * Fetches the Playlist specified by the url from either the memory cache, the disk
+     * cache or from the web, in that order.  We go through this grief to improve performance
+     * and to make sure we don't keep trying to fetch dead links from the web.
+     * @param url
+     * @return
+     */
+    private Playlist getFromMemoryFileOrWeb(String url) {
+
+        Playlist playlist;
+
+        // Try to retrieve from memory cache.
+        if (Playlist.isInCache(url)) {
+            playlist = Playlist.retrieveFromCache(url);
+
+            // If it was loaded (reachable), return it.
+            if (playlist!=null && playlist.hasLoaded()) {
+                Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "Search.getFromMemoryFileOrWeb: Playlist retrieved from memory cache.");
+                return playlist;
+            }
+
+            // It was unreachable.  If it's not time to try again return failure.
+            if (!Playlist.shouldRetryNew(url)) {
+                Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "Search.getFromMemoryFileOrWeb: Playlist is in memory but unreachable.");
+                return null;
+            }
+        }
+
+        // It's either in memory cache and unreachable (but time to try again) or it's
+        // not in memory at all.
+
+        playlist = null;
+
+        // See if it's one of the cache files.
+        for (String cacheFile : cacheFiles) {
+            if (getUrlsInDiskCache(cacheFile).contains(url)) {
+                Playlist p = getFromDiskCache(url, cacheFile);
+                Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "Search.getFromMemoryFileOrWeb: Playlist in disk cache.");
+                if (p!=null && (maxAge==0 || ((new Date().getTime()-p.getDiskTime())<maxAge))) {
+
+                    // We found it.  If it's loaded just return it. If it wasn't loaded
+                    // continue on and try to fetch it from the web.
+                    if (p.hasLoaded()) {
+                        Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "Search.getFromMemoryFileOrWeb: Playlist retrieved from disk cache.");
+                        return p;
+                    } else {
+                        Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "Search.getFromMemoryFileOrWeb: Playlist in disk cache but not loaded.");
+                        break;
+                    }
+                } else {
+                    Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "Search.getFromMemoryFileOrWeb: Playlist in disk cache is too old.");
+                }
+            }
+        }
+
+        // It's either not in memory or disk cache, or it is but it's invalid. In any case,
+        // try to fetch it from the web.
+
+        playlist = new Playlist(url, cacheToMemory);
+        Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "Search.getFromMemoryFileOrWeb: Playlist retrieved from web.");
+
+        // Save it to disk cache.
+        if (cacheFiles.length>0 && !addToDiskCache(playlist, cacheFiles[0])) {
+            Log.getInstance().write(Log.LOGLEVEL_WARN, "Search.getFromMemoryFileOrWeb: Failed to save to disk cache.");
+        }
+
+        // Make sure the url was reachable.
+        if (!playlist.hasLoaded()) {
+            Log.getInstance().write(Log.LOGLEVEL_TRACE, "Search.getFromMemoryFileOrWeb: Playlist failed to load, skipping " + url);
+            return null;
+        }
+
+        return playlist;
+    }
+
+    /**
+     * Converts a phrase (words separated by spaces) into a List of individual words.
+     * This needs to be refined because words with punctuation will not be matched.
+     * @param phrase
+     * @return
+     */
     private static List<String> phraseToWords(String phrase) {
         List<String> words = new ArrayList<String>();
 
@@ -322,7 +410,7 @@ public class Search {
      * @param fileName
      * @return true if success, false otherwise.
      */
-    public static synchronized boolean addToDiskCache(Playlist playlist, String fileName) {
+    public synchronized boolean addToDiskCache(Playlist playlist, String fileName) {
 
         if (playlist==null || fileName==null || fileName.isEmpty())
             return false;
@@ -398,22 +486,37 @@ public class Search {
             return false;
         }
 
+        // Calculate the maximum age.  Playlists older then this will be eliminated from
+        // the cache.
+        Long defaultMaxAge = 7 * 24 * 60 * 60 * 1000L;   // A week.
+        String maxAgeString = Configuration.GetProperty(PROPERTY_CACHE_MAX_AGE, defaultMaxAge.toString());
+        Long maxDiskAge = 0L;
+        long now = new Date().getTime();
+        try {
+            maxDiskAge = Long.parseLong(maxAgeString);
+        } catch (NumberFormatException e) {
+            Log.getInstance().write(Log.LOGLEVEL_WARN, "Search.addToDiskCache: Invalid max age " + maxAgeString);
+            maxDiskAge = 0L;
+        }
+
         // Read through the file and replace the Playlist if we find it or add it to the end.
         boolean inserted = false;
         Playlist p;
-System.out.println("NAVIX:: ABOUT TO START " + fileName);
+
         try {
             while ((p = (Playlist)ois.readObject()) != null) {
-System.out.println("NAVIX:: READ");
+
                 if (p.getUrl().equals(playlist.getUrl())) {
-System.out.println("NAVIX:: MATCH");
                     playlist.setDiskTime(new Date().getTime());
                     oos.writeObject(playlist);
                     inserted = true;
                     Log.getInstance().write(Log.LOGLEVEL_TRACE, "Search.addToDiskCache: Playlist updated " + playlist.getUrl());
                 } else {
-System.out.println("NAVIX:: NO MATCH");
-                    oos.writeObject(p);
+                    if ((p.getDiskTime() + maxDiskAge) > now) {
+                        oos.writeObject(p);
+                    } else {
+                        Log.getInstance().write(Log.LOGLEVEL_TRACE, "Search.addToDiskCache: Old Playlist removed " + playlist.getUrl());
+                    }
                 }
             }
 
@@ -473,16 +576,6 @@ System.out.println("NAVIX:: NO MATCH");
     }
 
     /**
-     * FIXME - NOT YET IMPLEMENTED.
-     * @param playlist
-     * @param fileName
-     * @return
-     */
-    public static synchronized boolean removeFromDiskCache(Playlist playlist, String fileName) {
-        return false;
-    }
-
-    /**
      * Retrieve the Playlist with the specified URL from the file specified.
      *
      * @param url
@@ -524,7 +617,12 @@ System.out.println("NAVIX:: NO MATCH");
 
         try {
             while ((p = (Playlist)ois.readObject()) != null) {
-                if (p.getUrl().equals(url)) {
+                if (p.getUrl().equals(url) || url.equals("FIRST")) {
+                    if (ois!=null)
+                        try {ois.close();} catch (Exception e1) {}
+                    if (fis!=null)
+                        try {fis.close();} catch (Exception e2) {}
+System.out.println(":::getFromDiskCache elements " + p.getElements().size());
                     return p;
                 }
             }
@@ -548,6 +646,10 @@ System.out.println("NAVIX:: NO MATCH");
             try {fis.close();} catch (Exception e2) {}
 
         return null;
+    }
+
+    public static synchronized Playlist getFromDiskCache(String fileName) {
+        return getFromDiskCache("FIRST", fileName);
     }
 
     public static synchronized List<String> getUrlsInDiskCache(String fileName) {
@@ -609,7 +711,7 @@ System.out.println("NAVIX:: NO MATCH");
 
     /**
      * Saves the search results as a Playlist. Other than the url and PlaylistElements fields
-     * the Playlist will be empty.  The caller can use the various Playlist setter methods
+     * the Playlist will contain default values.  The caller can use the various Playlist setter methods
      * to add data to the Playlist and then invoke the savePlaylist method to save the
      * updated Playlist to the Search cache.
      *
@@ -620,26 +722,41 @@ System.out.println("NAVIX:: NO MATCH");
      * Playlist will be appended to it.  If the Playlist already exists in the file it will
      * be replaced.
      *
+     * @param append If set to true the results will be appended to the file, if the file
+     * exists.  Note that in most cases this parameter should be set to false.
+     *
      * @return A URL that can be used to retrieve the Playlist from the Search cache.  This URL
      * will not be suitable for retrieving the Playlist from the web.
      */
-    public String saveResultsAsPlaylist(String fileName) {
+    public String saveResultsAsPlaylist(String fileName, boolean append) {
+
+        if (!append) {
+            File f = new File(fileName);
+            if (f.exists()) {
+                if (!f.delete()) {
+                    Log.getInstance().write(Log.LOGLEVEL_WARN, "Search.saveResultsAsPlaylist: Failed to delete existing file " + fileName);
+                } else {
+                    Log.getInstance().write(Log.LOGLEVEL_TRACE, "Search.saveResultsAsPlaylist: Deleted existing file " + fileName);
+                }
+            }
+        }
+
+        fileName = convertToNavixPlaylistName(fileName);
 
         Playlist playlist = new Playlist();
 
-        playlist.setUrl(UUID.randomUUID().toString());
+        playlist.setHasLoaded(true);
+        playlist.setUrl(SAVED_URL_PREFIX + fileName + ":" + UUID.randomUUID().toString());
         playlist.setElements(resultsSoFar);
+        playlist.setVersion(resultsSoFar.size() + " items");
+        playlist.setTitle(fileName);
 
-        Log.getInstance().write(Log.LOGLEVEL_TRACE, "Search.saveResultsAsPlaylist: Saving " + fileName + " url " + playlist.getUrl());
+        Log.getInstance().write(Log.LOGLEVEL_TRACE, "Search.saveResultsAsPlaylist: Saving " + fileName + " url " + playlist.getUrl() + " items " + resultsSoFar.size());
         if (!addToDiskCache(playlist, fileName)) {
             Log.getInstance().write(Log.LOGLEVEL_ERROR, "Search.saveResultsAsPlaylist: Failed to save file.");
         }
 
         return playlist.getUrl();
-    }
-
-    public static boolean savePlaylist(Playlist playlist, String fileName) {
-        return addToDiskCache(playlist, fileName);
     }
 
     public List<PlaylistEntry> getResultsSoFar() {
@@ -656,5 +773,120 @@ System.out.println("NAVIX:: NO MATCH");
 
     public int getTotalPlaylists() {
         return totalPlaylists;
+    }
+
+    /**
+     * Stops the current search after the current Playlist is processed.
+     */
+    public void cancel() {
+        stop = true;
+    }
+
+    /**
+     * getUrl() returns disk:fileName:URL.  The disk:fileName: must be stripped off to get the
+     * actual URL that is used in the Disk cache file.
+     *
+     * @param diskURL
+     * @return
+     */
+    public static String diskUrlToCacheUrl(String diskURL) {
+        if (diskURL==null || diskURL.isEmpty() || !diskURL.startsWith(SAVED_URL_PREFIX)) {
+            Log.getInstance().write(Log.LOGLEVEL_WARN, "Search.diskUrlToCacheUrl: Invalid URL " + diskURL);
+            return diskURL;
+        }
+
+        String[] parts = diskURL.split(":", 3);
+        if (parts==null || parts.length!=3) {
+            Log.getInstance().write(Log.LOGLEVEL_WARN, "Search.diskUrlToCacheUrl: Invalid URL " + diskURL);
+            return diskURL;
+        }
+
+        return parts[2];
+    }
+
+    public static String diskUrlGetFileName(String diskURL) {
+        if (diskURL==null || diskURL.isEmpty() || !diskURL.startsWith(SAVED_URL_PREFIX)) {
+            Log.getInstance().write(Log.LOGLEVEL_WARN, "Search.diskUrlGetFileName: Invalid URL " + diskURL);
+            return diskURL;
+        }
+
+        String[] parts = diskURL.split(":", 3);
+        if (parts==null || parts.length!=3) {
+            Log.getInstance().write(Log.LOGLEVEL_WARN, "Search.diskUrlGetFileName: Invalid URL " + diskURL);
+            return diskURL;
+        }
+
+        return parts[1];
+    }
+
+    public static List<String> getAllCacheFiles() {
+        List<String>fileNames = new ArrayList<String>();
+
+        List<File>allFiles = getFilesEndingWith(CACHE_ENDING, ".");
+
+        if (allFiles==null || allFiles.isEmpty()) {
+            return fileNames;
+        }
+
+        for (File f : allFiles) {
+            fileNames.add(f.getName());
+        }
+
+        return fileNames;
+    }
+
+    public static List<String> getAllPlaylistFiles() {
+        List<String>fileNames = new ArrayList<String>();
+
+        List<File>allFiles = getFilesEndingWith(PLAYLIST_ENDING, ".");
+        
+        if (allFiles==null || allFiles.isEmpty()) {
+            return fileNames;
+        }
+
+        for (File f : allFiles) {
+            fileNames.add(f.getName());
+        }
+
+        return fileNames;
+    }
+
+    static List<File> getFilesEndingWith(String ending, String directory) {
+
+        List<File> files = new ArrayList<File>();
+
+        if (ending==null || ending.isEmpty())
+            return files;
+
+        File[] allFiles = getFileListing(directory);
+
+        if (allFiles==null || allFiles.length==0)
+            return files;
+
+        for (File f : allFiles) {
+            if (f.getAbsolutePath().endsWith(ending))
+                files.add(f);
+        }
+
+        return files;
+    }
+
+    static File[] getFileListing(String directory) {
+
+        if (directory==null || directory.isEmpty())
+            return null;
+
+        File f = new File(directory);
+
+        if (!f.isDirectory())
+            return null;
+
+        return f.listFiles();
+    }
+
+    public static boolean deletePlaylistFile(String filename) {
+        String file = convertToNavixPlaylistName(filename);
+        File f = new File(file);
+        return f.delete();
     }
 }

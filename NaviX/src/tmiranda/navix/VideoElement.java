@@ -11,6 +11,8 @@ import java.util.*;
  */
 public class VideoElement extends PlaylistEntry implements Serializable {
 
+    static final long serialVersionUID = NaviX.SERIAL_UID;
+
     public static final String DEFAULT_SAGE_ICON = "Themes" + File.separator + "Standard" + File.separator + "VideoArt.png";
 
     private Map<String, String> args = new HashMap<String, String>();
@@ -31,7 +33,7 @@ public class VideoElement extends PlaylistEntry implements Serializable {
      */
     public String getVideoLink() {
 //FIXME
-        if (false && !hasProcessor()) {
+        if (!hasProcessor()) {
             Log.getInstance().write(Log.LOGLEVEL_TRACE, "VideoElement.getVideoLink: No processor needed, returning " + url);
             return url;
         }

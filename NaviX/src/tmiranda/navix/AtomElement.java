@@ -10,6 +10,8 @@ import java.io.*;
  */
 public class AtomElement extends PlaylistEntry implements Serializable {
 
+    static final long serialVersionUID = NaviX.SERIAL_UID;
+
     public static final String DEFAULT_SAGE_ICON = "Themes" + File.separator + "Standard" + File.separator + "MarkerDelete.png";
 
     @Override

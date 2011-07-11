@@ -3,13 +3,14 @@ package tmiranda.navix;
 
 /**
  * Class used to consume the stdout and stderr streams from spawned processes.
+ *
  * @author Tom Miranda.
  */
-
-
 import java.io.*;
 
 class StreamGetter extends Thread {
+
+    static final long serialVersionUID = NaviX.SERIAL_UID;
 
     private InputStream is;
     private String type;

@@ -5,12 +5,14 @@ import java.util.*;
 import java.io.*;
 
 /**
+ * Every playlist has a header.  It would probably be cleaner to do away with this class
+ * and just put all of the data into the Playlist class.
  *
  * @author Tom Miranda
  */
 public class PlaylistHeader implements Serializable {
 
-    static final long serialVersionUID = 0;
+    static final long serialVersionUID = NaviX.SERIAL_UID;
 
     private String version      = "Unknown";
     private String title        = "Playlist could not be loaded.";

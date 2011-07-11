@@ -5,13 +5,15 @@ import java.util.*;
 import sagex.api.*;
 
 /**
- * Singleton class used to manage the Playlist cache.  Playlists typically have to be read
+ * Singleton class used to manage the Playlist memory cache.  Playlists typically have to be read
  * from the web and this takes time.  The methods in this class can be used to access and
  * populate a local cache which drastically improves performance.
  *
  * @author Tom Miranda.
  */
 public class PlaylistCache {
+
+    static final long serialVersionUID = NaviX.SERIAL_UID;
 
 // FIXME - Check for maximum number of items in cache.
 

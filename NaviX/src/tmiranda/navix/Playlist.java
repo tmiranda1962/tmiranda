@@ -7,12 +7,18 @@ import java.util.*;
 import sagex.api.*;
 
 /**
+ * This class represents a Navi-X Playlist.  A Playlist usually contains one or more
+ * "Elements", such as VideoElement, AudioElement, TextElement, etc.  All Elements are
+ * a superclass of the PlaylistEntry class.
+ *
+ * Playlists are stored on the web in text format.  The Playlist url points to the web
+ * address of the Playlist.
  *
  * @author Tom Miranda.
  */
 public final class Playlist implements Serializable {
 
-    static final long serialVersionUID = 0;
+    static final long serialVersionUID = NaviX.SERIAL_UID;
 
     public static final String COMMENT_CHARACTER = "#";
     public static final String SPAN_DELIMITER = "</span>";
@@ -22,12 +28,12 @@ public final class Playlist implements Serializable {
     public static String        STACK_DEFAULT = "http://navix.turner3d.net/playlist/50242/navi-xtreme_nxportal_home.plx";
 
     private String                url;
-    private PlaylistHeader        playlistHeader;
-    private List<PlaylistEntry>   playlistEntries;
-    private List<String>          allLines;
-    private long                  cachedTime;
-    private boolean               hasLoaded;
-    private long                  diskTime;
+    private PlaylistHeader        playlistHeader = new PlaylistHeader();
+    private List<PlaylistEntry>   playlistEntries = new ArrayList<PlaylistEntry>();
+    private List<String>          allLines = new ArrayList<String>();;
+    private long                  cachedTime = 0;
+    private boolean               hasLoaded = false;
+    private long                  diskTime = 0;
 
     /**
      * Constructor.
@@ -47,8 +53,6 @@ public final class Playlist implements Serializable {
         url = HomeURL;
         playlistHeader = new PlaylistHeader();
         playlistEntries = new ArrayList<PlaylistEntry>();
-        //parentPlaylist = null;
-        //childPlaylists = new ArrayList<Playlist>();
         allLines = new ArrayList<String>();
         hasLoaded = false;
         diskTime = 0;
@@ -59,7 +63,24 @@ public final class Playlist implements Serializable {
             return;
         }
 
-        // Remove the Playlist from the Cache.
+        if (url.startsWith(Search.SAVED_URL_PREFIX)) {
+            url = Search.diskUrlToCacheUrl(HomeURL);
+            String fileName = Search.diskUrlGetFileName(HomeURL);
+            Playlist p = Search.getFromDiskCache(url, fileName);
+
+            if (p==null) {
+                Log.getInstance().write(Log.LOGLEVEL_WARN, "Playlist: Failed to fetch from disk cache " + url + " " + fileName);
+                return;
+            }
+
+            this.playlistHeader = p.playlistHeader;
+            this.playlistEntries = p.playlistEntries;
+            this.allLines = p.allLines;
+            this.hasLoaded = p.hasLoaded;
+            return;
+        }
+
+        // Remove the Playlist from the memory Cache.
         PlaylistCache.getInstance().remove(url);
 
         // Create the file reader.
@@ -80,7 +101,7 @@ public final class Playlist implements Serializable {
 
         try {
             while ((line=br.readLine()) != null) {
-                Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "Playlist: line = " + line);
+                Log.getInstance().write(Log.LOGLEVEL_MAX, "Playlist: line = " + line);
                 if (line!=null && !line.isEmpty() && !line.startsWith(COMMENT_CHARACTER))
                     allLines.add(line);
             }
@@ -112,13 +133,16 @@ public final class Playlist implements Serializable {
         return;
     }
 
+    /**
+     * Create a new Playlist but do not put it into the memory cache.
+     * @param HomeURL
+     */
     public Playlist(String HomeURL) {
         this(HomeURL, true);
     }
 
     /**
      * Creates a Playlist with the same url, header, entries and allLines.
-     * Clears parent, child.
      * 
      * @param playlist
      */
@@ -126,16 +150,15 @@ public final class Playlist implements Serializable {
         url = playlist.url;
         playlistHeader = playlist.playlistHeader;
         playlistEntries = playlist.playlistEntries;
-        //parentPlaylist = null;
-        //childPlaylists = new ArrayList<Playlist>();
         allLines = playlist.allLines;
         hasLoaded = playlist.hasLoaded;
         diskTime = playlist.diskTime;
     }
 
-    public Playlist() {
-
-    }
+    /**
+     * Creates an empty Playlist.
+     */
+    public Playlist() {}
 
     private List<String> combineSpannedLines(List<String> allLines) {
 
@@ -282,9 +305,6 @@ public final class Playlist implements Serializable {
         }
 
         switch (t) {
-            //case HEAD:
-                //Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "addEntryStartingAt: Found the header, skipping.");
-                //break;
 
             case AUDIO:
                 Log.getInstance().write(Log.LOGLEVEL_MAX, "addEntryStartingAt: Found AUDIO element.");
@@ -294,6 +314,7 @@ public final class Playlist implements Serializable {
 
                 // Set the type.
                 entry.setType(parts.get(1));
+                entry.setPlaylistUrl(this.url);
 
                 numberConsumed += entry.loadData(startLocation+1, 10, allLines);
                 playlistEntries.add(entry);
@@ -308,6 +329,7 @@ public final class Playlist implements Serializable {
 
                 // Set the type.
                 entry.setType(parts.get(1));
+                entry.setPlaylistUrl(this.url);
 
                 numberConsumed += entry.loadData(startLocation+1, 10, allLines);
                 playlistEntries.add(entry);
@@ -322,6 +344,7 @@ public final class Playlist implements Serializable {
 
                 // Set the type.
                 entry.setType(parts.get(1));
+                entry.setPlaylistUrl(this.url);
 
                 numberConsumed += entry.loadData(startLocation+1, 10, allLines);
                 playlistEntries.add(entry);
@@ -336,6 +359,7 @@ public final class Playlist implements Serializable {
 
                 // Set the type.
                 entry.setType(parts.get(1));
+                entry.setPlaylistUrl(this.url);
 
                 numberConsumed += entry.loadData(startLocation+1, 10, allLines);
                 playlistEntries.add(entry);
@@ -350,6 +374,7 @@ public final class Playlist implements Serializable {
 
                 // Set the type.
                 entry.setType(parts.get(1));
+                entry.setPlaylistUrl(this.url);
 
                 numberConsumed += entry.loadData(startLocation+1, 10, allLines);
                 playlistEntries.add(entry);
@@ -364,6 +389,7 @@ public final class Playlist implements Serializable {
 
                 // Set the type.
                 entry.setType(parts.get(1));
+                entry.setPlaylistUrl(this.url);
 
                 numberConsumed += entry.loadData(startLocation+1, 10, allLines);
                 playlistEntries.add(entry);
@@ -378,6 +404,7 @@ public final class Playlist implements Serializable {
 
                 // Set the type.
                 entry.setType(parts.get(1));
+                entry.setPlaylistUrl(this.url);
 
                 numberConsumed += entry.loadData(startLocation+1, 10, allLines);
                 playlistEntries.add(entry);
@@ -392,6 +419,7 @@ public final class Playlist implements Serializable {
                 
                 // Set the type.
                 entry.setType(parts.get(1));
+                entry.setPlaylistUrl(this.url);
 
                 // Look at the next lines for name, thumb, URL, player and rating.
                 numberConsumed += entry.loadData(startLocation+1, 10, allLines);
@@ -408,6 +436,7 @@ public final class Playlist implements Serializable {
 
                 // Set the type.
                 entry.setType(parts.get(1));
+                entry.setPlaylistUrl(this.url);
 
                 numberConsumed += entry.loadData(startLocation+1, 10, allLines);
 
@@ -423,6 +452,7 @@ public final class Playlist implements Serializable {
 
                 // Set the type.
                 entry.setType(parts.get(1));
+                entry.setPlaylistUrl(this.url);
 
                 numberConsumed += entry.loadData(startLocation+1, 10, allLines);
 
@@ -438,6 +468,7 @@ public final class Playlist implements Serializable {
 
                 // Set the type.
                 entry.setType(parts.get(1));
+                entry.setPlaylistUrl(this.url);
 
                 numberConsumed += entry.loadData(startLocation+1, 10, allLines);
 
@@ -453,6 +484,7 @@ public final class Playlist implements Serializable {
 
                 // Set the type.
                 entry.setType(parts.get(1));
+                entry.setPlaylistUrl(this.url);
 
                 numberConsumed += entry.loadData(startLocation+1, 10, allLines);
 
@@ -468,6 +500,7 @@ public final class Playlist implements Serializable {
 
                 // Set the type.
                 entry.setType(parts.get(1));
+                entry.setPlaylistUrl(this.url);
 
                 numberConsumed += entry.loadData(startLocation+1, 10, allLines);
 
@@ -481,6 +514,7 @@ public final class Playlist implements Serializable {
 
                 // Set the type.
                 entry.setType(parts.get(1));
+                entry.setPlaylistUrl(this.url);
 
                 numberConsumed += entry.loadData(startLocation+1, 10, allLines);
 
@@ -496,6 +530,7 @@ public final class Playlist implements Serializable {
 
                 // Set the type.
                 entry.setType(parts.get(1));
+                entry.setPlaylistUrl(this.url);
 
                 numberConsumed += entry.loadData(startLocation+1, 10, allLines);
 
@@ -511,6 +546,7 @@ public final class Playlist implements Serializable {
 
                 // Set the type.
                 entry.setType(parts.get(1));
+                entry.setPlaylistUrl(this.url);
 
                 numberConsumed += entry.loadData(startLocation+1, 10, allLines);
 
@@ -526,6 +562,7 @@ public final class Playlist implements Serializable {
 
                 // Set the type.
                 entry.setType(parts.get(1));
+                entry.setPlaylistUrl(this.url);
 
                 numberConsumed += entry.loadData(startLocation+1, 10, allLines);
 
@@ -541,6 +578,7 @@ public final class Playlist implements Serializable {
 
                 // Set the type.
                 entry.setType(parts.get(1));
+                entry.setPlaylistUrl(this.url);
 
                 numberConsumed += entry.loadData(startLocation+1, 10, allLines);
 
@@ -556,6 +594,7 @@ public final class Playlist implements Serializable {
 
                 // Set the type.
                 entry.setType(parts.get(1));
+                entry.setPlaylistUrl(this.url);
 
                 numberConsumed += entry.loadData(startLocation+1, 10, allLines);
 
@@ -571,6 +610,7 @@ public final class Playlist implements Serializable {
 
                 // Set the type.
                 entry.setType(parts.get(1));
+                entry.setPlaylistUrl(this.url);
 
                 numberConsumed += entry.loadData(startLocation+1, 10, allLines);
 
@@ -586,6 +626,7 @@ public final class Playlist implements Serializable {
 
                 // Set the type.
                 entry.setType(parts.get(1));
+                entry.setPlaylistUrl(this.url);
 
                 numberConsumed += entry.loadData(startLocation+1, 10, allLines);
 
@@ -601,6 +642,7 @@ public final class Playlist implements Serializable {
 
                 // Set the type.
                 entry.setType(parts.get(1));
+                entry.setPlaylistUrl(this.url);
 
                 numberConsumed += entry.loadData(startLocation+1, 10, allLines);
 
@@ -616,6 +658,7 @@ public final class Playlist implements Serializable {
 
                 // Set the type.
                 entry.setType(parts.get(1));
+                entry.setPlaylistUrl(this.url);
 
                 numberConsumed += entry.loadData(startLocation+1, 10, allLines);
 
@@ -631,6 +674,7 @@ public final class Playlist implements Serializable {
 
                 // Set the type.
                 entry.setType(parts.get(1));
+                entry.setPlaylistUrl(this.url);
 
                 numberConsumed += entry.loadData(startLocation+1, 10, allLines);
 
@@ -647,6 +691,7 @@ public final class Playlist implements Serializable {
 
                 // Set the type.
                 entry.setType(parts.get(1));
+                entry.setPlaylistUrl(this.url);
 
                 numberConsumed += entry.loadData(startLocation+1, 10, allLines);
 
@@ -884,6 +929,30 @@ public final class Playlist implements Serializable {
 
                     break;
 
+                case RSS_VIDEO:
+                    Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "group: Found RSS:VIDEO element.");
+
+                    groupItems.add(entry);
+                    groups.put(entry, groupItems);
+
+                    break;
+
+                case RSS_IMAGE:
+                    Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "group: Found RSS:IMAGE element.");
+
+                    groupItems.add(entry);
+                    groups.put(entry, groupItems);
+
+                    break;
+
+                case RSS_ITEM:
+                    Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "group: Found RSS:ITEM element.");
+
+                    groupItems.add(entry);
+                    groups.put(entry, groupItems);
+
+                    break;
+
                 case ATOM:
                     Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "group: Found ATOM element.");
 
@@ -1008,64 +1077,15 @@ public final class Playlist implements Serializable {
     }
 
     /*
-     * Parent - Child methods.
-     */
-    /**
-    public Playlist getParent() {
-        return parentPlaylist;
-    }
-
-    private void setParent(Playlist parentPlaylist) {
-        
-        if (parentPlaylist != null)
-            this.parentPlaylist = parentPlaylist;
-        else
-            Log.getInstance().write(Log.LOGLEVEL_WARN, "setParent: null parentPlaylist.");
-    }
-
-    public boolean addChild(Playlist child) {
-
-        if (child == null) {
-            Log.getInstance().write(Log.LOGLEVEL_WARN, "addChild: null child.");
-            return false;
-        }
-
-        child.setParent(this);
-        return childPlaylists.add(child);
-    }
-
-    public boolean removeChild(Playlist child) {
-
-        if (child == null) {
-            Log.getInstance().write(Log.LOGLEVEL_WARN, "removeChild: null child.");
-            return false;
-        }
-
-        if (child.hasChildren()) {
-            Log.getInstance().write(Log.LOGLEVEL_WARN, "removeChild: Attempt to remove child with children.");
-            return false;
-        }
-
-        child.setParent(null);
-        return childPlaylists.remove(child);
-    }
-
-    public boolean hasChildren() {
-        return childPlaylists.size() > 0;
-    }
-
-    public boolean isRoot() {
-        return parentPlaylist == null;
-    }
-     *
-     */
-
-    /*
      * Retrieve header information.
      */
 
     public String getTitle() {
         return playlistHeader.getTitle();
+    }
+
+    public void setTitle(String title) {
+        playlistHeader.setTitle(title);
     }
 
     public String getBackground() {
@@ -1078,6 +1098,10 @@ public final class Playlist implements Serializable {
 
     public String getVersion() {
         return playlistHeader.getVersion();
+    }
+
+    public void setVersion(String version) {
+        playlistHeader.setVersion(version);
     }
 
     public String getDescription() {
@@ -1117,8 +1141,16 @@ public final class Playlist implements Serializable {
         return;
     }
 
+    /**
+     * Check to see if the Playlist was successfully loaded from the web.
+     * @return
+     */
     public boolean hasLoaded() {
         return hasLoaded;
+    }
+
+    void setHasLoaded(boolean value) {
+        hasLoaded = value;
     }
 
     /*
@@ -1154,6 +1186,10 @@ public final class Playlist implements Serializable {
      */
     public static boolean addToCache(Playlist playlist) {
         return PlaylistCache.getInstance().add(playlist);
+    }
+
+    public static boolean removeFromCache(Playlist playlist) {
+        return PlaylistCache.getInstance().remove(playlist.getUrl());
     }
 
     /**

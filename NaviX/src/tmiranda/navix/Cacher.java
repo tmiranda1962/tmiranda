@@ -4,18 +4,33 @@ package tmiranda.navix;
 import sagex.api.*;
 
 /**
+ * Load a Playlist into the memory cache.
  *
  * @author Tom Miranda.
  */
 public class Cacher extends Thread {
 
+    static final long serialVersionUID = NaviX.SERIAL_UID;
+
     final static String CACHER_THREAD_NAME = "NavixCacher";
     String url;
 
+    /**
+     * Constructor.  The url points to a Playlist that will be loaded into the memory cache.
+     * Looks at the Sage property specified by PlaylistCache.PROPERTY_CACHE_SECOND_LEVEL to
+     * determine if the "children" to this Playlist will also be cached.
+     *
+     * Note that if the children are cached the thread priority will be lowered considerably.
+     * 
+     * @param url
+     */
     public Cacher(String url) {
         this.url = url;
     }
 
+    /**
+     *
+     */
     @Override
     public void run() {
         Log.getInstance().write(Log.LOGLEVEL_TRACE, "Cacher: Starting for " + url);

@@ -4,12 +4,13 @@ package tmiranda.navix;
 import java.io.*;
 
 /**
+ * PlaylistElements simply point to another Plpaylist.
  *
  * @author Tom Miranda.
  */
 public class PlaylistElement extends PlaylistEntry implements Serializable {
 
-    static final long serialVersionUID = 0;
+    static final long serialVersionUID = NaviX.SERIAL_UID;
 
     public static final String DEFAULT_SAGE_ICON = "Themes" + File.separator + "Standard" + File.separator + "FileFolder.png";
 

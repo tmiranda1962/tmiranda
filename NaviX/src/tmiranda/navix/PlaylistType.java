@@ -9,6 +9,7 @@ import java.io.*;
  * @author Tom Miranda.
  */
 public enum PlaylistType implements Serializable {
+
     AUDIO ("audio"),
     VIDEO ("video"),
     IMAGE ("image"),
@@ -23,12 +24,12 @@ public enum PlaylistType implements Serializable {
     RSS_HTML ("rss:html"),
     RSS_IMAGE ("rss:image"),
     RSS_VIDEO ("rss:video"),
+    RSS_FLICKR_DAILY ("rss_flickr_daily"),
     ATOM ("atom"),
     HTML_YOUTUBE ("html_youtube"),
     NAVIX ("navi-x"),
     XML_SHOUTCAST ("xml_shoutcast"),
     XML_APPLEMOVIE ("xml_applemovie"),
-    RSS_FLICKR_DAILY ("rss_flickr_daily"),
     PLX ("plx"),
     HTML ("html"),
     SEARCH ("search"),
