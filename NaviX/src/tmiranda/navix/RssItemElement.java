@@ -3,10 +3,13 @@ package tmiranda.navix;
 
 import java.io.*;
 import java.util.*;
+import java.util.regex.Pattern;
 import sage.media.rss.*;
 
 /**
  * This class represents an individual Podcast episode.
+ *
+ * Handles both video podcasts and photobucket Image Podcasts.
  *
  * @author Tom Miranda.
  */
@@ -16,13 +19,15 @@ public final class RssItemElement extends PlaylistEntry implements Serializable 
 
     public static final String DEFAULT_SAGE_ICON = "WiFiSignal4.png";
 
-    private RSSItem rssItem     = null;
-    private RSSChannel channel  = null;
+    private RSSItem             rssItem  = null;
+    private RSSChannel          channel  = null;
+    private boolean             isVideo;
     private Map<String, String> args = new HashMap<String, String>();
 
-    public RssItemElement(PlaylistEntry entry, RSSItem RSSItem, RSSChannel Channel) {
+    public RssItemElement(PlaylistEntry entry, RSSItem RSSItem, RSSChannel Channel, boolean IsVideo) {
         rssItem      = RSSItem;
         channel      = Channel;
+        isVideo      = IsVideo;
         version      = entry.version;
         title        = entry.title;
         background   = entry.background;
@@ -57,6 +62,10 @@ public final class RssItemElement extends PlaylistEntry implements Serializable 
         return channel != null;
     }
 
+    public boolean isVideoItem() {
+        return isVideo;
+    }
+
     public void setChannel(RSSChannel channel) {
         this.channel = channel;
     }
@@ -69,6 +78,12 @@ public final class RssItemElement extends PlaylistEntry implements Serializable 
         return rssItem;
     }
 
+    /**
+     * Gets the video link.  Invokes the processor as necessary.  Should only be invoked
+     * if isVideoItem() returns true.
+     *
+     * @return
+     */
     public String getVideoLink() {
 
         if (rssItem==null) {
@@ -106,6 +121,29 @@ public final class RssItemElement extends PlaylistEntry implements Serializable 
         }
 
         return args.get("answer");
+    }
+
+    /**
+     * Gets the link to the image.  Should only be invoked is isVideoItem() returns false.
+     *
+     * @return
+     */
+    public String getImageLink() {
+        // Typical form of link is:
+        // http://s1223.photobucket.com/albums/dd516/1jeanettebazan/?action=view&current=071311134616.jpg
+
+        String link = rssItem.getLink();
+
+        if (link==null || link.isEmpty()) {
+            Log.getInstance().write(Log.LOGLEVEL_WARN, "RssItemElement.getImageLink: null link.");
+            return null;
+        }
+
+        String fileName = link.substring(link.lastIndexOf("=")+1, link.length());
+        String u = link.substring(0, link.lastIndexOf("?"));
+        Log.getInstance().write(Log.LOGLEVEL_TRACE, "RssItemElement.getImageLink: File " + u + fileName);
+
+        return u + fileName;
     }
 
     public RSSChannel getChannel() {

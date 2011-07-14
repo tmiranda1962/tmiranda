@@ -106,6 +106,9 @@ public class RTMP implements Serializable {
      *     ERROR: RTMP_Connect1, handshake failed.
      *     DEBUG: Closing connection.
      *
+     * The downloaded video is stored in the system temp directory and is set to .deleteOnExit()
+     * so it should not be necessary to manually delete the file.
+     *
      * @param url
      * @return The File that will contain the downloaded video.
      */
@@ -222,10 +225,21 @@ public class RTMP implements Serializable {
 
     /**
      * Cancels the current capture and removes it from the Active List.
+     * Also deletes the tempfile, even though this is not specifically needed.
      */
     public void abortCapture() {
         process.destroy();
         activeList.remove(this);
+        if (tempFile != null)
+            tempFile.delete();
+    }
+
+    /**
+     * Manually delete the tempFile used to store the downloaded video.
+     * @return
+     */
+    public boolean deleteTempFile() {
+        return tempFile == null ? false : tempFile.delete();
     }
 
     /**

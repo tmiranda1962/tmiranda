@@ -27,6 +27,8 @@ public final class Playlist implements Serializable {
     private static final String STACK_DELIMITER = ",";
     public static String        STACK_DEFAULT = "http://navix.turner3d.net/playlist/50242/navi-xtreme_nxportal_home.plx";
 
+    public static final String PROPERTY_FILTER_UNSUPPORTED = "navix/filter_unsupported_types";
+
     private String                url;
     private PlaylistHeader        playlistHeader = new PlaylistHeader();
     private List<PlaylistEntry>   playlistEntries = new ArrayList<PlaylistEntry>();
@@ -63,7 +65,7 @@ public final class Playlist implements Serializable {
             return;
         }
 
-        if (url.startsWith(Search.SAVED_URL_PREFIX)) {
+        if (false && url.startsWith(Search.SAVED_URL_PREFIX)) {
             url = Search.diskUrlToCacheUrl(HomeURL);
             String fileName = Search.diskUrlGetFileName(HomeURL);
             Playlist p = Search.getFromDiskCache(url, fileName);
@@ -787,12 +789,20 @@ public final class Playlist implements Serializable {
 
         Map<PlaylistEntry, List<Object>> groups = new HashMap<PlaylistEntry, List<Object>>();
 
+        boolean skipUnsupported = Configuration.GetProperty(PROPERTY_FILTER_UNSUPPORTED, "false").equalsIgnoreCase("true");
+
         for (PlaylistEntry entry : playlistEntries) {
 
             String t = entry.getType();
 
             if (t==null) {
                 Log.getInstance().write(Log.LOGLEVEL_WARN, "group: null type.");
+                continue;
+            }
+
+            // Don't bother processing further if this is an unsupported type.
+            if (skipUnsupported && !entry.isSupportedBySage()) {
+                Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "group: Skipping unsupported type " + t);
                 continue;
             }
 
@@ -871,9 +881,12 @@ public final class Playlist implements Serializable {
                     }
 
                     for (PlaylistEntry nextPlaylistEntry : nextPlaylist.getElements()) {
-                        String name = nextPlaylistEntry.getName();
-                        Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "group: Found name " + name);
-                        groupItems.add(nextPlaylistEntry);
+
+                        if (!(skipUnsupported && !nextPlaylistEntry.isSupportedBySage())) {
+                            String name = nextPlaylistEntry.getName();
+                            Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "group: Found name " + name);
+                            groupItems.add(nextPlaylistEntry);
+                        }
                     }
 
                     //Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "group: Found names " + groupItems);
@@ -894,7 +907,7 @@ public final class Playlist implements Serializable {
 
                         if (rssItemElements==null || rssItemElements.isEmpty()) {
                             Log.getInstance().write(Log.LOGLEVEL_TRACE, "group: Podcast has no RSSItems.");
-                            groupItems.add(new RssItemElement(entry, null, null));
+                            groupItems.add(new RssItemElement(entry, null, null, true));
                         } else {
                             Log.getInstance().write(Log.LOGLEVEL_TRACE, "group: Found RSS elements " + groupItems.size());
                             groupItems.addAll(rssItemElements);
@@ -907,7 +920,7 @@ public final class Playlist implements Serializable {
                             Log.getInstance().write(Log.LOGLEVEL_TRACE, "group: Unchecked Podcast.");
                         if (!rssElement.isValidPodcast())
                             Log.getInstance().write(Log.LOGLEVEL_TRACE, "group: Invalid Podcast.");
-                        groupItems.add(new RssItemElement(entry, null, null));                      
+                        groupItems.add(new RssItemElement(entry, null, null, true));
                     }
 
                     groups.put(entry, groupItems);
@@ -940,7 +953,33 @@ public final class Playlist implements Serializable {
                 case RSS_IMAGE:
                     Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "group: Found RSS:IMAGE element.");
 
-                    groupItems.add(entry);
+                    RssImageElement rssImageElement = (RssImageElement)entry;
+
+                    // If the RssElement channel has already been downloaded and validated
+                    // the the group will contain RssItemElement, otherwise it will
+                    // just contain a placeholder.
+                    if (rssImageElement.hasBeenChecked() && rssImageElement.isValidPodcast()) {
+
+                        List<RssItemElement> rssItemElements = rssImageElement.getRssItemElements();
+
+                        if (rssItemElements==null || rssItemElements.isEmpty()) {
+                            Log.getInstance().write(Log.LOGLEVEL_TRACE, "group: Podcast has no RSSItems.");
+                            groupItems.add(new RssItemElement(entry, null, null, false));
+                        } else {
+                            Log.getInstance().write(Log.LOGLEVEL_TRACE, "group: Found RSS elements " + groupItems.size());
+                            groupItems.addAll(rssItemElements);
+                        }
+
+                    } else {
+
+                        // Create a placeholder RSSItemElement.
+                        if (!rssImageElement.hasBeenChecked())
+                            Log.getInstance().write(Log.LOGLEVEL_TRACE, "group: Unchecked Podcast.");
+                        if (!rssImageElement.isValidPodcast())
+                            Log.getInstance().write(Log.LOGLEVEL_TRACE, "group: Invalid Podcast.");
+                        groupItems.add(new RssItemElement(entry, null, null, false));
+                    }
+
                     groups.put(entry, groupItems);
 
                     break;

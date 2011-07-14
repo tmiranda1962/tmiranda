@@ -17,7 +17,7 @@ public class RssElement extends PlaylistEntry implements Serializable {
 
     public static final String DEFAULT_SAGE_ICON = "WiFiSignal4.png";
 
-    private boolean checkedChannel = false;
+    private boolean     checkedChannel = false;
     private RSSChannel  channel = null;
 
     @Override
@@ -45,10 +45,7 @@ public class RssElement extends PlaylistEntry implements Serializable {
      * @return
      */
     public boolean isValidPodcast() {
-        //if (processor != null)
-            //return false;
-        //else
-            return channel != null;
+        return channel != null;
     }
 
     /**
@@ -70,7 +67,7 @@ public class RssElement extends PlaylistEntry implements Serializable {
 
         for (RSSItem rssItem : rssItems) {
             Log.getInstance().write(Log.LOGLEVEL_TRACE, "getRssItemElements: Added RSSItem " + rssItem.getTitle());
-            rssItemElements.add(new RssItemElement(this, rssItem, channel));
+            rssItemElements.add(new RssItemElement(this, rssItem, channel, true));
         }
 
         return rssItemElements;
@@ -141,6 +138,11 @@ public class RssElement extends PlaylistEntry implements Serializable {
         return channel.getItems();
     }
 
+    /**
+     * Returns the image from the RSS Channel.
+     *
+     * @return
+     */
     public String getRssThumb() {
         if (channel==null)
             return null;
