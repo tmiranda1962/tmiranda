@@ -149,6 +149,7 @@ public class MultiMediaFile extends MultiObject {
         database.removeDataFromFlag(DELETED, userID);
 
         setWatchedDuration(null);
+        setDVDWatchedDuration(null);
         //setMediaTime(null);
         setChapterNum(null);
         setTitleNum(null);

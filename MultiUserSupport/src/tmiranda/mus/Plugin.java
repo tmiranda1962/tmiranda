@@ -3,6 +3,8 @@ package tmiranda.mus;
 
 import sage.*;
 import sagex.api.*;
+import sagex.UIContext;
+import sagex.UIContext.*;
 import java.util.*;
 
 /**
@@ -14,7 +16,7 @@ public class Plugin implements sage.SageTVPlugin, SageTVEventListener {
     /**
      * The current Plugin version.
      */
-    public static final String  VERSION = "0.140 05.29.2011";
+    public static final String  VERSION = "0.141 08.20.2011";
 
     /*
      * Constants used throughout the Plugin.
@@ -432,21 +434,43 @@ public class Plugin implements sage.SageTVPlugin, SageTVEventListener {
             Log.getInstance().write(Log.LOGLEVEL_TRACE, "sageEvent: Users watching this Airing " + UserIDs);
 
             // Fetch the data from the Map.
-            //   MediaTime = Time playback ended relative to the actual time the Airing was recorded.
+            //   MediaTime = Time playback ended relative to the actual time the Airing was recorded. For DVDs
+            //     this is the time from the beginning of the DVD.
             //   Duration = Total playback duration in milliseconds.
             String UIContext    = (String)eventVars.get("UIContext");
             Long Duration       = (Long)eventVars.get("Duration");
+            Long DVDDuration    = Duration;
             Long MediaTime      = (Long)eventVars.get("MediaTime");
             Integer ChapterNum  = (Integer)eventVars.get("ChapterNum");
             Integer TitleNum    = (Integer)eventVars.get("TitleNum");
 
             Log.getInstance().write(Log.LOGLEVEL_TRACE, "sageEvent: UIContext=" + UIContext +", Duration="+Duration+", MediaTime="+MediaTime+", ChapterNum="+ChapterNum+", TitleNum="+TitleNum);
-            Log.getInstance().write(Log.LOGLEVEL_TRACE, "sageEvent: Duration=" + Utility.PrintDurationWithSeconds(Duration));
-            Log.getInstance().write(Log.LOGLEVEL_TRACE, "sageEvent: MediaTime=" + PrintDateAndTime(MediaTime));
+            Log.getInstance().write(Log.LOGLEVEL_TRACE, "sageEvent: Duration=" + Duration + " : " +Utility.PrintDurationWithSeconds(Duration));
+            Log.getInstance().write(Log.LOGLEVEL_TRACE, "sageEvent: MediaTime=" + MediaTime + " : " + PrintDateAndTime(MediaTime));
+            Log.getInstance().write(Log.LOGLEVEL_TRACE, "sageEvent: ChapterNum=" + ChapterNum);
+            Log.getInstance().write(Log.LOGLEVEL_TRACE, "sageEvent: TitleNum=" + TitleNum);
+            
+            
+
 
             // Nothing to do if PlaybackStarted. RealWatchedStartTime() is set in the API call.
-            if (eventName.startsWith("PlaybackStarted")) {
+            if (eventName.startsWith("PlaybackStarted")) {                
                 Log.getInstance().write(Log.LOGLEVEL_TRACE, "sageEvent: PlaybackStarted. UIContext=" + UIContext +", Duration="+Duration+", MediaTime="+MediaTime+", ChapterNum="+ChapterNum+", TitleNum="+TitleNum);
+                //If a DVD is being watched, seek to the last watched spot
+                if (sagex.api.MediaFileAPI.IsDVD(MediaFile)) {
+                    for (String UserID : UserIDs) {
+                        MultiMediaFile MMF = new MultiMediaFile(UserID, MediaFile);
+                        Long seekDuration = MMF.getDVDWatchedDuration();
+                        if (seekDuration != 0) {
+                            Long watchedTitleNum = (long)(MMF.getTitleNum());
+                            int Code = 202;
+                            Log.getInstance().write(Log.LOGLEVEL_TRACE, "watch: DVD Setting Title to " + watchedTitleNum);
+                            sagex.api.MediaPlayerAPI.DirectPlaybackControl(new UIContext(UIContext), Code, watchedTitleNum, watchedTitleNum);
+                            Log.getInstance().write(Log.LOGLEVEL_TRACE, "watch: DVD Seeking to " + seekDuration);
+                            sagex.api.MediaPlayerAPI.Seek(new UIContext(UIContext), seekDuration);
+                        } 
+                    }
+                }
                 return;
             }
                                    
@@ -454,15 +478,45 @@ public class Plugin implements sage.SageTVPlugin, SageTVEventListener {
             // because the end of file has been reached.
 
             for (String UserID : UserIDs) {
+                long duration = MediaFileAPI.IsDVD(MediaFile) ? MediaTime : MediaTime - sagex.api.AiringAPI.GetAiringStartTime(MediaFile);
                 MultiMediaFile MMF = new MultiMediaFile(UserID, MediaFile);
                 //MMF.setMediaTime(MediaTime);
-                MMF.setWatchedDuration(MediaTime - sagex.api.AiringAPI.GetAiringStartTime(MediaFile));
+                if(sagex.api.MediaFileAPI.IsDVD(MediaFile)) { MMF.setDVDWatchedDuration(MediaTime); } else { MMF.setWatchedDuration(duration); }
                 MMF.setChapterNum(ChapterNum);
                 MMF.setTitleNum(TitleNum);
                 MMF.setRealWatchedEndTime(Utility.Time());
                 MMF.setWatchedEndTime(MediaTime);
-
-                if (eventName.startsWith("PlaybackFinished")) {
+                Log.getInstance().write(Log.LOGLEVEL_TRACE, "sageEvent: Setting MMF info for User=" + UserID + " MediaTime=" + MediaTime + " WatchedDuration=" + duration + " Chapter="+ChapterNum + " Title=" + TitleNum);
+                
+                // If a show should be mark watched because it is close enough to the end, set this variable.
+                Boolean markWatched = false;
+                
+                if (eventName.startsWith("PlaybackStopped")) {
+                    //Capture the difference of how much was watched versus the length of the file.
+                    //If the file stopped within the last 5 minutes, go ahead and set markWatched to true.
+                    Long watchedStatus;
+                    if(sagex.api.MediaFileAPI.IsDVD(MediaFile)) { 
+                        Log.getInstance().write(Log.LOGLEVEL_TRACE, "sageEvent: DVDPlaybackStopped");
+                        watchedStatus = DVDDuration - MediaTime;
+                        Log.getInstance().write(Log.LOGLEVEL_TRACE, "sageEvent: DVDPlaybackStopped. Duration = " + DVDDuration + " MediaTime = " + MediaTime);
+                        if(watchedStatus < 300000) {
+                            Log.getInstance().write(Log.LOGLEVEL_TRACE, "sageEvent: DVDPlaybackStopped. Close enough to the end. Setting file watched");
+                            markWatched = true;
+                        }
+                    }
+                    else { 
+                        watchedStatus = sagex.api.AiringAPI.GetAiringDuration(MediaFile) - duration;
+                        Log.getInstance().write(Log.LOGLEVEL_TRACE, "sageEvent: PlaybackStopped. Duration = " + sagex.api.AiringAPI.GetAiringDuration(MediaFile) + " WatchedTime = " + duration);
+                        if(watchedStatus < 300000) {
+                            Log.getInstance().write(Log.LOGLEVEL_TRACE, "sageEvent: PlaybackStopped. Close enough to the end. Setting file watched");
+                            markWatched = true;
+                        }
+                    }
+                    //Grab watched info to ensure everything is set properly
+                    Log.getInstance().write(Log.LOGLEVEL_TRACE, "Get DVDWatchedDuration = " + MMF.getDVDWatchedDuration() + " RealWatchedEndTime = " + MMF.getRealWatchedEndTime());
+                }
+                
+                if (eventName.startsWith("PlaybackFinished") || markWatched) {
                     MMF.setWatched();
                 }
 
@@ -581,13 +635,13 @@ public class Plugin implements sage.SageTVPlugin, SageTVEventListener {
      * @param time The time.
      * @return A formatted String.
      */
-    public static String PrintDateAndTime(long time) {
+    public static String PrintDateAndTime(Long time) {
         if (time == 0) {
             return "0";
         } else if (time == -1) {
             return "-1";
         } else
-            return Utility.PrintDateFull(time) + " - " + Utility.PrintTimeFull(time);
+            return Utility.PrintDateFull(time) + " - " + Utility.PrintTimeFull(time) + " <" + time.toString() + ">";
     }
 
     /**

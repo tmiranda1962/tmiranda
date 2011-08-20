@@ -329,10 +329,41 @@ public class MultiObject {
             MO.setWatchedDuration(Duration);
         }
     }
-
+    
     void setWatchedDuration(long Duration) {
         Long D = Duration;
         setWatchedDuration(D.toString());
+    }
+    
+    long getDVDWatchedDuration() {
+        String D = database.getRecordData(DURATION_PREFIX + userID);
+
+        // If it's null it hasn't been watched so return 0.
+        if (D==null || D.isEmpty())
+            return 0;
+
+        try {
+            long duration = Long.parseLong(D);
+            return duration;
+        } catch (NumberFormatException e) {
+            Log.getInstance().write(Log.LOGLEVEL_TRACE, "getWatchedDuration: Bad number " + D);
+            return -1;
+        }
+    }
+    
+    void setDVDWatchedDuration(String Duration) {
+        Log.getInstance().write(Log.LOGLEVEL_TRACE, "setDVDWatchedDuration: Setting to " + Duration + " for " + userID);
+        database.setRecordData(DURATION_PREFIX + userID, Duration);
+
+        if (altKey != null && altKey != 0 && altKey != null) {
+            MultiObject MO = new MultiObject(userID, altStore, altKey, 0, null);
+            MO.setDVDWatchedDuration(Duration);
+        }
+    }
+
+    void setDVDWatchedDuration(long Duration) {
+        Long D = Duration;
+        setDVDWatchedDuration(D.toString());
     }
 
 
@@ -370,8 +401,10 @@ public class MultiObject {
                 }
             }
 
-            if (sageObject!=null)
+            if (sageObject!=null){
                 sagex.api.AiringAPI.SetWatched(sageObject);
+                
+            }
         }
 
         return;
@@ -386,6 +419,7 @@ public class MultiObject {
         setWatchedEndTime(0);
         setRealWatchedStartTime(0);
         setRealWatchedEndTime(0);
+        setDVDWatchedDuration(0);
 
         if (altKey != null && altKey != 0 && altKey != null) {
             MultiObject MO = new MultiObject(userID, altStore, altKey, 0, null);

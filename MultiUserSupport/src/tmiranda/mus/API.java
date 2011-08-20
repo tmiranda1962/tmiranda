@@ -301,7 +301,7 @@ public class API {
         int chapter = 0;
         int title = 0;
 
-        if (sagex.api.AiringAPI.IsAiringObject(Content)) {
+        if (sagex.api.AiringAPI.IsAiringObject(Content) && !sagex.api.MediaFileAPI.IsDVD(Content)) {
             Log.getInstance().write(Log.LOGLEVEL_TRACE, "watch: Is an Airing.");
             MultiAiring MA = new MultiAiring(User, Content);
             MA.setRealWatchedStartTime(Utility.Time());
@@ -311,12 +311,10 @@ public class API {
             for (String secondaryUser : secondaryUsers) {
                 MA = new MultiAiring(secondaryUser, Content);
                 MA.setRealWatchedStartTime(Utility.Time());
-                //WatchedEndTime = MA.getWatchedEndTime();
-                //RealStartTime = MA.getRealWatchedStartTime();
             }
 
         } else if (sagex.api.MediaFileAPI.IsMediaFileObject(Content) || sagex.api.MediaFileAPI.IsDVD(Content)) {
-            Log.getInstance().write(Log.LOGLEVEL_TRACE, "watch: Is a MediaFile.");
+            Log.getInstance().write(Log.LOGLEVEL_TRACE, "watch: Is a MediaFile or DVD.");
             MultiMediaFile MMF = new MultiMediaFile(User, Content);
             MMF.setRealWatchedStartTime(Utility.Time());
             WatchedEndTime = MMF.getWatchedEndTime();
@@ -328,8 +326,6 @@ public class API {
             for (String secondaryUser : secondaryUsers) {
                 MMF = new MultiMediaFile(secondaryUser, Content);
                 MMF.setRealWatchedStartTime(Utility.Time());
-                //WatchedEndTime = MMF.getWatchedEndTime();
-                //RealStartTime = MMF.getRealWatchedStartTime();
             }
         } else {
             Log.getInstance().write(Log.LOGLEVEL_TRACE, "watch: Not an Airing or MediaFile.");
@@ -346,64 +342,33 @@ public class API {
 
         // Let the core do its thing.
         Log.getInstance().write(Log.LOGLEVEL_TRACE, "watch: About to watch " + ShowAPI.GetShowTitle(Content) + ":" + ShowAPI.GetShowEpisode(Content));
-        Object RC = sagex.api.MediaPlayerAPI.Watch(new UIContext(ContextName), Content);
-
-        // If it's a DVD, set the title and chapter.
-        if (sagex.api.MediaFileAPI.IsDVD(Content)) {
-
-            // See what title is currently playing.
-            int currentTitle = sagex.api.MediaPlayerAPI.GetDVDCurrentTitle(new UIContext(ContextName));
-            Log.getInstance().write(Log.LOGLEVEL_TRACE, "watch: DVD title is currently " + currentTitle + " and target is " + title);
-
-            if (currentTitle != title) {
-
-                Log.getInstance().write(Log.LOGLEVEL_TRACE, "watch: Setting DVD title to " + title);
-
-                // There is no core function to set the title, so see if we need to use
-                // Next() or Previous().
-
-                boolean failed = false;
-
-                do {
-                    // See what title we're on now.
-                    int oldTitle = sagex.api.MediaPlayerAPI.GetDVDCurrentTitle(new UIContext(ContextName));
-
-                    // Change it.
-                    if (currentTitle < title)
-                        MediaPlayerAPI.DVDTitleNext(new UIContext(ContextName));
-                    else
-                        MediaPlayerAPI.DVDTitlePrevious(new UIContext(ContextName));
-
-                    // See if it changed.
-                    currentTitle = MediaPlayerAPI.GetDVDCurrentTitle(new UIContext(ContextName));
-
-                    if (oldTitle==currentTitle) {
-                        Log.getInstance().write(Log.LOGLEVEL_WARN, "watch: Failed to change title number.");
-                        failed = true;
-                    } else {
-                        Log.getInstance().write(Log.LOGLEVEL_TRACE, "watch: Changed title number from " + oldTitle + " to " + currentTitle);
-                    }
-
-                } while (!failed && currentTitle != title);
-            }
-
-            // Set to the correct chapter within the title.
-            if (MediaPlayerAPI.GetDVDCurrentChapter(new UIContext(ContextName)) != chapter) {
-                MediaPlayerAPI.DVDChapterSet(new UIContext(ContextName), chapter);
-                Log.getInstance().write(Log.LOGLEVEL_TRACE, "watch: Setting DVD chapter to " + chapter);
-
-                // Sanity check.
-                if (MediaPlayerAPI.GetDVDCurrentChapter(new UIContext(ContextName)) != chapter)
-                    Log.getInstance().write(Log.LOGLEVEL_WARN, "watch: Failed to set DVD chapter, is on chapter " + MediaPlayerAPI.GetDVDCurrentChapter());
-            }
-        }
-
-        return RC;
+        return sagex.api.MediaPlayerAPI.Watch(new UIContext(ContextName), Content);
     }
 
     /*
      * MediaFile API.
      */
+//     public static Object getMediaFilesWithImportPrefix(Object Mask, String Prefix, boolean b1, boolean b2, boolean b3) {
+//        String user = getLoggedinUser();
+//
+//        if (user==null || user.equalsIgnoreCase(Plugin.SUPER_USER)) {
+//            return Database.GetMediaFilesWithImportPrefix(Mask, Prefix, b1, b2, b3);
+//        }
+//
+//        List<Object> userMediaFiles = new ArrayList<Object>();
+//
+//        Object mediaFiles = Database.GetMediaFilesWithImportPrefix(Mask, Prefix, b1, b2, b3);
+//
+//        if (mediaFiles==null)
+//            return null;
+//
+//        for (Object mediaFile : (Object[]) mediaFiles) {
+//            if (isMediaFileForLoggedOnUser(mediaFile))
+//                userMediaFiles.add(mediaFile);
+//        }
+//
+//        return userMediaFiles.toArray();
+//    }
 
     public static Object getMediaFilesWithImportPrefix(Object Mask, String Prefix, boolean includeFiles, boolean includeFolders, boolean returnMap) {
 
@@ -1567,12 +1532,16 @@ public class API {
         if (sagex.api.MediaFileAPI.IsMediaFileObject(Airing)) {
             MultiMediaFile MMF = new MultiMediaFile(User, Airing);
             Duration = MMF.getWatchedDuration();
-        } else {
+        } else if (sagex.api.MediaFileAPI.IsDVD(Airing)) {
+            MultiMediaFile MMF = new MultiMediaFile(User, Airing);
+            Duration = MMF.getDVDWatchedDuration();
+        }else{      
             MultiAiring MA = new MultiAiring(User, Airing);
             Duration = MA.getWatchedDuration();
         }
 
         Log.getInstance().write(Log.LOGLEVEL_TRACE, "getWatchedDuration: Duration " + sagex.api.MediaFileAPI.GetMediaTitle(Airing) + ":" + Plugin.PrintDateAndTime(Duration));
+        Log.getInstance().write(Log.LOGLEVEL_TRACE, "getWatchedDuration: Return Value = " + (Duration == -1 ? sagex.api.AiringAPI.GetWatchedDuration(Airing) : Duration));
         return (Duration == -1 ? sagex.api.AiringAPI.GetWatchedDuration(Airing) : Duration);
     }
 
