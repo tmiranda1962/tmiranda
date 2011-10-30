@@ -401,7 +401,7 @@ public class API {
                 return originalMap;
             }
 
-            Map filteredMap = new LinkedHashMap();
+            SortedMap filteredMap = new TreeMap();
 
             Set keySet = originalMap.keySet();
 
@@ -1645,7 +1645,7 @@ public class API {
         for (String secondaryUser : secondaryUsers) {
             Log.getInstance().write(Log.LOGLEVEL_TRACE, "removeFavorite: Removing for secondary user " + secondaryUser);
             MultiFavorite MF = new MultiFavorite(secondaryUser, Favorite);
-            MF.removeFavorite();
+            MF.removeFavorite(false);
         }
 
         String User = getLoggedinUser();
@@ -1657,7 +1657,7 @@ public class API {
         }
 
         MultiFavorite MF = new MultiFavorite(User, Favorite);
-        MF.removeFavorite();
+        MF.removeFavorite(false);
         return;
     }
 
@@ -1944,6 +1944,17 @@ public class API {
 
         User user = new User(UserID);
         return user.removeFromDataBase();
+    }
+
+    public static boolean removeUserFromDatabase(String UserID, boolean sync) {
+
+        if (UserID==null || UserID.isEmpty()) {
+            Log.getInstance().write(Log.LOGLEVEL_TRACE, "removeUserFromAllMediaFiles: null UserID.");
+            return false;
+        }
+
+        User user = new User(UserID);
+        return user.removeFromDataBase(sync);
     }
 
     /**

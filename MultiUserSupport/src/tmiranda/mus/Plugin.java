@@ -16,7 +16,7 @@ public class Plugin implements sage.SageTVPlugin, SageTVEventListener {
     /**
      * The current Plugin version.
      */
-    public static final String  VERSION = "0.141 08.20.2011";
+    public static final String  VERSION = "0.142 10.30.2011";
 
     /*
      * Constants used throughout the Plugin.
@@ -481,7 +481,13 @@ public class Plugin implements sage.SageTVPlugin, SageTVEventListener {
                 long duration = MediaFileAPI.IsDVD(MediaFile) ? MediaTime : MediaTime - sagex.api.AiringAPI.GetAiringStartTime(MediaFile);
                 MultiMediaFile MMF = new MultiMediaFile(UserID, MediaFile);
                 //MMF.setMediaTime(MediaTime);
-                if(sagex.api.MediaFileAPI.IsDVD(MediaFile)) { MMF.setDVDWatchedDuration(MediaTime); } else { MMF.setWatchedDuration(duration); }
+
+                if(sagex.api.MediaFileAPI.IsDVD(MediaFile)) {
+                    MMF.setDVDWatchedDuration(MediaTime);
+                } else {
+                    MMF.setWatchedDuration(duration);
+                }
+
                 MMF.setChapterNum(ChapterNum);
                 MMF.setTitleNum(TitleNum);
                 MMF.setRealWatchedEndTime(Utility.Time());

@@ -218,6 +218,32 @@ public class User {
         return destroy();
     }
 
+    boolean removeFromDataBase(boolean sync) {
+
+        if (!sync)
+            return removeFromDataBase();
+
+        if (!isValid) {
+            Log.getInstance().write(Log.LOGLEVEL_WARN, "removeFromDatabase: Can't remove invalid User.");
+            return false;
+        }
+
+        Log.getInstance().write(Log.LOGLEVEL_WARN, "removeFromDatabase: Will sync database before removing.");
+
+        Log.getInstance().write(Log.LOGLEVEL_WARN, "removeFromDataBase: Removing from Favorites.");
+        removeFromAllFavorites(true);
+
+        Log.getInstance().write(Log.LOGLEVEL_WARN, "removeFromDataBase: Removing from MediaFiles.");
+        removeFromAllMediaFiles(true);
+
+        Log.getInstance().write(Log.LOGLEVEL_WARN, "removeFromDataBase: Removing from Airings.");
+        removeFromAllAirings(true);
+
+        //return destroy();
+        Log.getInstance().write(Log.LOGLEVEL_WARN, "removeFromDataBase: In test mode, leaving user in database.");
+        return true;
+    }
+
     String getUserID() {
         return user;
     }
@@ -540,6 +566,42 @@ public class User {
         return;
     }
 
+    void removeFromAllMediaFiles(boolean keep) {
+
+        if (!keep) {
+            removeFromAllMediaFiles();
+            return;
+        }
+
+        if (!isValid) {
+            Log.getInstance().write(Log.LOGLEVEL_WARN, "removeFromAllMediaFiles: Can't remove invalid User.");
+            return;
+        }
+
+        Log.getInstance().write(Log.LOGLEVEL_WARN, "removeFromAllMediaFiles: Will preserve Watched status.");
+
+        Object[] AllMediaFiles = sagex.api.MediaFileAPI.GetMediaFiles();
+
+        if (AllMediaFiles==null || AllMediaFiles.length==0) {
+            Log.getInstance().write(Log.LOGLEVEL_TRACE, "removeFromAllMediaFiles: No MediaFiles.");
+        } else {
+            Log.getInstance().write(Log.LOGLEVEL_TRACE, "removeFromAllMediaFiles: Removing from MediaFiles " + AllMediaFiles.length);
+            for (Object MediaFile : AllMediaFiles) {
+                MultiMediaFile MMF = new MultiMediaFile(user, MediaFile);
+                if (MMF.isWatched()) {
+                    Log.getInstance().write(Log.LOGLEVEL_TRACE, "removeFromAllMediaFiles: Marking as watched in the core " + sagex.api.MediaFileAPI.GetMediaTitle(MediaFile));
+                    sagex.api.AiringAPI.SetWatched(MediaFile);
+                }
+
+                Log.getInstance().write(Log.LOGLEVEL_TRACE, "removeFromAllMediaFiles: In test mode, not removingFromMediaFile.");
+                removeFromMediaFile(MediaFile);
+            }
+        }
+
+        Log.getInstance().write(Log.LOGLEVEL_TRACE, "removeUserFromAllMediaFiles: Done.");
+        return;
+    }
+
     void addToAllMediaFiles() {
 
         if (!isValid) {
@@ -608,6 +670,43 @@ public class User {
         return;
     }
 
+    void removeFromAllAirings(boolean keep) {
+
+        if (!keep) {
+            removeFromAllAirings();
+            return;
+        }
+
+        if (!isValid) {
+            Log.getInstance().write(Log.LOGLEVEL_WARN, "removeFromAllAirings: Can't remove invalid User.");
+            return;
+        }
+
+        Log.getInstance().write(Log.LOGLEVEL_TRACE, "removeFromAllAirings: Preserving Watched status.");
+
+        Object[] AllAirings = MultiAiring.getAllSageAirings();
+
+        if (AllAirings==null || AllAirings.length==0) {
+            Log.getInstance().write(Log.LOGLEVEL_TRACE, "removeFromAllAirings: No Airings.");
+        } else {
+            Log.getInstance().write(Log.LOGLEVEL_TRACE, "removeFromAllAirings: Removing from Airings " + AllAirings.length);
+            for (Object Airing : AllAirings) {
+
+                MultiAiring MA = new MultiAiring(user, Airing);
+                if (MA.isWatched()) {
+                    Log.getInstance().write(Log.LOGLEVEL_TRACE, "removeFromAllAirings: Setting watched in core for " + sagex.api.AiringAPI.GetAiringTitle(Airing));
+                    sagex.api.AiringAPI.SetWatched(Airing);
+                }
+
+                Log.getInstance().write(Log.LOGLEVEL_TRACE, "removeFromAllAirings: In test mode, will not removeFromAiring().");
+                removeFromAiring(Airing);
+            }
+        }
+
+        Log.getInstance().write(Log.LOGLEVEL_TRACE, "removeUserFromAllAirings: Done.");
+        return;
+    }
+
     void addToAllAirings() {
 
         if (!isValid) {
@@ -670,10 +769,35 @@ public class User {
 
         for (Object Favorite : Favorites) {
             MultiFavorite MF = new MultiFavorite(user, Favorite);
-            MF.removeFavorite();
+            MF.removeFavorite(false);
         }
     }
 
+    void removeFromAllFavorites(boolean keep) {
+        if (!keep) {
+            removeFromAllFavorites();
+            return;
+        }
+
+        if (!isValid) {
+            Log.getInstance().write(Log.LOGLEVEL_WARN, "removeFromAllFavorites: Can't remove invalid User.");
+            return;
+        }
+
+        Log.getInstance().write(Log.LOGLEVEL_TRACE, "removeAllFavories: Will keep Favorite in core.");
+
+        Object[] Favorites = sagex.api.FavoriteAPI.GetFavorites();
+
+        if (Favorites==null || Favorites.length==0) {
+            Log.getInstance().write(Log.LOGLEVEL_TRACE, "removeAllFavories: No Favorites.");
+            return;
+        }
+
+        for (Object Favorite : Favorites) {
+            MultiFavorite MF = new MultiFavorite(user, Favorite);
+            MF.removeFavorite(true);
+        }
+    }
 
     /*
      * Configuration.

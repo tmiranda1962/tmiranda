@@ -45,7 +45,7 @@ public class MultiAiring extends MultiObject {
         sageAiring = Airing;
 
         if (!isInitialized) {
-            Log.getInstance().write(Log.LOGLEVEL_TRACE, "MultiAiring: Initializing user " + userID + ":" + sagex.api.AiringAPI.GetAiringTitle(Airing));
+            Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "MultiAiring: Initializing user " + userID + ":" + sagex.api.AiringAPI.GetAiringTitle(Airing));
             initializeCurrentUser();
         }
     }

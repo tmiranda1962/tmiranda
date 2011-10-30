@@ -76,7 +76,7 @@ public class MultiFavorite extends MultiObject {
      * Removes the current User from the Favorite.  IF no more Users are defined for the
      * Favorite it is removed from the Sage core.
      */
-    public void removeFavorite() {
+    public void removeFavorite(boolean keepInCore) {
 
         if (!isValid) {
             Log.getInstance().write(Log.LOGLEVEL_WARN, "removeFavories: !isValid.");
@@ -88,6 +88,11 @@ public class MultiFavorite extends MultiObject {
 
         DelimitedString DS = database.removeDataFromFlag(FAVORITE_USERS, userID);
         Log.getInstance().write(Log.LOGLEVEL_TRACE, "removeFavorite: Users for Favorite " + sagex.api.FavoriteAPI.GetFavoriteDescription(sageFavorite) + ":" + allowedUsers);
+
+        if (keepInCore) {
+            Log.getInstance().write(Log.LOGLEVEL_TRACE, "removeFavorite: Leaving Favorite in core.");
+            return;
+        }
 
         if (DS==null || DS.isEmpty()) {
             Log.getInstance().write(Log.LOGLEVEL_TRACE, "removeFavorite: No more users, deleting Favorite from sage database " + sagex.api.FavoriteAPI.GetFavoriteDescription(sageFavorite));
