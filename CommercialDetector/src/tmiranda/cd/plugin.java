@@ -10,15 +10,18 @@ import java.io.*;
 import java.util.*;
 
 /**
+ * CommercialDetector General Plugin for SageTV.
  *
  * @author Tom Miranda
  * <p>
- * Possible enhancements:
- * - 
+ *
+ * 1.01 changes:
+ * - Cleanup logging in skipThisCategory()
+ * - Fix small typo in the option description for categories to skip.
  */
 public class plugin implements sage.SageTVPlugin, SageTVEventListener {
 
-    private final String                VERSION = "1.00";
+    private final String                VERSION = "1.01 UNRELEASED";
     private sage.SageTVPluginRegistry   registry;
     private sage.SageTVEventListener    listener;
     private static Integer              NumberScanned;
@@ -912,7 +915,7 @@ public class plugin implements sage.SageTVPlugin, SageTVEventListener {
         } else if (setting.startsWith(SETTING_SKIP_CHANNELS)) {
             return "Enter channel names, numbers or range of numbers delimited by a comma.";
         } else if (setting.startsWith(SETTING_SKIP_CATEGORIES)) {
-            return "Enter Categories and Subcategories delimited by a comma,";
+            return "Enter Categories and Subcategories delimited by a comma.";
         } else if (setting.startsWith("SetCommand")) {
             return "Delimit using a comma.";
         } else if (setting.startsWith("RunningAsRoot")) {
@@ -1181,72 +1184,72 @@ public class plugin implements sage.SageTVPlugin, SageTVEventListener {
         }
     }
 
-/**
- * Interface definition for implementation classes that listen for events
- * from the SageTV core
- *
- * Variable types are in brackets[] after the var name unless they are the
- * same as the var name itself.
- * List of known core events:
- *
- * MediaFileImported - vars: MediaFile
- * ImportingStarted
- * ImportingCompleted
- * RecordingCompleted (called when a complete recording is done)
- * 	vars: MediaFile
- * RecordingStarted (called when any kind of recording is started)
- *	vars: MediaFile
- * RecordingStopped (called whenever a recording is stopped for any reason)
- *	vars: MediaFile
- * AllPluginsLoaded
- * RecordingScheduleChanged
- * ConflictStatusChanged
- * SystemMessagePosted
- *	vars: SystemMessage
- * EPGUpdateCompleted
- * MediaFileRemoved
- * 	vars: MediaFile
- * PlaybackStopped (called when the file is closed)
- * 	vars: MediaFile, UIContext[String], Duration[Long], MediaTime[Long],
- * 		ChapterNum[Integer], TitleNum[Integer]
- * PlaybackFinished (called at the EOF)
- * 	vars: MediaFile, UIContext[String], Duration[Long], MediaTime[Long],
- * 		ChapterNum[Integer], TitleNum[Integer]
- * PlaybackStarted
- * 	vars: MediaFile, UIContext[String], Duration[Long], MediaTime[Long],
- * 		ChapterNum[Integer], TitleNum[Integer]
- * FavoriteAdded
- * 	vars: Favorite
- * FavoriteModified
- * 	vars: Favorite
- * FavoriteRemoved
- * 	vars: Favorite
- * PlaylistAdded
- * 	vars: Playlist, UIContext[String]
- * PlaylistModified
- * 	vars: Playlist, UIContext[String]
- * PlaylistRemoved
- * 	vars: Playlist, UIContext[String]
- * ClientConnected
- * 	vars: IPAddress[String], MACAddress[String] (if its a
- * 		placeshifter/extender, MACAddress is null otherwise)
- * ClientDisconnected
- * 	vars: IPAddress[String], MACAddress[String] (if its a
- * 		placeshifter/extender, MACAddress is null otherwise)
- *
- *
- * This is a callback method invoked from the SageTV core for any
- * events the listener has subscribed to.
- * See the sage.SageTVPluginRegistry interface definition for details
- * regarding subscribing and unsubscribing to events.
- * The eventName will be a predefined String which indicates the event
- * type.
- * The eventVars will be a Map of variables specific to the event
- * information. This Map should NOT be modified.
- * The keys to the eventVars Map will generally be Strings; but this
- * may change in the future and plugins that submit events
- * are not required to follow that rule.
- */
+    /**
+    * Interface definition for implementation classes that listen for events
+    * from the SageTV core
+    *
+    * Variable types are in brackets[] after the var name unless they are the
+    * same as the var name itself.
+    * List of known core events:
+    *
+    * MediaFileImported - vars: MediaFile
+    * ImportingStarted
+    * ImportingCompleted
+    * RecordingCompleted (called when a complete recording is done)
+    * 	vars: MediaFile
+    * RecordingStarted (called when any kind of recording is started)
+    *	vars: MediaFile
+    * RecordingStopped (called whenever a recording is stopped for any reason)
+    *	vars: MediaFile
+    * AllPluginsLoaded
+    * RecordingScheduleChanged
+    * ConflictStatusChanged
+    * SystemMessagePosted
+    *	vars: SystemMessage
+    * EPGUpdateCompleted
+    * MediaFileRemoved
+    * 	vars: MediaFile
+    * PlaybackStopped (called when the file is closed)
+    * 	vars: MediaFile, UIContext[String], Duration[Long], MediaTime[Long],
+    * 		ChapterNum[Integer], TitleNum[Integer]
+    * PlaybackFinished (called at the EOF)
+    * 	vars: MediaFile, UIContext[String], Duration[Long], MediaTime[Long],
+    * 		ChapterNum[Integer], TitleNum[Integer]
+    * PlaybackStarted
+    * 	vars: MediaFile, UIContext[String], Duration[Long], MediaTime[Long],
+    * 		ChapterNum[Integer], TitleNum[Integer]
+    * FavoriteAdded
+    * 	vars: Favorite
+    * FavoriteModified
+    * 	vars: Favorite
+    * FavoriteRemoved
+    * 	vars: Favorite
+    * PlaylistAdded
+    * 	vars: Playlist, UIContext[String]
+    * PlaylistModified
+    * 	vars: Playlist, UIContext[String]
+    * PlaylistRemoved
+    * 	vars: Playlist, UIContext[String]
+    * ClientConnected
+    * 	vars: IPAddress[String], MACAddress[String] (if its a
+    * 		placeshifter/extender, MACAddress is null otherwise)
+    * ClientDisconnected
+    * 	vars: IPAddress[String], MACAddress[String] (if its a
+    * 		placeshifter/extender, MACAddress is null otherwise)
+    *
+    *
+    * This is a callback method invoked from the SageTV core for any
+    * events the listener has subscribed to.
+    * See the sage.SageTVPluginRegistry interface definition for details
+    * regarding subscribing and unsubscribing to events.
+    * The eventName will be a predefined String which indicates the event
+    * type.
+    * The eventVars will be a Map of variables specific to the event
+    * information. This Map should NOT be modified.
+    * The keys to the eventVars Map will generally be Strings; but this
+    * may change in the future and plugins that submit events
+    * are not required to follow that rule.
+    */
 
     @Override
     public synchronized void sageEvent(String eventName, java.util.Map eventVars) {
@@ -1412,6 +1415,10 @@ public class plugin implements sage.SageTVPlugin, SageTVEventListener {
                 }
             } else if (FirstLast.length==2) {
 
+                // FIXME - This will not work in the case of a (digital) channel number
+                // having a "-" in it, for example "18-3".  It's not good enough to assume
+                // this is a range, we need another solution.
+
                 // Range specified.  See if the channel number falls withing the range.
                 int thisChannel = stringToInt(ChannelNumber);
                 int firstChannel = stringToInt(FirstLast[0]);
@@ -1462,13 +1469,17 @@ public class plugin implements sage.SageTVPlugin, SageTVEventListener {
                     skipList.add(item);
             }
         }
-System.out.println("CD:: skipList = " + skipList);
+
+        Log.getInstance().write(Log.LOGLEVEL_TRACE, "skipList = " + skipList);
 
         // Create a List of Categories and Subcategories in this show.
         List<String> showCategoriesList = new ArrayList<String>();
 
         String[] showCategories = ShowAPI.GetShowCategoriesList(MediaFile);
-for (String S : showCategories) System.out.println("CD:: showCategories " + S);
+
+        for (String S : showCategories)
+            Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "showCategories " + S);
+
         if (showCategories!=null && showCategories.length>0) {
 
             // Some categories actually have two categories separated by a "/", such as House / garden.
@@ -1476,13 +1487,17 @@ for (String S : showCategories) System.out.println("CD:: showCategories " + S);
                 showCategoriesList.addAll(parseCategories(category));
             }
         }
-System.out.println("CD:: showCategoriesList 1 = " + showCategoriesList);
+
+        Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "showCategoriesList 1 = " + showCategoriesList);
 
         String showSubcategory = ShowAPI.GetShowSubCategory(MediaFile);
-System.out.println("CD:: showSubcategory " + showSubcategory);
+
+        Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "showSubcategory " + showSubcategory);
+
         if (showSubcategory!=null && !showSubcategory.isEmpty())
             showCategoriesList.addAll(parseCategories(showSubcategory));
-System.out.println("CD:: showCategoriesList 2 = " + showCategoriesList);
+
+        Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "showCategoriesList 2 = " + showCategoriesList);
 
         // Check if any items in the skipList appear in the showCategoryList.
         for (String item : skipList) {
