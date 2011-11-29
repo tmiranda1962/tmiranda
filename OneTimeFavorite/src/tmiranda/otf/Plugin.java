@@ -11,7 +11,8 @@ import sagex.api.*;
  */
 public class Plugin implements sage.SageTVPlugin, SageTVEventListener {
 
-    final static String VERSION = "0.01";
+    // Version 1.01: Make the recording a Manual if PROPERTY_MAKE_MANUAL is set to true. (Default.)
+    final static String VERSION = "1.01";
 
     final static String FAVORITE_PROPERTY = "OneTimeFavorite";
 
@@ -19,6 +20,9 @@ public class Plugin implements sage.SageTVPlugin, SageTVEventListener {
     final static String PROPERTY_LOGLEVEL = "otf/loglevel";
 
     final static String SETTING_VERSION = "Version";
+
+    // Version 1.01.
+    final static String PROPERTY_MAKE_MANUAL = "otf/make_manual";
 
     private sage.SageTVPluginRegistry   registry;
     private sage.SageTVEventListener    listener;
@@ -47,7 +51,7 @@ public class Plugin implements sage.SageTVPlugin, SageTVEventListener {
         System.out.println("OneTimeFavorite starting. Version = " + VERSION);
 
         if (Global.IsClient()) {
-                Log.getInstance().write(Log.LOGLEVEL_TRACE, "PlugIn: Running in client mode.");
+            Log.getInstance().write(Log.LOGLEVEL_TRACE, "PlugIn: Running in client mode.");
         } else {
             registry.eventSubscribe(listener, "RecordingStopped");
         }
@@ -306,5 +310,12 @@ public class Plugin implements sage.SageTVPlugin, SageTVEventListener {
 
         FavoriteAPI.RemoveFavorite(Favorite);
         Log.getInstance().write(Log.LOGLEVEL_TRACE, "sageEvent: Removing completed one time favorite " + FavoriteAPI.GetFavoriteDescription(Favorite));
+
+        // Version 1.01
+        String makeManual = Configuration.GetProperty(PROPERTY_MAKE_MANUAL, "true").toLowerCase();
+        if (makeManual.equals("true")) {
+            Log.getInstance().write(Log.LOGLEVEL_TRACE, "sageEvent: Making it a manual recording.");
+            AiringAPI.Record(MediaFile);
+        }
     }
 }
