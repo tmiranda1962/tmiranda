@@ -316,5 +316,11 @@ public class Plugin implements sage.SageTVPlugin, SageTVEventListener {
             Log.getInstance().write(Log.LOGLEVEL_TRACE, "sageEvent: Is not a monitored Recording.");
             return;
         }
+
+        // If it's below the threshhold don't worry about it.
+        if (Util.getNumberRecorded(MediaFile) <= store.getMax()) {
+            Log.getInstance().write(Log.LOGLEVEL_TRACE, "sageEvent: Below threshhold.");
+            return;
+        }
     }
 }

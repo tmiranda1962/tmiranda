@@ -4,6 +4,7 @@
 
 package tmiranda.lir;
 
+import java.util.*;
 import sagex.api.*;
 
 /**
@@ -65,7 +66,43 @@ public class DataStore {
 
         String key = AiringAPI.GetAiringTitle(MediaFile);
         Log.getInstance().write(Log.LOGLEVEL_TRACE, "DataStore.addRecord: key = " + key);
-        return UserRecordAPI.AddUserRecord(STORE, key) != null;
+        Object newRecord = UserRecordAPI.AddUserRecord(STORE, key);
+
+        if (newRecord==null) {
+            Log.getInstance().write(Log.LOGLEVEL_TRACE, "DataStore.addRecord: Cound not add recird for " + key);
+            return false;
+        }
+
+        // Set the key.
+        UserRecordAPI.SetUserRecordData(newRecord, KEY, key);
+        return true;
+    }
+    
+    /**
+     * Return all of the keys (Airing titles) in the datastore.
+     * @return
+     */
+    public static List<String> getAllKeys() {
+        
+        List<String> allKeys = new ArrayList<String>();
+        
+        Object records[] = UserRecordAPI.GetAllUserRecords(STORE);
+        
+        if (records==null || records.length==0)
+            return allKeys;
+        
+        for (Object record : records) {
+            String thisKey = UserRecordAPI.GetUserRecordData(record, KEY);
+            if (thisKey!=null && thisKey.length()>0) {
+                allKeys.add(thisKey);
+            }
+        }
+        
+        return allKeys;
+    }
+
+    public String getKey() {
+        return UserRecordAPI.GetUserRecordData(record, KEY);
     }
 
     public boolean deleteRecord() {
