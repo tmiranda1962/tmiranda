@@ -42,6 +42,7 @@ public class DataStore {
     public DataStore(Object MediaFile) {
         if (MediaFile==null) {
             Log.getInstance().write(Log.LOGLEVEL_TRACE, "DataStore: null MediaFile.");
+            record = null;
             return;
         }
 

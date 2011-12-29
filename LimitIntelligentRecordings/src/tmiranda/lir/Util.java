@@ -25,4 +25,24 @@ public class Util {
         Map airingMap = Database.GroupByMethod(MediaFileAPI.GetMediaFiles(), "GetAiringTitle");
         return airingMap.keySet().size();
     }
+
+    public static int GetIntProperty(String Property, String Value) {
+
+        String prop = Configuration.GetServerProperty(Property, Value);
+
+        int p = 0;
+
+        try {
+            p = Integer.parseInt(prop);
+        } catch (NumberFormatException e) {
+            Log.getInstance().write(Log.LOGLEVEL_ERROR, "GetIntProperty: Invalid integer for GetIntProperty " + Property + " " + prop);
+            p = 0;
+        }
+
+        return p;
+    }
+
+    public static int GetIntProperty(String Property, Integer Value) {
+        return GetIntProperty(Property, Value.toString());
+    }
 }
