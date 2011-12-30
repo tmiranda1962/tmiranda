@@ -21,9 +21,20 @@ public class Util {
     public static int getNumberRecorded(Object MediaFile) {
         if (MediaFile == null)
             return 0;
+        else
+            return getAllRecorded(MediaFile).size();
+    }
 
-        Map airingMap = Database.GroupByMethod(MediaFileAPI.GetMediaFiles(), "GetAiringTitle");
-        return airingMap.keySet().size();
+    public static List<Object> getAllRecorded(Object MediaFile) {
+
+        List<Object> recordings = new ArrayList<Object>();
+
+        if (MediaFile == null)
+            return recordings;
+
+        // The key will by the AiringTitle and the value will be a List of episodes.
+        Map<String, List> airingMap = Database.GroupByMethod(MediaFileAPI.GetMediaFiles("T"), "GetAiringTitle");
+        return airingMap.get(AiringAPI.GetAiringTitle(MediaFile));
     }
 
     public static int GetIntProperty(String Property, String Value) {

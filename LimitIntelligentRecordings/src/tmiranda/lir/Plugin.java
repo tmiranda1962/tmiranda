@@ -23,6 +23,9 @@ public class Plugin implements sage.SageTVPlugin, SageTVEventListener {
     private String  PROPERTY_DEFAULT_MAX    = "lir/DefaultMax";
     private Integer DEFAULT_MAX             = DataStore.UNLIMITED;
 
+    private String SETTING_REDUCE_TO_MAX    = "Reduce";
+    private String PROPERTY_REDUCE_TO_MAX   = "lir/Reduce";
+
     // Possibilities:
     //  Option to delete watched first IsWatched
     //
@@ -118,6 +121,7 @@ public class Plugin implements sage.SageTVPlugin, SageTVEventListener {
         Log.getInstance().write(Log.LOGLEVEL_TRACE, "resetConfig: resetConfig received from Plugin Manager.");
         Log.getInstance().SetLogLevel(Log.LOGLEVEL_WARN);
         Configuration.SetServerProperty(PROPERTY_DEFAULT_MAX, DEFAULT_MAX.toString());
+        Configuration.SetServerProperty(PROPERTY_REDUCE_TO_MAX, "false");
     }
 
     // Returns the names of the settings for this plugin.
@@ -125,6 +129,7 @@ public class Plugin implements sage.SageTVPlugin, SageTVEventListener {
     public String[] getConfigSettings() {
         List<String> CommandList = new ArrayList<String>();
         CommandList.add(SETTING_DEFAULT_MAX);
+        CommandList.add(SETTING_REDUCE_TO_MAX);
         CommandList.add(SETTING_LOGLEVEL);
         return (String[])CommandList.toArray(new String[CommandList.size()]);
     }
@@ -149,6 +154,8 @@ public class Plugin implements sage.SageTVPlugin, SageTVEventListener {
             return CONFIG_CHOICE;
         else if (setting.startsWith(SETTING_DEFAULT_MAX))
             return CONFIG_INTEGER;
+        else if (setting.startsWith(SETTING_REDUCE_TO_MAX))
+            return CONFIG_BOOL;
         else
             return 0;
     }
@@ -169,6 +176,8 @@ public class Plugin implements sage.SageTVPlugin, SageTVEventListener {
             }
         } else if (setting.startsWith(SETTING_DEFAULT_MAX)) {
             return Configuration.GetServerProperty(PROPERTY_DEFAULT_MAX, DEFAULT_MAX.toString());
+        } else if (setting.startsWith(SETTING_REDUCE_TO_MAX)) {
+            return Configuration.GetServerProperty(PROPERTY_REDUCE_TO_MAX, "false");
         } else
             return null;
     }
@@ -201,6 +210,8 @@ public class Plugin implements sage.SageTVPlugin, SageTVEventListener {
             else Log.getInstance().SetLogLevel(Log.LOGLEVEL_ERROR);
         } else if (setting.startsWith(SETTING_DEFAULT_MAX)) {
             Configuration.SetServerProperty(PROPERTY_DEFAULT_MAX, value);
+        } else if (setting.startsWith(SETTING_REDUCE_TO_MAX)) {
+            Configuration.SetServerProperty(PROPERTY_REDUCE_TO_MAX, value);
         }
     }
 
@@ -230,6 +241,8 @@ public class Plugin implements sage.SageTVPlugin, SageTVEventListener {
             return "Debug Logging Level";
         } else if (setting.startsWith(SETTING_DEFAULT_MAX)) {
             return "Default Maximum to Keep";
+        } else if (setting.startsWith(SETTING_REDUCE_TO_MAX)) {
+            return "Delete Excess Recordings";
         } else {
             Log.getInstance().write(Log.LOGLEVEL_WARN, "getConfigLabel: Unknown setting = " + setting);
             return null;
@@ -243,6 +256,8 @@ public class Plugin implements sage.SageTVPlugin, SageTVEventListener {
             return "Set the Debug Logging Level.";
         } else if (setting.startsWith(SETTING_DEFAULT_MAX)) {
             return "-1 for unlimited.";
+        } else if (setting.startsWith(SETTING_REDUCE_TO_MAX)) {
+            return "Reduce total recordings to Max to Keep.";
         } else {
             return null;
         }
@@ -318,7 +333,7 @@ public class Plugin implements sage.SageTVPlugin, SageTVEventListener {
     @Override
     public synchronized void sageEvent(String eventName, java.util.Map eventVars) {
 
-        Log.getInstance().write(Log.LOGLEVEL_TRACE, "sageEvent: event received = " + eventName);
+        Log.getInstance().write(Log.LOGLEVEL_TRACE, "sageEvent: Event received = " + eventName);
 
         // Check that we have the right event.
         if (!(eventName.startsWith("RecordingCompleted") || eventName.startsWith("RecordingStopped"))) {
@@ -359,15 +374,15 @@ public class Plugin implements sage.SageTVPlugin, SageTVEventListener {
 
         Log.getInstance().write(Log.LOGLEVEL_TRACE, "sageEvent: Max to keep = " + (maxToKeep==DEFAULT_MAX ? "unlimited" : maxToKeep));
 
-        // If it's unlimited or below the threshhold don't worry about it.
-        if (maxToKeep==DataStore.UNLIMITED || Util.getNumberRecorded(MediaFile)<=maxToKeep) {
-            Log.getInstance().write(Log.LOGLEVEL_TRACE, "sageEvent: Below threshhold.");
-            return;
-        }
-
         // See how maxy are already recorded.
         int numberRecorded = Util.getNumberRecorded(MediaFile);
         Log.getInstance().write(Log.LOGLEVEL_TRACE, "sageEvent: Number already recorded = " + numberRecorded);
+
+        // If it's unlimited or below the threshhold don't worry about it.
+        if (maxToKeep==DataStore.UNLIMITED || numberRecorded<=maxToKeep) {
+            Log.getInstance().write(Log.LOGLEVEL_TRACE, "sageEvent: Below threshhold.");
+            return;
+        }
 
         // See if it's below the threshhold.
         if (numberRecorded <= maxToKeep) {
@@ -376,7 +391,9 @@ public class Plugin implements sage.SageTVPlugin, SageTVEventListener {
         }
 
         // Calculate how many to delete.
-        int numberToDelete = numberRecorded - maxToKeep;
-        Log.getInstance().write(Log.LOGLEVEL_TRACE, "sageEvent: Threshhold exceeded. Deleing " + numberToDelete);
+        //int numberToDelete = numberRecorded - maxToKeep;
+        //Log.getInstance().write(Log.LOGLEVEL_TRACE, "sageEvent: Threshhold exceeded. Deleting " + numberToDelete);
+
+        Log.getInstance().write(Log.LOGLEVEL_TRACE, "sageEvent: Threshhold exceeded. Deleting " + AiringAPI.GetAiringTitle(MediaFile));
     }
 }
