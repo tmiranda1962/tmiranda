@@ -16,8 +16,6 @@ public class DataStore {
     // The UserRecord datastore.  The Key will be the Airing title.
     public static final String STORE = "tmiranda.lir";
 
-    public static final int UNLIMITED = -1;
-
     //
     // User Record data fields.
     //
@@ -41,7 +39,7 @@ public class DataStore {
      */
     public DataStore(Object MediaFile) {
         if (MediaFile==null) {
-            Log.getInstance().write(Log.LOGLEVEL_TRACE, "DataStore: null MediaFile.");
+            Log.getInstance().write(Log.LOGLEVEL_WARN, "DataStore: null MediaFile.");
             record = null;
             return;
         }
@@ -49,6 +47,17 @@ public class DataStore {
         String key = AiringAPI.GetAiringTitle(MediaFile);
         Log.getInstance().write(Log.LOGLEVEL_TRACE, "DataStore: key = " + key);
         record = UserRecordAPI.GetUserRecord(STORE, key);
+    }
+
+    public DataStore(String Title) {
+        if (Title==null) {
+            Log.getInstance().write(Log.LOGLEVEL_WARN, "DataStore: null Title.");
+            record = null;
+            return;
+        }
+
+        Log.getInstance().write(Log.LOGLEVEL_TRACE, "DataStore: key = " + Title);
+        record = UserRecordAPI.GetUserRecord(STORE, Title);
     }
 
     public Object getRecord() {
@@ -59,23 +68,31 @@ public class DataStore {
         return record != null;
     }
 
-    public static boolean addRecord(Object MediaFile) {
-        if (MediaFile == null) {
-            Log.getInstance().write(Log.LOGLEVEL_TRACE, "DataStore.addRecord: null MediaFile.");
+    public boolean addRecord(String key) {
+        if (key == null) {
+            Log.getInstance().write(Log.LOGLEVEL_WARN, "DataStore.addRecord: null key.");
             return false;
         }
 
-        String key = AiringAPI.GetAiringTitle(MediaFile);
+        Object newRecord;
+
+        newRecord = UserRecordAPI.GetUserRecord(STORE, key);
+        if (newRecord != null) {
+            Log.getInstance().write(Log.LOGLEVEL_TRACE, "DataStore.addRecord: Record already existed.");
+            return true;
+        }
+
         Log.getInstance().write(Log.LOGLEVEL_TRACE, "DataStore.addRecord: key = " + key);
-        Object newRecord = UserRecordAPI.AddUserRecord(STORE, key);
+        newRecord = UserRecordAPI.AddUserRecord(STORE, key);
 
         if (newRecord==null) {
-            Log.getInstance().write(Log.LOGLEVEL_TRACE, "DataStore.addRecord: Cound not add recird for " + key);
+            Log.getInstance().write(Log.LOGLEVEL_WARN, "DataStore.addRecord: Could not add recird for " + key);
             return false;
         }
 
         // Set the key.
         UserRecordAPI.SetUserRecordData(newRecord, KEY, key);
+        record = newRecord;
         return true;
     }
     
@@ -125,22 +142,48 @@ public class DataStore {
      */
     public int getMax() {
         if (record==null) {
-            Log.getInstance().write(Log.LOGLEVEL_TRACE, "DataStore.getMax: null record.");
-            return UNLIMITED;
+            Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "DataStore.getMax: null record.");
+            return Plugin.UNLIMITED;
         }
 
         String maxString = UserRecordAPI.GetUserRecordData(record, MAX_ALLOWED);
 
         if (maxString==null || maxString.length()==0) {
             Log.getInstance().write(Log.LOGLEVEL_TRACE, "DataStore.getMax: null maxString.");
-            return UNLIMITED;
+            return Plugin.UNLIMITED;
         }
 
         try {
             return Integer.parseInt(maxString);
         } catch (NumberFormatException e) {
             Log.getInstance().write(Log.LOGLEVEL_TRACE, "DataStore.getMax: Format error " + maxString);
-            return UNLIMITED;
+            return Plugin.UNLIMITED;
+        }
+    }
+
+    public boolean setMax(String max) {
+        if (record==null) {
+            Log.getInstance().write(Log.LOGLEVEL_TRACE, "DataStore.setMax: null record.");
+            return false;
+        }
+
+        UserRecordAPI.SetUserRecordData(record, MAX_ALLOWED, max);
+        return true;
+    }
+
+    public String getMaxString() {
+        if (record==null) {
+            Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "DataStore.getMax: null record.");
+            return Plugin.DEFAULT_MAX_STRING;
+        }
+
+        String maxString = UserRecordAPI.GetUserRecordData(record, MAX_ALLOWED);
+
+        if (maxString==null || maxString.length()==0) {
+            Log.getInstance().write(Log.LOGLEVEL_TRACE, "DataStore.getMax: null maxString.");
+            return Plugin.DEFAULT_MAX_STRING;
+        } else {
+            return maxString;
         }
     }
 }
