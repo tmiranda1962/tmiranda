@@ -26,6 +26,7 @@ public class DataStore {
     // The record key, since there is no way to get it from the UserRecordAPI.
     public static final String KEY = "Key";
 
+    // The UserRecord for this Airing Title.
     private Object record = null;
 
     /**
@@ -45,7 +46,7 @@ public class DataStore {
         }
 
         String key = AiringAPI.GetAiringTitle(MediaFile);
-        Log.getInstance().write(Log.LOGLEVEL_TRACE, "DataStore: key = " + key);
+        Log.getInstance().write(Log.LOGLEVEL_TRACE, "DataStore: key = <" + key + ">");
         record = UserRecordAPI.GetUserRecord(STORE, key);
     }
 
@@ -56,18 +57,33 @@ public class DataStore {
             return;
         }
 
-        Log.getInstance().write(Log.LOGLEVEL_TRACE, "DataStore: key = " + Title);
+        Log.getInstance().write(Log.LOGLEVEL_TRACE, "DataStore: key = <" + Title + ">");
         record = UserRecordAPI.GetUserRecord(STORE, Title);
     }
 
+    /**
+     * Get the UserRecord.
+     * @return
+     */
     public Object getRecord() {
         return record;
     }
 
+    /**
+     * Return true if the title as a UserRecord, false otherwise.
+     * @return
+     */
     public boolean hasRecord() {
         return record != null;
     }
 
+    /**
+     * Add the UserRecord.  By default when a DataStore is instantiated or accessed
+     * a UserRecord is NOT automatically created.  This is done to avoid creating UserRecords
+     * for every title that is even queried.
+     * @param key
+     * @return
+     */
     public boolean addRecord(String key) {
         if (key == null) {
             Log.getInstance().write(Log.LOGLEVEL_WARN, "DataStore.addRecord: null key.");
@@ -78,11 +94,11 @@ public class DataStore {
 
         newRecord = UserRecordAPI.GetUserRecord(STORE, key);
         if (newRecord != null) {
-            Log.getInstance().write(Log.LOGLEVEL_TRACE, "DataStore.addRecord: Record already existed.");
+            Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "DataStore.addRecord: Record already existed.");
             return true;
         }
 
-        Log.getInstance().write(Log.LOGLEVEL_TRACE, "DataStore.addRecord: key = " + key);
+        Log.getInstance().write(Log.LOGLEVEL_TRACE, "DataStore.addRecord: Adding record with key = <" + key + ">");
         newRecord = UserRecordAPI.AddUserRecord(STORE, key);
 
         if (newRecord==null) {
@@ -106,39 +122,59 @@ public class DataStore {
         
         Object records[] = UserRecordAPI.GetAllUserRecords(STORE);
         
-        if (records==null || records.length==0)
+        if (records==null || records.length==0) {
+            Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "DataStore.getAllKeys: No records.");
             return allKeys;
+        }
         
         for (Object record : records) {
             String thisKey = UserRecordAPI.GetUserRecordData(record, KEY);
             if (thisKey!=null && thisKey.length()>0) {
                 allKeys.add(thisKey);
+            } else {
+                Log.getInstance().write(Log.LOGLEVEL_WARN, "DataStore.getAllKeys: null key.");
             }
         }
         
         return allKeys;
     }
 
+    /**
+     * Get the key for this specific UserRecord.
+     * @return
+     */
     public String getKey() {
         return UserRecordAPI.GetUserRecordData(record, KEY);
     }
 
+    /**
+     * Delete the UserRecord for this title.
+     * @return
+     */
     public boolean deleteRecord() {
         if (UserRecordAPI.DeleteUserRecord(record)) {
             record = null;
             return true;
         } else {
+            Log.getInstance().write(Log.LOGLEVEL_WARN, "DataStore.deleteRecord: Failed to delete.");
             return false;
         }
     }
 
+    /**
+     * Returns true if a UserRecord exists for this title (meaning it has a Max value
+     * associated with it) or false if it does not.
+     * @return
+     */
     public boolean isMonitored() {
         return record != null;
     }
 
     /**
      * Get the maximum number of recordings to keep.
-     * @return The maximum number to keep, or 0 for unlimited.
+     * @return The maximum number to keep, or -1 for unlimited. If no Max has been
+     * established for this title then UNLIMITED will be returned by default.  Use
+     * isMonitored() to determine if the title has a specific value or not.
      */
     public int getMax() {
         if (record==null) {
@@ -149,21 +185,26 @@ public class DataStore {
         String maxString = UserRecordAPI.GetUserRecordData(record, MAX_ALLOWED);
 
         if (maxString==null || maxString.length()==0) {
-            Log.getInstance().write(Log.LOGLEVEL_TRACE, "DataStore.getMax: null maxString.");
+            Log.getInstance().write(Log.LOGLEVEL_WARN, "DataStore.getMax: null maxString.");
             return Plugin.UNLIMITED;
         }
 
         try {
             return Integer.parseInt(maxString);
         } catch (NumberFormatException e) {
-            Log.getInstance().write(Log.LOGLEVEL_TRACE, "DataStore.getMax: Format error " + maxString);
+            Log.getInstance().write(Log.LOGLEVEL_WARN, "DataStore.getMax: Format error " + maxString);
             return Plugin.UNLIMITED;
         }
     }
 
+    /**
+     * Set the max allowed for this title.
+     * @param max
+     * @return
+     */
     public boolean setMax(String max) {
         if (record==null) {
-            Log.getInstance().write(Log.LOGLEVEL_TRACE, "DataStore.setMax: null record.");
+            Log.getInstance().write(Log.LOGLEVEL_WARN, "DataStore.setMax: null record.");
             return false;
         }
 
@@ -171,6 +212,10 @@ public class DataStore {
         return true;
     }
 
+    /**
+     * Same as getMax() but it returns the result as a String.
+     * @return
+     */
     public String getMaxString() {
         if (record==null) {
             Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "DataStore.getMax: null record.");
@@ -180,7 +225,7 @@ public class DataStore {
         String maxString = UserRecordAPI.GetUserRecordData(record, MAX_ALLOWED);
 
         if (maxString==null || maxString.length()==0) {
-            Log.getInstance().write(Log.LOGLEVEL_TRACE, "DataStore.getMax: null maxString.");
+            Log.getInstance().write(Log.LOGLEVEL_WARN, "DataStore.getMax: null maxString.");
             return Plugin.DEFAULT_MAX_STRING;
         } else {
             return maxString;

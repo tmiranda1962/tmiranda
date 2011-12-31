@@ -14,29 +14,54 @@ import sagex.api.*;
 public class Util {
 
     /**
-     * Return the number of recordings with the same Airing title as MediaFile.
+     * Gets all completed recordings.
+     * @return Return as Object because in most cases the results of this method will be
+     * passed to other Sage methods that require Object parameters.
+     */
+    public static Object getAllCompleteRecordings() {
+        return Database.FilterByBoolMethod(MediaFileAPI.GetMediaFiles("T"), "IsCompleteRecording", true);
+    }
+
+    /**
+     * Return the number of completed recordings with the same Airing title as MediaFile.
      * @param MediaFile
      * @return
      */
     public static int getNumberRecorded(Object MediaFile) {
-        if (MediaFile == null)
+        if (MediaFile == null) {
+            Log.getInstance().write(Log.LOGLEVEL_WARN, "getNumberRecorded: null MediaFile.");
             return 0;
-        else
+        }  else
             return getAllRecorded(MediaFile).size();
     }
 
+    /**
+     * Return a List of MediaFiles with the same Airing Title as the specified MediaFile.
+     * @param MediaFile
+     * @return
+     */
     public static List<Object> getAllRecorded(Object MediaFile) {
 
         List<Object> recordings = new ArrayList<Object>();
 
-        if (MediaFile == null)
+        if (MediaFile == null) {
+            Log.getInstance().write(Log.LOGLEVEL_WARN, "getAllRecorded: null MediaFile.");
             return recordings;
+        }
 
         // The key will by the AiringTitle and the value will be a List of episodes.
-        Map<String, List> airingMap = Database.GroupByMethod(MediaFileAPI.GetMediaFiles("T"), "GetAiringTitle");
+        Map<String, List> airingMap = Database.GroupByMethod(getAllCompleteRecordings(), "GetAiringTitle");
         return airingMap.get(AiringAPI.GetAiringTitle(MediaFile));
     }
 
+    /**
+     * Get a List of MediaFiles with the same title as the specified MediaFile and
+     * sorted by the specified sortMethod.
+     * @param MediaFile
+     * @param sortMethod
+     * @param descending
+     * @return
+     */
     public static List<Object> getAllRecorded(Object MediaFile, String sortMethod, boolean descending) {
         return Arrays.asList((Object[])Database.Sort(getAllRecorded(MediaFile), descending, sortMethod));
     }
@@ -61,13 +86,28 @@ public class Util {
         return GetIntProperty(Property, Value.toString());
     }
 
+    /**
+     * Gets the Airing Titles of all completed Intelligent Recordings sorted alphabetically
+     * by the title with the leading articles stripped.
+     * @return
+     */
     public static String[] getAllIntelligentRecordingTitles() {
 
         // Filter out any recorded TV files that are Favorites or Manuals.
-        Object allIntelligentRecordings = Database.FilterByBoolMethod(Database.FilterByBoolMethod(MediaFileAPI.GetMediaFiles("T"), "IsFavorite", false), "IsManualRecord", false);
+        Object allIntelligentRecordings = Database.FilterByBoolMethod(Database.FilterByBoolMethod(getAllCompleteRecordings(), "IsFavorite", false), "IsManualRecord", false);
+
+        if (allIntelligentRecordings==null) {
+            Log.getInstance().write(Log.LOGLEVEL_WARN, "getAllIntelligentRecordingTitles: null allIntelligentRecordings.");
+            return new String[0];
+        }
 
         // Group them according to title.
         Map<String, List> airingMap = Database.GroupByMethod(allIntelligentRecordings, "GetAiringTitle");
+
+        if (airingMap==null) {
+            Log.getInstance().write(Log.LOGLEVEL_WARN, "getAllIntelligentRecordingTitles: null airingMap.");
+            return new String[0];
+        }
 
         // The keys are the titles that we need.
         Set<String> unsortedKeys = airingMap.keySet();
@@ -78,6 +118,12 @@ public class Util {
         return sortedKeys;
     }
 
+    /**
+     * Gets the Airing Titles of all completed Intelligent Recordings sorted alphabetically
+     * by the title with the leading articles stripped. It also adds a string on the end
+     * that contains the custom maximum (if any) for the title.
+     * @return
+     */
     public static String[] getAllIntelligentRecordingTitlesAndMax() {
         String[] titles = getAllIntelligentRecordingTitles();
 
@@ -131,15 +177,11 @@ public class Util {
         return (String[])sortedKeys.toArray(new String[sortedKeys.size()]);
     }
 
-    public static String XXaddNumberMax(String title, String number) {
-        if (title==null || number==null) {
-            return title;
-        }  else {
-            DataStore store = new DataStore(title);
-            return (store.isMonitored() ? title + " <"+number+">" : title);
-        }
-    }
-
+    /**
+     * Strips the custom maximum String from the AIring Title.
+     * @param title
+     * @return
+     */
     public static String removeNumberMax(String title) {
         if (title==null || !title.contains(" <") || !title.contains(">"))
             return title;
@@ -147,6 +189,9 @@ public class Util {
             return title.substring(0, title.indexOf(" <"));
     }
 
+    /**
+     * Comparator used to sort Strings alphabetically ignoring the leading articles.
+     */
     static class strippedTitleComparator implements Comparator<Object> {
 
         @Override
