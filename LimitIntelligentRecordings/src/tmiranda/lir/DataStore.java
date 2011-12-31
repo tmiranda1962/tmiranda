@@ -178,7 +178,7 @@ public class DataStore {
      */
     public int getMax() {
         if (record==null) {
-            Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "DataStore.getMax: null record.");
+            Log.getInstance().write(Log.LOGLEVEL_ALL, "DataStore.getMax: null record.");
             return Plugin.UNLIMITED;
         }
 

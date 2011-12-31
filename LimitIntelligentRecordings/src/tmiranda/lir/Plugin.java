@@ -222,7 +222,7 @@ public class Plugin implements sage.SageTVPlugin, SageTVEventListener {
             return showInFocus;
         } else if (setting.startsWith(SETTING_SHOW_MAX)) {
             DataStore store = new DataStore(showInFocus);
-            return (store.isMonitored() ? store.getMaxString() : null);
+            return (store.isMonitored() ? store.getMaxString() : "");
         } else if (setting.startsWith(SETTING_RESET_SHOW)) {
             return "Reset Now";
         } else
@@ -511,7 +511,7 @@ public class Plugin implements sage.SageTVPlugin, SageTVEventListener {
             return;
         }
 
-        Log.getInstance().write(Log.LOGLEVEL_TRACE, "sageEvent: Threshhold exceeded. Deleting " + AiringAPI.GetAiringTitle(MediaFile));
+        Log.getInstance().write(Log.LOGLEVEL_TRACE, "sageEvent: Threshhold exceeded. Deleting one or more " + AiringAPI.GetAiringTitle(MediaFile));
 
         // Get the direction to sort.
         boolean keepOldest = Configuration.GetServerProperty(PROPERTY_KEEP_OLDEST, "true").equalsIgnoreCase("true");
@@ -525,7 +525,7 @@ public class Plugin implements sage.SageTVPlugin, SageTVEventListener {
 
         if (Log.getInstance().GetLogLevel() <= Log.LOGLEVEL_VERBOSE) {
             for (Object MF : allRecorded)
-                Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "sageEvent: Date recorded = " + Utility.PrintDateLong(AiringAPI.GetAiringStartTime(MF)) + " : " + Utility.PrintTimeLong(AiringAPI.GetAiringStartTime(MF)) + AiringAPI.GetAiringTitle(MF) + " - " + ShowAPI.GetShowEpisode(MF));
+                Log.getInstance().write(Log.LOGLEVEL_VERBOSE, "sageEvent: Date recorded = " + Utility.PrintDateLong(AiringAPI.GetAiringStartTime(MF)) + " : " + Utility.PrintTimeLong(AiringAPI.GetAiringStartTime(MF)) + " - " + AiringAPI.GetAiringTitle(MF) + " - " + ShowAPI.GetShowEpisode(MF));
         }
 
         boolean reduceToMax = Configuration.GetServerProperty(PROPERTY_REDUCE_TO_MAX, "false").equalsIgnoreCase("true");
