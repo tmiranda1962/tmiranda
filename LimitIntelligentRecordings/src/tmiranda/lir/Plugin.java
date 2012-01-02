@@ -15,7 +15,7 @@ import java.util.*;
  */
 public class Plugin implements sage.SageTVPlugin, SageTVEventListener {
 
-    private final String VERSION = "0.02 2011.12.30";
+    private final String VERSION = "1.00 2012.01.02";
 
     private final String SETTING_LOGLEVEL = "LogLevel";
 
